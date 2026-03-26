@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ./plugins/apk-rebuilder/package-lock.json
+      - run: npm ci
+        working-directory: ./plugins/apk-rebuilder
+      - run: npm run build
+        working-directory: ./plugins/apk-rebuilder
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: plugins/apk-rebuilder/dist/
+          retention-days: 7
