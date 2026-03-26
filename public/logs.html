@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>APK Rebuilder</title>
+  <link rel="stylesheet" href="./styles/theme.css" />
+  <link rel="stylesheet" href="./styles/ui.base.css" />
+  <link rel="stylesheet" href="./styles/ui.index.css" />
+</head>
+<body class="apk-index">
+  <div id="app" style="height: 100vh; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column;">
+    <div id="logContainer" style="flex: 1; display: flex; flex-direction: column;"></div>
+  </div>
+  <script type="module">
+    import { initThemeSync } from './modules/theme.js';
+    import { renderLogsSection } from './modules/sections/logs.js';
+    initThemeSync();
+    const container = document.getElementById('logContainer');
+    renderLogsSection(container);
+  </script>
+</body>
+</html>

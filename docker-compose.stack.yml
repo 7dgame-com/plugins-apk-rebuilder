@@ -1,0 +1,55 @@
+services:
+  apk-rebuilder:
+    image: ghcr.io/tanyuxiao/apk-rebuilder:latest
+    # 腾讯云配置已注释，先用 GHCR 测试
+    # image: hkccr.ccs.tencentyun.com/plugins/apk-rebuilder:latest
+    networks:
+      - proxy
+      - internal
+    environment:
+      - PORT=3005
+      - HOST=0.0.0.0
+      - PLUGIN_MODE=true
+      - APK_REBUILDER_UI_MODE=embed
+      - HOST_API_BASE=https://api.t.xrteeth.com
+      - REDIS_HOST=redis-apk-rebuilder
+      - REDIS_PORT=6379
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.apk-rebuilder.rule=Host(`apk-rebuilder.plugins.xrugc.com`)
+      - traefik.http.routers.apk-rebuilder.entrypoints=websecure
+      - traefik.http.routers.apk-rebuilder.tls.certresolver=letsencrypt
+      - traefik.http.services.apk-rebuilder.loadbalancer.server.port=3005
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3005/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    depends_on:
+      redis-apk-rebuilder:
+        condition: service_healthy
+
+  redis-apk-rebuilder:
+    image: redis:7-alpine
+    networks:
+      - internal
+    volumes:
+      - apk_rebuilder_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+networks:
+  proxy:
+    external: true
+  internal:
+    driver: bridge
+
+volumes:
+  apk_rebuilder_redis_data:

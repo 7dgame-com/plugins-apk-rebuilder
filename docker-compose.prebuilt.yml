@@ -1,0 +1,39 @@
+services:
+  apk-rebuilder:
+    image: ${APK_REBUILDER_IMAGE:-ghcr.io/tanyuxiao/apk-rebuilder:latest}
+    ports:
+      - '3005:3005'
+    environment:
+      - PORT=3005
+      - HOST=0.0.0.0
+      - PLUGIN_MODE=true
+      - APK_REBUILDER_UI_MODE=embed
+      - REDIS_HOST=redis-apk-rebuilder
+      - REDIS_PORT=6379
+    depends_on:
+      redis-apk-rebuilder:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3005/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  redis-apk-rebuilder:
+    image: redis:7-alpine
+    ports:
+      - '127.0.0.1:16379:6379'
+    volumes:
+      - apk_rebuilder_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  apk_rebuilder_redis_data:

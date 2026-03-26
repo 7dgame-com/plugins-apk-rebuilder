@@ -1,0 +1,6 @@
+data/
+*.apk
+*.unity3d
+*.so
+node_modules/
+dist/

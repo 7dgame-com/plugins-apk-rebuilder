@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>APK Rebuilder</title>
+  <link rel="stylesheet" href="./styles/theme.css" />
+  <link rel="stylesheet" href="./styles/ui.base.css" />
+  <link rel="stylesheet" href="./styles/ui.index.css" />
+</head>
+<body class="apk-index">
+  <div id="app"></div>
+  <script>
+    if (location.port === '5173') {
+      const s = document.createElement('script');
+      s.type = 'module';
+      s.src = '/@vite/client';
+      document.head.appendChild(s);
+    }
+  </script>
+  <script type="module" src="./modules/app.index.js"></script>
+</body>
+</html>

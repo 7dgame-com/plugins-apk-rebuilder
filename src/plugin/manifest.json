@@ -1,0 +1,183 @@
+{
+  "id": "apk-rebuilder",
+  "name": "APK Rebuilder",
+  "version": "1.0.0",
+  "type": "backend",
+  "entry": {
+    "backend": "/plugin"
+  },
+  "permissions": [
+    "artifact:read",
+    "artifact:write",
+    "plugin:run"
+  ],
+  "scopes": [
+    "apk.mod.run",
+    "apk.mod.read",
+    "apk.mod.admin"
+  ],
+  "ui": {
+    "mode": "hosted-form",
+    "title": "APK Rebuilder",
+    "description": "Upload an APK or reuse a cached APK, modify package/app metadata, patch Unity config, patch files, and build a signed APK.",
+    "submitLabel": "Start Mod Task"
+  },
+  "inputSchema": {
+    "type": "object",
+    "required": [
+      "source"
+    ],
+    "properties": {
+      "source": {
+        "type": "object",
+        "oneOf": [
+          {
+            "title": "Upload artifact",
+            "required": [
+              "artifactId"
+            ],
+            "properties": {
+              "artifactId": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "title": "APK library item",
+            "required": [
+              "libraryItemId"
+            ],
+            "properties": {
+              "libraryItemId": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      "modifications": {
+        "type": "object",
+        "properties": {
+          "appName": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "packageName": {
+            "type": "string"
+          },
+          "versionName": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "versionCode": {
+            "type": "string",
+            "pattern": "^[0-9]+$"
+          },
+          "iconArtifactId": {
+            "type": "string"
+          },
+          "unityConfigPath": {
+            "type": "string"
+          },
+          "unityPatches": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "path",
+                "value"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "value": {}
+              }
+            }
+          },
+          "filePatches": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "path",
+                "mode"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "mode": {
+                  "type": "string",
+                  "enum": [
+                    "direct_edit",
+                    "text_replace",
+                    "file_replace"
+                  ]
+                },
+                "content": {
+                  "type": "string"
+                },
+                "matchText": {
+                  "type": "string"
+                },
+                "replaceText": {
+                  "type": "string"
+                },
+                "regex": {
+                  "type": "boolean"
+                },
+                "replacementArtifactId": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "options": {
+        "type": "object",
+        "properties": {
+          "reuseDecodedCache": {
+            "type": "boolean",
+            "default": true
+          },
+          "useStandardPackage": {
+            "type": "boolean",
+            "default": false
+          },
+          "async": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "runId": {
+        "type": "string"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "queued",
+          "processing",
+          "success",
+          "failed"
+        ]
+      },
+      "artifactId": {
+        "type": "string"
+      },
+      "apkInfo": {
+        "type": "object"
+      },
+      "error": {
+        "type": "object"
+      }
+    }
+  }
+}

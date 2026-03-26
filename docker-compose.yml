@@ -1,0 +1,59 @@
+services:
+  apk-rebuilder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:20-bookworm-slim}
+        APKTOOL_VERSION: ${APKTOOL_VERSION:-2.11.1}
+        APKTOOL_JAR_URL: ${APKTOOL_JAR_URL:-https://github.com/iBotPeaches/Apktool/releases/download/v2.11.1/apktool_2.11.1.jar}
+        ANDROID_BUILD_TOOLS_VERSION: ${ANDROID_BUILD_TOOLS_VERSION:-34.0.0}
+        ANDROID_BUILD_TOOLS_URL: ${ANDROID_BUILD_TOOLS_URL:-https://dl.google.com/android/repository/build-tools_r34-linux.zip}
+    ports:
+      - '127.0.0.1:3005:3005'
+    volumes:
+      - apk_rebuilder_data:/app/data
+    environment:
+      - PORT=3005
+      - HOST=0.0.0.0
+      - PLUGIN_MODE=true
+      - APK_REBUILDER_UI_MODE=embed
+      - APKTOOL_PATH=/usr/local/bin/apktool
+      - ZIPALIGN_PATH=/usr/local/bin/zipalign
+      - APKSIGNER_PATH=/usr/local/bin/apksigner
+      - KEYTOOL_PATH=keytool
+      - REDIS_HOST=redis-apk-rebuilder
+      - REDIS_PORT=6379
+      - DEBUG_KEY_ALIAS=androiddebugkey
+      - DEBUG_KEY_PASS=android
+      - HOST_API_BASE=http://host.docker.internal:8081
+      - HOST_AUTH_DEBUG=${HOST_AUTH_DEBUG:-false}
+    # command: ["npm", "run", "dev"] # 开发模式可改回
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:3005/api/health >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    depends_on:
+      redis-apk-rebuilder:
+        condition: service_healthy
+
+  redis-apk-rebuilder:
+    image: redis:7-alpine
+    ports:
+      - '127.0.0.1:16379:6379'
+    volumes:
+      - apk_rebuilder_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  apk_rebuilder_data:
+  apk_rebuilder_redis_data:

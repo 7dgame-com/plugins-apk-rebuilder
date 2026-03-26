@@ -1,0 +1,178 @@
+:root {
+  --primary-color: #00baff;
+  --primary-hover: #0095cc;
+  --primary-light: rgba(0, 186, 255, 0.12);
+  --primary-dark: #0077a3;
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-inverse: #ffffff;
+
+  --bg-page: #f7f8fb;
+  --bg-card: #ffffff;
+  --bg-hover: #f1f5f9;
+  --bg-active: #e2e8f0;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+
+  --border-color: #e2e8f0;
+  --border-color-hover: #cbd5e1;
+  --border-color-active: #94a3b8;
+
+  --success-color: #16a34a;
+  --success-light: rgba(22, 163, 74, 0.12);
+  --success-dark: #15803d;
+  --warning-color: #d97706;
+  --warning-light: rgba(217, 119, 6, 0.12);
+  --warning-dark: #b45309;
+  --danger-color: #ef4444;
+  --danger-light: rgba(239, 68, 68, 0.12);
+  --danger-dark: #dc2626;
+  --danger-darker: #b91c1c;
+  --info-color: #0ea5e9;
+  --info-light: rgba(14, 165, 233, 0.12);
+  --info-dark: #0284c7;
+
+  --font-family: "SF Pro Text", "PingFang SC", "Noto Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-weight: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  --radius-sm: 12px;
+  --radius-md: 20px;
+  --radius-lg: 24px;
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-primary: 0 8px 20px -4px rgba(0, 186, 255, 0.28);
+
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+
+  --container-max-width: 1100px;
+  --container-padding: 0 var(--spacing-md) var(--spacing-lg);
+
+  --overlay-color: rgba(15, 23, 42, 0.45);
+
+  --btn-primary-bg: var(--primary-color);
+  --btn-primary-hover: var(--primary-hover);
+  --btn-primary-active: var(--primary-dark);
+  --btn-primary-text: var(--text-inverse);
+  --btn-secondary-bg: var(--bg-hover);
+  --btn-secondary-hover: var(--bg-active);
+  --btn-secondary-active: var(--bg-active);
+  --btn-secondary-border: var(--border-color);
+  --btn-secondary-border-hover: var(--primary-color);
+  --btn-secondary-text: var(--text-primary);
+  --btn-ghost-bg: var(--bg-card);
+  --btn-ghost-hover: var(--bg-hover);
+  --btn-ghost-active: var(--bg-active);
+  --btn-ghost-text: var(--text-primary);
+  --btn-danger-bg: var(--danger-color);
+  --btn-danger-hover: var(--danger-dark);
+  --btn-danger-active: var(--danger-darker);
+  --btn-danger-text: var(--text-inverse);
+  --btn-success-bg: var(--success-color);
+  --btn-success-hover: var(--success-dark);
+  --btn-success-active: var(--success-dark);
+  --btn-success-text: var(--text-inverse);
+  --btn-submit-bg: #00b9f2;
+  --btn-submit-hover: #00a8db;
+  --btn-submit-active: #0096c4;
+  --btn-submit-text: #ffffff;
+  --btn-focus-ring: 0 0 0 3px var(--primary-light);
+}
+
+body[data-mode="dark"] {
+  --primary-color: #2d68ff;
+  --primary-hover: #1f52d6;
+  --primary-light: rgba(45, 104, 255, 0.2);
+  --primary-dark: #1a44b0;
+
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-inverse: #ffffff;
+
+  --bg-page: #0b1220;
+  --bg-card: #111827;
+  --bg-hover: #1f2937;
+  --bg-active: #334155;
+  --bg-secondary: #111827;
+  --bg-tertiary: #0f172a;
+
+  --border-color: #1f2937;
+  --border-color-hover: #334155;
+  --border-color-active: #475569;
+
+  --success-color: #22c55e;
+  --success-light: rgba(34, 197, 94, 0.18);
+  --success-dark: #16a34a;
+  --warning-color: #f59e0b;
+  --warning-light: rgba(245, 158, 11, 0.18);
+  --warning-dark: #d97706;
+  --danger-color: #f87171;
+  --danger-light: rgba(248, 113, 113, 0.18);
+  --danger-dark: #ef4444;
+  --danger-darker: #dc2626;
+  --info-color: #38bdf8;
+  --info-light: rgba(56, 189, 248, 0.18);
+  --info-dark: #0ea5e9;
+
+  --overlay-color: rgba(2, 6, 23, 0.65);
+
+  --btn-primary-bg: #3b82f6;
+  --btn-primary-hover: #2563eb;
+  --btn-primary-active: #1d4ed8;
+  --btn-primary-text: #f8fafc;
+  --btn-secondary-bg: #1f2937;
+  --btn-secondary-hover: #334155;
+  --btn-secondary-active: #475569;
+  --btn-secondary-border: #334155;
+  --btn-secondary-border-hover: #3b82f6;
+  --btn-secondary-text: #e2e8f0;
+  --btn-ghost-bg: #0f172a;
+  --btn-ghost-hover: #1f2937;
+  --btn-ghost-active: #334155;
+  --btn-ghost-text: #e2e8f0;
+  --btn-danger-bg: #ef4444;
+  --btn-danger-hover: #dc2626;
+  --btn-danger-active: #b91c1c;
+  --btn-danger-text: #ffffff;
+  --btn-success-bg: #22c55e;
+  --btn-success-hover: #16a34a;
+  --btn-success-active: #15803d;
+  --btn-success-text: #ffffff;
+  --btn-submit-bg: #2f5ed9;
+  --btn-submit-hover: #2953c0;
+  --btn-submit-active: #2248a8;
+  --btn-submit-text: #ffffff;
+}
+
+:root {
+  --el-color-primary: var(--primary-color);
+  --el-color-success: var(--success-color);
+  --el-color-warning: var(--warning-color);
+  --el-color-danger: var(--danger-color);
+  --el-color-info: var(--info-color);
+  --el-bg-color: var(--bg-page);
+  --el-bg-color-page: var(--bg-page);
+  --el-text-color-primary: var(--text-primary);
+  --el-text-color-regular: var(--text-secondary);
+  --el-border-color: var(--border-color);
+}
