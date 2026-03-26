@@ -16,13 +16,13 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: ./plugins/apk-rebuilder/package-lock.json
+          cache-dependency-path: package-lock.json
       - run: npm ci
-        working-directory: ./plugins/apk-rebuilder
+        working-directory: .
       - run: npm run build
-        working-directory: ./plugins/apk-rebuilder
+        working-directory: .
       - uses: actions/upload-artifact@v4
         with:
           name: dist
-          path: plugins/apk-rebuilder/dist/
+          path: dist/
           retention-days: 7
