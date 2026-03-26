@@ -13,7 +13,7 @@ Open: `http://localhost:3005`
 If you have a public prebuilt image, set:
 
 ```bash
-export APK_REBUILDER_IMAGE=ghcr.io/your-org/apk-rebuilder:latest
+export APK_REBUILDER_IMAGE=hkccr.ccs.tencentyun.com/plugins/apk-rebuilder:latest
 ./scripts/quick-start.sh
 ```
 

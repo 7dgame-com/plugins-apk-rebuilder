@@ -1,8 +1,6 @@
 services:
   apk-rebuilder:
-    image: ghcr.io/tanyuxiao/apk-rebuilder:latest
-    # 腾讯云配置已注释，先用 GHCR 测试
-    # image: hkccr.ccs.tencentyun.com/plugins/apk-rebuilder:latest
+    image: hkccr.ccs.tencentyun.com/plugins/apk-rebuilder:latest
     networks:
       - proxy
       - internal
@@ -11,7 +9,7 @@ services:
       - HOST=0.0.0.0
       - PLUGIN_MODE=true
       - APK_REBUILDER_UI_MODE=embed
-      - HOST_API_BASE=https://api.t.xrteeth.com
+      - HOST_API_BASE=https://api.d.xrteeth.com
       - REDIS_HOST=redis-apk-rebuilder
       - REDIS_PORT=6379
     labels:
