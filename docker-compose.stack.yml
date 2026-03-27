@@ -18,6 +18,7 @@ services:
       - traefik.http.routers.apk-rebuilder.entrypoints=websecure
       - traefik.http.routers.apk-rebuilder.tls.certresolver=letsencrypt
       - traefik.http.services.apk-rebuilder.loadbalancer.server.port=3005
+      - traefik.docker.network=proxy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:3005/api/health"]
       interval: 30s
