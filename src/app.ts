@@ -45,7 +45,7 @@ app.get('*', (req, res) => {
     fail(res, 404, `Route not found: GET ${req.path}`, 'NOT_FOUND');
     return;
   }
-  const requested = req.path === '/' ? 'index.html' : req.path.replace(/^\/+/, '');
+  const requested = req.path === '/' ? 'embed.html' : req.path.replace(/^\/+/, '');
   const target = path.resolve(FRONTEND_PUBLIC_DIR, requested);
   const isIndex = requested === 'index.html';
   const isEmbed = requested === 'embed.html';

@@ -29,6 +29,35 @@ export function createEmbedHost() {
     }
   }
 
+  function normalizeTenant(value) {
+    return String(value || '')
+      .trim()
+      .replace(/[^a-zA-Z0-9._-]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 80);
+  }
+
+  function deriveEmbedTenantId() {
+    let host = '';
+    try {
+      if (state.hostApiBase) host = new URL(state.hostApiBase).hostname;
+    } catch {}
+    if (!host && parentOrigin && parentOrigin !== '*') {
+      try {
+        host = new URL(parentOrigin).hostname;
+      } catch {}
+    }
+    if (!host) {
+      try {
+        if (document.referrer) host = new URL(document.referrer).hostname;
+      } catch {}
+    }
+    if (!host) host = window.location.hostname || '';
+    const safeHost = normalizeTenant(host) || 'unknown';
+    return `embed-${safeHost}`;
+  }
+
   function ensureInit(timeout = 2000) {
     if (initResolved) return Promise.resolve();
     return Promise.race([
@@ -69,6 +98,7 @@ export function createEmbedHost() {
       cfg.role;
     if (apiBase) state.apiBase = String(apiBase).trim();
     if (tenantId) state.tenantId = String(tenantId).trim();
+    if (!state.tenantId) state.tenantId = deriveEmbedTenantId();
     if (hostApiBase) state.hostApiBase = String(hostApiBase).trim();
     if (rawRoles) {
       if (Array.isArray(rawRoles)) {

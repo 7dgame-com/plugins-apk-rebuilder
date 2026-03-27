@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto';
 import express, { Router, Request, Response } from 'express';
 import multer from 'multer';
 import mime from 'mime-types';
-import { getApkItem, listApkItems, addOrGetApkItem, deleteApkItem, touchApkItem } from '../apkLibrary';
+import { getApkItem, listApkItems, addOrGetApkItemFromFile, deleteApkItem, touchApkItem } from '../apkLibrary';
 import { runDecompileTask, runModTask } from '../buildService';
 import { modQueue } from '../taskQueue';
 import { readEditableFile, parseFilePatchesInput } from '../filePatchService';
@@ -15,11 +15,19 @@ import { getRedisStatus } from '../taskQueue';
 import { readUnityConfig, parseUnityPatchesInput } from '../unityConfigService';
 import { ApkInfo, ApkLibraryItem, ModPayload } from '../types';
 import { normalizeRelPath, toSafeFileStem } from '../validators';
-import { FRONTEND_PUBLIC_DIR, MOD_UPLOAD_DIR } from '../config';
+import { FRONTEND_PUBLIC_DIR, MOD_UPLOAD_DIR, UPLOAD_DIR } from '../config';
 import { requireAuth } from '../middleware/auth';
 import { ok, fail } from '../common/response';
 
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname || '') || '.apk';
+      cb(null, `${randomUUID()}${ext}`);
+    },
+  }),
+});
 const modUpload = multer({ storage: multer.memoryStorage() });
 
 export function createApiRouter(): Router {
@@ -184,15 +192,25 @@ export function createApiRouter(): Router {
   });
   router.get('/tools', (_req, res) => ok(res, getToolchainStatus()));
 
-  router.post('/upload', upload.single('apk'), (req, res) => {
+  router.post('/upload', upload.single('apk'), async (req, res) => {
     if (!req.file) {
       fail(res, 400, 'Missing apk file field "apk"', 'BAD_REQUEST');
       return;
     }
     const tenantId = req.header('x-tenant-id');
-    const { item, created } = addOrGetApkItem(req.file.originalname || 'uploaded.apk', req.file.buffer, tenantId || undefined);
-    const logPrefix = created ? 'Uploaded file' : 'Deduplicated upload (reused)';
-    ok(res, { ...startTaskFromLibraryItem(item, tenantId, logPrefix), deduplicatedUpload: !created });
+    try {
+      const filePath = (req.file as Express.Multer.File).path;
+      const { item, created } = await addOrGetApkItemFromFile(
+        req.file.originalname || 'uploaded.apk',
+        filePath,
+        tenantId || undefined,
+      );
+      const logPrefix = created ? 'Uploaded file' : 'Deduplicated upload (reused)';
+      ok(res, { ...startTaskFromLibraryItem(item, tenantId, logPrefix), deduplicatedUpload: !created });
+    } catch (error) {
+      console.error('[APK-REBUILDER] upload failed', error);
+      fail(res, 500, 'Upload failed', 'UPLOAD_FAILED');
+    }
   });
 
   router.get('/library/apks', (req, res) => {
@@ -585,13 +603,13 @@ export function createApiRouter(): Router {
       fail(res, 404, 'Route not found', 'NOT_FOUND');
       return;
     }
-    const requested = req.path === '/' ? 'index.html' : req.path.replace(/^\/+/, '');
+    const requested = req.path === '/' ? 'embed.html' : req.path.replace(/^\/+/, '');
     const target = path.resolve(FRONTEND_PUBLIC_DIR, requested);
     if (target.startsWith(path.resolve(FRONTEND_PUBLIC_DIR)) && fs.existsSync(target) && fs.statSync(target).isFile()) {
       res.sendFile(target);
       return;
     }
-    res.sendFile(path.join(FRONTEND_PUBLIC_DIR, 'index.html'));
+    res.sendFile(path.join(FRONTEND_PUBLIC_DIR, 'embed.html'));
   });
 
   return router;

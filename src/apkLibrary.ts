@@ -81,6 +81,26 @@ function sha256(data: Buffer): string {
   return crypto.createHash('sha256').update(data).digest('hex');
 }
 
+function sha256File(filePath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash('sha256');
+    const stream = fs.createReadStream(filePath);
+    stream.on('data', chunk => hash.update(chunk));
+    stream.on('error', reject);
+    stream.on('end', () => resolve(hash.digest('hex')));
+  });
+}
+
+function moveFileSync(source: string, target: string): void {
+  try {
+    fs.renameSync(source, target);
+  } catch (error: any) {
+    if (error?.code !== 'EXDEV') throw error;
+    fs.copyFileSync(source, target);
+    fs.rmSync(source, { force: true });
+  }
+}
+
 export function cacheDirForItem(item: ApkLibraryItem, tenantId?: string): string {
   const { cacheRoot } = getTenantPaths(tenantId);
   return path.join(cacheRoot, item.id);
@@ -126,6 +146,57 @@ export function addOrGetApkItem(
     storedName,
     filePath: storePath,
     size: data.length,
+    sha256: digest,
+    createdAt,
+    lastUsedAt: createdAt,
+    parsedReady: false,
+    decodeCachePath: null,
+    apkInfo: null,
+  };
+
+  items.push(item);
+  writeItems(items, tenantId);
+  return { item, created: true };
+}
+
+export async function addOrGetApkItemFromFile(
+  originalName: string,
+  tempPath: string,
+  tenantId?: string,
+): Promise<{ item: ApkLibraryItem; created: boolean }> {
+  const items = readItems(tenantId);
+  const { baseDir } = getTenantPaths(tenantId);
+  const displayName = safeFilename(normalizeOriginalName(originalName || 'uploaded.apk'));
+  const createdAt = nowIso();
+  const digest = await sha256File(tempPath);
+
+  for (const item of items) {
+    if (item.sha256 === digest) {
+      item.lastUsedAt = createdAt;
+      item.name = displayName;
+      writeItems(items, tenantId);
+      try {
+        fs.rmSync(tempPath, { force: true });
+      } catch {
+        // ignore temp cleanup errors
+      }
+      return { item, created: false };
+    }
+  }
+
+  const fileId = randomUUID();
+  const suffix = path.extname(displayName) || '.apk';
+  const storedName = `${fileId}${suffix.toLowerCase()}`;
+  const storePath = path.join(baseDir, storedName);
+  moveFileSync(tempPath, storePath);
+  const size = fs.statSync(storePath).size;
+
+  const item: ApkLibraryItem = {
+    id: fileId,
+    name: displayName,
+    storedName,
+    filePath: storePath,
+    size,
     sha256: digest,
     createdAt,
     lastUsedAt: createdAt,

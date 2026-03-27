@@ -55,6 +55,11 @@ export function createStandardPackageSection({ host, canAdmin = true }) {
     if (!name) return '';
     const value = String(name);
     try {
+      // If the string already contains non-Latin1 codepoints (e.g. CJK),
+      // it is already proper Unicode and should not be re-decoded.
+      for (let i = 0; i < value.length; i += 1) {
+        if (value.charCodeAt(i) > 255) return value;
+      }
       const decoded = new TextDecoder('utf-8', { fatal: false }).decode(
         Uint8Array.from(value, (c) => c.charCodeAt(0))
       );
