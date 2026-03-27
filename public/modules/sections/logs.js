@@ -54,6 +54,11 @@ export function renderLogsSection(container) {
   initLogsLogic();
 }
 
+function withNoCache(url) {
+  const joiner = url.includes('?') ? '&' : '?';
+  return `${url}${joiner}t=${Date.now()}`;
+}
+
 function initLogsLogic() {
   const refreshBtn = $('refreshLogsBtn');
   const taskListEl = $('logTaskList');
@@ -77,7 +82,7 @@ function initLogsLogic() {
 
   async function loadTasks() {
     try {
-      const data = await api('/api/logs/tasks?limit=50');
+      const data = await api(withNoCache('/api/logs/tasks?limit=50'));
       renderTasks(data.items || []);
     } catch (e) {
       console.error('Failed to load tasks', e);
@@ -125,14 +130,14 @@ function initLogsLogic() {
   }
 
   async function getTasksCache() {
-    const data = await api('/api/logs/tasks?limit=50');
+    const data = await api(withNoCache('/api/logs/tasks?limit=50'));
     return data.items || [];
   }
 
   async function loadLogs() {
     if (!activeTaskId) return;
     try {
-      const data = await api(`/api/logs/tasks/${activeTaskId}?limit=1000`);
+      const data = await api(withNoCache(`/api/logs/tasks/${activeTaskId}?limit=1000`));
       logsEl.textContent = (data.logs || []).join('\n');
       if (autoScroll) {
         const container = $('logOutputContainer');
@@ -146,7 +151,7 @@ function initLogsLogic() {
   async function loadFiles() {
     if (!activeTaskId) return;
     try {
-      const data = await api(`/api/logs/tasks/${activeTaskId}/files`);
+      const data = await api(withNoCache(`/api/logs/tasks/${activeTaskId}/files`));
       allFiles = data.items || [];
       renderFiles(allFiles);
     } catch (e) {
@@ -177,7 +182,9 @@ function initLogsLogic() {
 
   async function previewFile(path) {
     try {
-       const data = await api(`/api/logs/tasks/${activeTaskId}/file?path=${encodeURIComponent(path)}`);
+       const data = await api(
+         withNoCache(`/api/logs/tasks/${activeTaskId}/file?path=${encodeURIComponent(path)}`)
+       );
        if (data.kind === 'binary') {
          // If it's an APK, try "Save As"
          if (path.toLowerCase().endsWith('.apk')) {
