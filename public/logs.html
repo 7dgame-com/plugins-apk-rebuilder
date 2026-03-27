@@ -9,15 +9,45 @@
   <link rel="stylesheet" href="./styles/ui.index.css" />
 </head>
 <body class="apk-index">
-  <div id="app" style="height: 100vh; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column;">
+  <div id="app" style="height: 100vh; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px;">
+    <div style="display:flex; gap:8px; align-items:center; background: var(--bg-card); border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 12px;">
+      <span style="font-size:12px; color: var(--text-secondary); white-space: nowrap;">Token</span>
+      <input id="authTokenInput" placeholder="Bearer xxxxx 或直接粘贴 token" style="flex:1; min-width: 0; padding:6px 8px; font-size:12px; border:1px solid var(--border-color); border-radius:8px; background: var(--bg-secondary); color: var(--text-primary);" />
+      <button id="authTokenSave" class="btn-secondary btn-sm">保存</button>
+      <button id="authTokenClear" class="btn-secondary btn-sm">清除</button>
+    </div>
     <div id="logContainer" style="flex: 1; display: flex; flex-direction: column;"></div>
   </div>
   <script type="module">
     import { initThemeSync } from './modules/theme.js';
     import { renderLogsSection } from './modules/sections/logs.js';
+    import { getStoredAuthToken, setAuthToken } from './modules/state.js';
     initThemeSync();
     const container = document.getElementById('logContainer');
     renderLogsSection(container);
+    const input = document.getElementById('authTokenInput');
+    const saved = getStoredAuthToken();
+    if (input && saved) {
+      input.value = saved;
+    }
+    const saveBtn = document.getElementById('authTokenSave');
+    const clearBtn = document.getElementById('authTokenClear');
+    if (saveBtn && input) {
+      saveBtn.onclick = () => {
+        const normalized = setAuthToken(input.value || '');
+        input.value = normalized || '';
+        alert('已保存 token，正在刷新日志...');
+        window.location.reload();
+      };
+    }
+    if (clearBtn && input) {
+      clearBtn.onclick = () => {
+        setAuthToken('');
+        input.value = '';
+        alert('已清除 token，正在刷新日志...');
+        window.location.reload();
+      };
+    }
   </script>
 </body>
 </html>

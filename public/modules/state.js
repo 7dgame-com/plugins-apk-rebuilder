@@ -89,8 +89,66 @@ export function createPatchId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function normalizeBearer(raw) {
+  if (!raw) return '';
+  const value = String(raw).trim();
+  if (!value) return '';
+  return value.toLowerCase().startsWith('bearer ') ? value : `Bearer ${value}`;
+}
+
+function readTokenFromUrl() {
+  try {
+    const params = new URLSearchParams(window.location.search || '');
+    const token =
+      params.get('token') ||
+      params.get('access_token') ||
+      params.get('bearer') ||
+      '';
+    return normalizeBearer(token);
+  } catch {
+    return '';
+  }
+}
+
+function getAuthToken() {
+  if (window.__APK_TOKEN__) {
+    return normalizeBearer(window.__APK_TOKEN__);
+  }
+  const fromUrl = readTokenFromUrl();
+  if (fromUrl) {
+    try {
+      window.localStorage.setItem('apk-rebuilder-auth-token', fromUrl);
+    } catch {}
+    return fromUrl;
+  }
+  try {
+    return normalizeBearer(window.localStorage.getItem('apk-rebuilder-auth-token') || '');
+  } catch {
+    return '';
+  }
+}
+
+export function getStoredAuthToken() {
+  return getAuthToken();
+}
+
+export function setAuthToken(raw) {
+  const normalized = normalizeBearer(raw);
+  try {
+    if (normalized) {
+      window.localStorage.setItem('apk-rebuilder-auth-token', normalized);
+    } else {
+      window.localStorage.removeItem('apk-rebuilder-auth-token');
+    }
+  } catch {}
+  return normalized;
+}
+
 export async function api(url, options = {}) {
-  const res = await fetch(url, options);
+  const headers = new Headers(options.headers || {});
+  const token = getAuthToken();
+  if (token) headers.set('authorization', token);
+  const res = await fetch(url, { ...options, headers });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.success === false) {
     throw new Error(data?.error?.message || data?.message || `HTTP ${res.status}`);
