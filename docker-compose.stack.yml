@@ -14,7 +14,7 @@ services:
       - REDIS_PORT=6379
     labels:
       - traefik.enable=true
-      - traefik.http.routers.apk-rebuilder.rule=Host(`apk-rebuilder.plugins.xrugc.com`)
+      - "traefik.http.routers.apk-rebuilder.rule=Host(`apk-rebuilder.plugins.xrugc.com`)"
       - traefik.http.routers.apk-rebuilder.entrypoints=websecure
       - traefik.http.routers.apk-rebuilder.tls.certresolver=letsencrypt
       - traefik.http.services.apk-rebuilder.loadbalancer.server.port=3005
