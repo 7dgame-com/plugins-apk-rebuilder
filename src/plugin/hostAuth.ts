@@ -7,6 +7,7 @@ type CacheEntry = {
 };
 
 const permissionCache = new Map<string, CacheEntry>();
+const roleCache = new Map<string, { roles: string[]; expiresAt: number }>();
 
 function tokenPreview(header: string): string {
   const value = String(header || '');
@@ -63,6 +64,91 @@ function readCache(key: string): CacheEntry | null {
   return entry;
 }
 
+function readRoleCache(token: string): string[] | null {
+  const entry = roleCache.get(token);
+  if (!entry) return null;
+  if (entry.expiresAt <= Date.now()) {
+    roleCache.delete(token);
+    return null;
+  }
+  return entry.roles;
+}
+
+function cacheRoles(token: string, roles: string[]): void {
+  roleCache.set(token, {
+    roles,
+    expiresAt: Date.now() + Math.max(1000, HOST_PERMISSION_CACHE_TTL_MS),
+  });
+}
+
+function normalizeRoles(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter(item => typeof item === 'string').map(item => item.trim()).filter(Boolean);
+  }
+  if (typeof value === 'string') {
+    return value.split(/[\s,]+/).map(item => item.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+function isRoleAllowed(roles: string[], action: string): boolean {
+  if (roles.includes('root')) return true;
+  if (action === 'apk.rebuilder.admin') {
+    return roles.includes('admin');
+  }
+  if (action === 'apk.rebuilder.run' || action === 'apk.rebuilder.read') {
+    return roles.includes('admin') || roles.includes('user');
+  }
+  return false;
+}
+
+async function fetchRoles(token: string): Promise<string[]> {
+  const cached = readRoleCache(token);
+  if (cached) return cached;
+  const base = getHostBase();
+  const url = new URL(`${base}/v1/plugin/verify-token`);
+  const startedAt = Date.now();
+  console.info(`[HOST_AUTH] verify-token request url=${url.toString()} token=${tokenPreview(token)}`);
+
+  let response: Response;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), Math.max(1000, HOST_AUTH_TIMEOUT_MS));
+  try {
+    response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        Authorization: token,
+      },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+
+  if (!response.ok) {
+    await logResponse('verify-token error', response, startedAt);
+    throw new Error('Host verify-token unavailable');
+  }
+
+  await logResponse('verify-token success', response, startedAt);
+  const json = await response.json().catch(() => ({}));
+  const roles = normalizeRoles(json?.data?.roles);
+  cacheRoles(token, roles);
+  return roles;
+}
+
+async function fallbackByRoles(token: string, action: string): Promise<boolean> {
+  try {
+    const roles = await fetchRoles(token);
+    const allowed = isRoleAllowed(roles, action);
+    console.info(`[HOST_AUTH] role fallback allowed=${allowed} roles=${roles.join(',') || 'none'} action=${action}`);
+    return allowed;
+  } catch (error) {
+    console.info('[HOST_AUTH] role fallback failed', error);
+    return false;
+  }
+}
+
 export async function checkHostPermission(req: Request, action: string): Promise<boolean> {
   const token = getBearer(req);
   const key = cacheKey(token, action);
@@ -94,23 +180,41 @@ export async function checkHostPermission(req: Request, action: string): Promise
     });
   } catch (error) {
     console.info('[HOST_AUTH] network error', error);
-    throw new Error('Host auth unavailable');
+    const fallbackAllowed = await fallbackByRoles(token, action);
+    permissionCache.set(key, {
+      allowed: fallbackAllowed,
+      expiresAt: Date.now() + Math.max(1000, HOST_PERMISSION_CACHE_TTL_MS),
+    });
+    return fallbackAllowed;
   } finally {
     clearTimeout(timer);
   }
 
   if (response.status === 401) {
     await logResponse('unauthorized', response, startedAt);
-    throw new Error('Host auth unauthorized');
+    const fallbackAllowed = await fallbackByRoles(token, action);
+    permissionCache.set(key, {
+      allowed: fallbackAllowed,
+      expiresAt: Date.now() + Math.max(1000, HOST_PERMISSION_CACHE_TTL_MS),
+    });
+    return fallbackAllowed;
   }
   if (!response.ok) {
     await logResponse('error', response, startedAt);
-    throw new Error('Host auth unavailable');
+    const fallbackAllowed = await fallbackByRoles(token, action);
+    permissionCache.set(key, {
+      allowed: fallbackAllowed,
+      expiresAt: Date.now() + Math.max(1000, HOST_PERMISSION_CACHE_TTL_MS),
+    });
+    return fallbackAllowed;
   }
 
   await logResponse('success', response, startedAt);
   const json = await response.json().catch(() => ({}));
-  const allowed = Boolean(json?.data?.allowed);
+  let allowed = Boolean(json?.data?.allowed);
+  if (!allowed) {
+    allowed = await fallbackByRoles(token, action);
+  }
   console.info(`[HOST_AUTH] response allowed=${allowed}`);
   permissionCache.set(key, {
     allowed,
