@@ -9,7 +9,9 @@ export function renderStandardPackageSection(container, { canAdmin = true } = {}
     <div class="card" id="sectionStandardPackage">
       <div class="toolbar">
         <strong>${t('standard.title')}</strong>
-        <span id="standardPackageStatus" class="muted"></span>
+        <div class="toolbar-actions">
+          <span id="standardPackageStatus" class="muted"></span>
+        </div>
       </div>
       <div class="row" id="standardPackageUploadRow" style="margin-top:10px;">
         <input id="standardApkFile" type="file" accept=".apk,application/vnd.android.package-archive" style="display:none" />

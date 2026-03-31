@@ -19,12 +19,11 @@
   "allowedOrigin": "https://apk-rebuilder.example.com",
   "extraConfig": {
     "apiBase": "/api",
-    "tenantId": "apkrebuilder-mrpp"
   }
 }
 ```
 
 ## 说明
 - 本方案不设置 `frame-ancestors`，以避免宿主域名未知时阻塞 iframe。
-- 后端 CORS 需允许 `Authorization` 与 `X-Tenant-Id` 头。
+- 后端 CORS 需允许 `Authorization` 头。
 - 后续如需收敛宿主域名，可在 Nginx 加 `Content-Security-Policy: frame-ancestors ...`。

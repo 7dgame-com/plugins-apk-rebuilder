@@ -3,7 +3,6 @@ import path from 'path';
 import { randomUUID } from 'node:crypto';
 import { TASK_INDEX_PATH, WORK_DIR_ROOT } from './config';
 import { Task } from './types';
-import { normalizeSafeSegment } from './validators';
 
 function readTasks(): Task[] {
   try {
@@ -38,23 +37,20 @@ export function createTask(
   filePath: string,
   originalName: string,
   libraryItemId?: string | null,
-  tenantId?: string,
   userId?: string | null,
 ): Task {
   const now = nowIso();
   const taskId = randomUUID();
-  const safeTenantId = normalizeSafeSegment(tenantId || 'default');
   const task: Task = {
     id: taskId,
     status: 'queued',
     filePath,
     sourceName: originalName,
-    workDir: path.join(WORK_DIR_ROOT, safeTenantId, taskId),
+    workDir: path.join(WORK_DIR_ROOT, taskId),
     createdAt: now,
     updatedAt: now,
     logs: [],
     libraryItemId: libraryItemId || null,
-    tenantId: safeTenantId,
     userId: userId || null,
     errorCode: null,
     outputArtifactId: null,
@@ -65,11 +61,6 @@ export function createTask(
 
 export function getTask(taskId: string): Task | undefined {
   return readTasks().find(task => task.id === taskId);
-}
-
-export function getTaskForTenant(taskId: string, tenantId?: string | null): Task | undefined {
-  const safeTenantId = normalizeSafeSegment(tenantId || 'default');
-  return readTasks().find(task => task.id === taskId && (task.tenantId || 'default') === safeTenantId);
 }
 
 export function listTasks(): Task[] {

@@ -66,15 +66,14 @@ export function attachCachedIconForTask(task: Task): Task {
 
 export function createTaskFromLibraryItem(
   item: ApkLibraryItem,
-  tenantId?: string,
   userId?: string | null,
 ): { task: Task; cacheHit: boolean } {
   if (!fs.existsSync(item.filePath)) {
     throw new Error('APK file is missing from storage');
   }
-  const task = createTask(item.filePath, item.name || path.basename(item.filePath), item.id, tenantId, userId);
+  const task = createTask(item.filePath, item.name || path.basename(item.filePath), item.id, userId);
   logTask(task, `Using APK from library: ${item.name || path.basename(item.filePath)} (id=${item.id})`);
-  const touched = touchApkItem(item.id, tenantId);
+  const touched = touchApkItem(item.id);
   const activeItem = touched || item;
   const cacheHit = Boolean(activeItem.parsedReady && activeItem.decodeCachePath && fs.existsSync(activeItem.decodeCachePath));
 
@@ -93,10 +92,10 @@ export function createTaskFromLibraryItem(
   return { task, cacheHit };
 }
 
-export function createTaskFromArtifact(artifactId: string, tenantId: string, userId?: string | null): Task {
-  const localPath = fetchArtifactToLocal(artifactId, tenantId);
+export function createTaskFromArtifact(artifactId: string, userId?: string | null): Task {
+  const localPath = fetchArtifactToLocal(artifactId);
   const fileName = path.basename(localPath);
-  const task = createTask(localPath, fileName, null, tenantId, userId);
+  const task = createTask(localPath, fileName, null, userId);
   logTask(task, `Using artifact from host: ${artifactId} (${fileName})`);
   return task;
 }
@@ -112,7 +111,6 @@ export function ensureUploadedArtifact(task: Task): Task {
   const appName = task.apkInfo?.appName?.trim() || '';
   const fileName = `${appName ? toSafeFileStem(appName) : `modded-${task.id}`}.apk`;
   const artifact = uploadArtifact(task.signedApkPath, {
-    tenantId: task.tenantId,
     fileName,
     kind: 'apk',
     mimeType: 'application/vnd.android.package-archive',

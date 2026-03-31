@@ -3,11 +3,10 @@ import path from 'path';
 import { randomUUID } from 'node:crypto';
 import { ARTIFACT_INDEX_PATH, ARTIFACTS_DIR } from './config';
 import { nowIso } from './taskStore';
-import { normalizeSafeSegment, toSafeFileStem } from './validators';
+import { toSafeFileStem } from './validators';
 
 type ArtifactRecord = {
   id: string;
-  tenantId: string;
   kind: string;
   name: string;
   filePath: string;
@@ -17,7 +16,6 @@ type ArtifactRecord = {
 };
 
 type UploadArtifactOptions = {
-  tenantId?: string | null;
   fileName?: string | null;
   kind?: string | null;
   mimeType?: string | null;
@@ -49,19 +47,13 @@ function saveArtifact(record: ArtifactRecord): ArtifactRecord {
   return record;
 }
 
-function getSafeTenantId(tenantId?: string | null): string {
-  return normalizeSafeSegment(tenantId || 'default');
-}
-
-export function getArtifact(artifactId: string, tenantId?: string | null): ArtifactRecord | undefined {
-  const safeTenantId = getSafeTenantId(tenantId);
+export function getArtifact(artifactId: string): ArtifactRecord | undefined {
   const records = readArtifactIndex();
-  return records.find(item => item.id === artifactId && item.tenantId === safeTenantId);
+  return records.find(item => item.id === artifactId);
 }
 
-export function fetchArtifactToLocal(artifactId: string, tenantId?: string | null): string {
-  const safeTenantId = getSafeTenantId(tenantId);
-  const artifact = getArtifact(artifactId, safeTenantId);
+export function fetchArtifactToLocal(artifactId: string): string {
+  const artifact = getArtifact(artifactId);
   if (!artifact || !fs.existsSync(artifact.filePath)) {
     throw new Error('Artifact not found');
   }
@@ -73,19 +65,16 @@ export function uploadArtifact(localPath: string, options: UploadArtifactOptions
     throw new Error('Artifact source file not found');
   }
 
-  const safeTenantId = getSafeTenantId(options.tenantId);
   const artifactId = `artifact_${randomUUID()}`;
   const originalExt = path.extname(options.fileName || localPath) || path.extname(localPath) || '';
   const baseName = toSafeFileStem(path.basename(options.fileName || localPath, originalExt) || 'artifact');
   const finalName = `${baseName}${originalExt}`;
-  const artifactDir = path.join(ARTIFACTS_DIR, safeTenantId);
-  fs.mkdirSync(artifactDir, { recursive: true });
-  const targetPath = path.join(artifactDir, `${artifactId}${originalExt}`);
+  fs.mkdirSync(ARTIFACTS_DIR, { recursive: true });
+  const targetPath = path.join(ARTIFACTS_DIR, `${artifactId}${originalExt}`);
   fs.copyFileSync(localPath, targetPath);
 
   const record: ArtifactRecord = {
     id: artifactId,
-    tenantId: safeTenantId,
     kind: options.kind || 'file',
     name: finalName,
     filePath: targetPath,

@@ -39,7 +39,6 @@ export interface ModPayload {
 
 export interface Task {
   id: string;
-  tenantId?: string;
   userId?: string | null;
   status: TaskStatus;
   filePath: string;

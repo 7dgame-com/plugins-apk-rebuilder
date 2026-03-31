@@ -120,7 +120,7 @@ export async function runDecompileTask(task: Task): Promise<void> {
     runApktool(['d', '--no-src', '-f', task.filePath, '-o', outDir]);
     parseApkInfo(task);
     if (task.libraryItemId && task.apkInfo) {
-      updateParseCache(task.libraryItemId, outDir, task.apkInfo, task.tenantId);
+      updateParseCache(task.libraryItemId, outDir, task.apkInfo);
     }
     task.status = 'success';
     logTask(task, 'Decompile finished');

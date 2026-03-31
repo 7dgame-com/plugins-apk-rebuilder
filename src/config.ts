@@ -140,9 +140,15 @@ export function validateRuntimeConfig(): void {
 }
 
 export function ensureRuntimeDirs(): void {
-  [DATA_ROOT, UPLOAD_DIR, MOD_UPLOAD_DIR, WORK_DIR_ROOT, APK_LIBRARY_DIR, APK_LIBRARY_CACHE_ROOT, ARTIFACTS_DIR].forEach(dir =>
-    fs.mkdirSync(dir, { recursive: true }),
-  );
+  [
+    DATA_ROOT,
+    UPLOAD_DIR,
+    MOD_UPLOAD_DIR,
+    WORK_DIR_ROOT,
+    APK_LIBRARY_DIR,
+    APK_LIBRARY_CACHE_ROOT,
+    ARTIFACTS_DIR,
+  ].forEach(dir => fs.mkdirSync(dir, { recursive: true }));
 
   if (!fs.existsSync(APK_LIBRARY_INDEX_PATH)) {
     fs.writeFileSync(APK_LIBRARY_INDEX_PATH, '[]\n', 'utf8');

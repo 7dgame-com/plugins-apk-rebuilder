@@ -1,10 +1,8 @@
 import { Router, Request, Response } from 'express';
 import path from 'path';
-import fs from 'fs';
 import { randomUUID } from 'node:crypto';
 import multer from 'multer';
 import { modQueue } from '../taskQueue';
-import { ApkLibraryItem } from '../types';
 import { getLoosePrincipal } from './auth';
 import { requireHostPermission } from './hostAuth';
 import {
@@ -20,7 +18,7 @@ import {
 } from './helpers';
 import { mapProgress, ensureUploadedArtifact, createTaskFromLibraryItem, createTaskFromArtifact } from '../common/taskUtils';
 import { deleteApkItem, getApkItem, listApkItems } from '../apkLibrary';
-import { updateTask, logTask, getTaskForTenant } from '../taskStore';
+import { updateTask, logTask, getTask } from '../taskStore';
 import { fetchArtifactToLocal, getArtifact, uploadArtifact } from '../artifactService';
 import {
   readStandardPackageConfig,
@@ -38,7 +36,7 @@ function applyCors(req: Request, res: Response): void {
     res.setHeader('Vary', 'Origin');
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Authorization,Content-Type,X-Tenant-Id');
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization,Content-Type');
   res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
 }
 
@@ -79,7 +77,7 @@ export function createPluginRouter(): Router {
       if (hasLibrarySource) {
         let resolvedId = libraryItemId;
         if (useStandardPackage) {
-          const resolved = resolveStandardLibraryItem(principal.tenantId);
+          const resolved = resolveStandardLibraryItem();
           if (!resolved.libraryItemId) {
             fail(res, 409, resolved.reason || 'STANDARD_PACKAGE_NOT_AVAILABLE', 'STANDARD_PACKAGE_NOT_AVAILABLE');
             return;
@@ -87,23 +85,23 @@ export function createPluginRouter(): Router {
           resolvedId = resolved.libraryItemId;
         }
 
-        const item = getApkItem(resolvedId, principal.tenantId);
+        const item = getApkItem(resolvedId);
         if (!item) {
           fail(res, 404, 'APK not found in library', 'NOT_FOUND');
           return;
         }
-        const result = createTaskFromLibraryItem(item, principal.tenantId, principal.userId);
+        const result = createTaskFromLibraryItem(item, principal.userId);
         task = result.task;
         cacheHit = result.cacheHit;
       } else {
-        task = createTaskFromArtifact(artifactId, principal.tenantId, principal.userId);
+        task = createTaskFromArtifact(artifactId, principal.userId);
       }
 
       // Now we have a task, we can log the host interaction that just happened
       logTask(task, `[Host] Permission verified: apk.rebuilder.run`);
 
       // Build payload with task context for communication logging
-      const payload = await buildModPayload(principal.tenantId, modifications, task);
+      const payload = await buildModPayload(modifications, task);
       if (!hasAnyModification(payload)) {
         fail(
           res,
@@ -148,7 +146,6 @@ export function createPluginRouter(): Router {
       const tempPath = path.join(MOD_UPLOAD_DIR, tempName);
       fs.writeFileSync(tempPath, file.buffer);
       const artifact = uploadArtifact(tempPath, {
-        tenantId: principal.tenantId,
         fileName: file.originalname || tempName,
         kind: 'icon',
         mimeType: file.mimetype || 'image/png',
@@ -166,7 +163,7 @@ export function createPluginRouter(): Router {
     try {
       const principal = getLoosePrincipal(req);
       await requireHostPermission(req, 'apk.rebuilder.read');
-      const config = readStandardPackageConfig(principal.tenantId);
+      const config = readStandardPackageConfig();
       ok(res, {
         standardLibraryItemId: config.activeStandardId,
         previousStandardLibraryItemId: config.previousStandardId,
@@ -183,7 +180,7 @@ export function createPluginRouter(): Router {
     try {
       const principal = getLoosePrincipal(req);
       await requireHostPermission(req, 'apk.rebuilder.admin');
-      ok(res, readStandardPackageConfig(principal.tenantId));
+      ok(res, readStandardPackageConfig());
     } catch (error) {
       const mapped = mapPluginError(error);
       fail(res, mapped.status, mapped.message, mapped.code);
@@ -194,9 +191,9 @@ export function createPluginRouter(): Router {
     try {
       const principal = getLoosePrincipal(req);
       await requireHostPermission(req, 'apk.rebuilder.admin');
-      const config = readStandardPackageConfig(principal.tenantId);
+      const config = readStandardPackageConfig();
       ok(res, {
-        items: listApkItems(principal.tenantId),
+        items: listApkItems(),
         standard: {
           activeStandardId: config.activeStandardId,
           previousStandardId: config.previousStandardId,
@@ -218,17 +215,21 @@ export function createPluginRouter(): Router {
         fail(res, 400, 'itemId is required', 'BAD_REQUEST');
         return;
       }
-      const current = readStandardPackageConfig(principal.tenantId);
-      if (current.activeStandardId === itemId || current.previousStandardId === itemId || current.disabledIds.includes(itemId)) {
+      const current = readStandardPackageConfig();
+      const matchedActive =
+        current.activeStandardId === itemId;
+      const matchedPrevious =
+        current.previousStandardId === itemId;
+      if (matchedActive || matchedPrevious || current.disabledIds.includes(itemId)) {
         const next = {
-          activeStandardId: current.activeStandardId === itemId ? null : current.activeStandardId,
-          previousStandardId: current.previousStandardId === itemId ? null : current.previousStandardId,
+          activeStandardId: matchedActive ? null : current.activeStandardId,
+          previousStandardId: matchedPrevious ? null : current.previousStandardId,
           disabledIds: current.disabledIds.filter(id => id !== itemId),
         };
-        updateStandardPackageConfig(next, principal.tenantId);
+        updateStandardPackageConfig(next);
       }
 
-      const removed = deleteApkItem(itemId, principal.tenantId);
+      const removed = deleteApkItem(itemId);
       if (!removed) {
         fail(res, 404, 'APK not found in library', 'NOT_FOUND');
         return;
@@ -244,7 +245,7 @@ export function createPluginRouter(): Router {
     try {
       const principal = getLoosePrincipal(req);
       await requireHostPermission(req, 'apk.rebuilder.admin');
-      const current = readStandardPackageConfig(principal.tenantId);
+      const current = readStandardPackageConfig();
       const now = Date.now();
       if (current.lockedUntil && now < current.lockedUntil) {
         fail(res, 409, 'Standard package is locked, retry later', 'STANDARD_PACKAGE_LOCKED');
@@ -262,19 +263,20 @@ export function createPluginRouter(): Router {
         next.disabledIds = req.body.disabledIds.filter((x: unknown) => typeof x === 'string');
       }
 
-      ok(res, updateStandardPackageConfig(next, principal.tenantId));
+      ok(res, updateStandardPackageConfig(next));
     } catch (error) {
       const mapped = mapPluginError(error);
       fail(res, mapped.status, mapped.message, mapped.code);
     }
   });
 
+
   router.get('/runs/:runId', async (req: Request, res: Response) => {
     try {
       const principal = getLoosePrincipal(req);
       await requireHostPermission(req, 'apk.rebuilder.read');
 
-      const task = getTaskForTenant(String(req.params['runId']), principal.tenantId);
+      const task = getTask(String(req.params['runId']));
       if (!task) {
         fail(res, 404, 'Task not found', 'TASK_NOT_FOUND');
         return;
@@ -321,8 +323,8 @@ export function createPluginRouter(): Router {
       const principal = getLoosePrincipal(req);
       await requireHostPermission(req, 'apk.rebuilder.read');
       const artifactId = String(req.params['artifactId']);
-      const localPath = fetchArtifactToLocal(artifactId, principal.tenantId);
-      const artifact = getArtifact(artifactId, principal.tenantId);
+      const localPath = fetchArtifactToLocal(artifactId);
+      const artifact = getArtifact(artifactId);
 
       const shouldInline = String(req.query['raw'] || '').toLowerCase() === 'true';
       if (shouldInline) {

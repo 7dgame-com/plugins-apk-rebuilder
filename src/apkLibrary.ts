@@ -2,56 +2,31 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'node:crypto';
 import { randomUUID } from 'node:crypto';
-import {
-  APK_LIBRARY_CACHE_ROOT,
-  APK_LIBRARY_DIR,
-  APK_LIBRARY_INDEX_PATH,
-} from './config';
+import { APK_LIBRARY_CACHE_ROOT, APK_LIBRARY_DIR, APK_LIBRARY_INDEX_PATH } from './config';
 import { ApkInfo, ApkLibraryItem } from './types';
 import { nowIso } from './taskStore';
-import { normalizeSafeSegment } from './validators';
 
-function getTenantPaths(tenantId?: string): { baseDir: string; indexPath: string; cacheRoot: string } {
-  const safeTenantId = normalizeSafeSegment(tenantId || 'default');
-  if (safeTenantId === 'default') {
-    return {
-      baseDir: APK_LIBRARY_DIR,
-      indexPath: APK_LIBRARY_INDEX_PATH,
-      cacheRoot: APK_LIBRARY_CACHE_ROOT,
-    };
-  }
-  const baseDir = path.join(APK_LIBRARY_DIR, safeTenantId);
-  return {
-    baseDir,
-    indexPath: path.join(baseDir, 'index.json'),
-    cacheRoot: path.join(APK_LIBRARY_CACHE_ROOT, safeTenantId),
-  };
-}
-
-function ensureTenantStorage(tenantId?: string): void {
-  const { baseDir, indexPath, cacheRoot } = getTenantPaths(tenantId);
-  fs.mkdirSync(baseDir, { recursive: true });
-  fs.mkdirSync(cacheRoot, { recursive: true });
-  if (!fs.existsSync(indexPath)) {
-    fs.writeFileSync(indexPath, '[]\n', 'utf8');
+function ensureLibraryStorage(): void {
+  fs.mkdirSync(APK_LIBRARY_DIR, { recursive: true });
+  fs.mkdirSync(APK_LIBRARY_CACHE_ROOT, { recursive: true });
+  if (!fs.existsSync(APK_LIBRARY_INDEX_PATH)) {
+    fs.writeFileSync(APK_LIBRARY_INDEX_PATH, '[]\n', 'utf8');
   }
 }
 
-function readItems(tenantId?: string): ApkLibraryItem[] {
-  ensureTenantStorage(tenantId);
-  const { indexPath } = getTenantPaths(tenantId);
+function readItems(): ApkLibraryItem[] {
+  ensureLibraryStorage();
   try {
-    const raw = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+    const raw = JSON.parse(fs.readFileSync(APK_LIBRARY_INDEX_PATH, 'utf8'));
     return Array.isArray(raw) ? (raw as ApkLibraryItem[]) : [];
   } catch {
     return [];
   }
 }
 
-function writeItems(items: ApkLibraryItem[], tenantId?: string): void {
-  ensureTenantStorage(tenantId);
-  const { indexPath } = getTenantPaths(tenantId);
-  fs.writeFileSync(indexPath, `${JSON.stringify(items, null, 2)}\n`, 'utf8');
+function writeItems(items: ApkLibraryItem[]): void {
+  ensureLibraryStorage();
+  fs.writeFileSync(APK_LIBRARY_INDEX_PATH, `${JSON.stringify(items, null, 2)}\n`, 'utf8');
 }
 
 function safeFilename(name: string): string {
@@ -101,26 +76,24 @@ function moveFileSync(source: string, target: string): void {
   }
 }
 
-export function cacheDirForItem(item: ApkLibraryItem, tenantId?: string): string {
-  const { cacheRoot } = getTenantPaths(tenantId);
-  return path.join(cacheRoot, item.id);
+export function cacheDirForItem(item: ApkLibraryItem): string {
+  return path.join(APK_LIBRARY_CACHE_ROOT, item.id);
 }
 
-export function listApkItems(tenantId?: string): ApkLibraryItem[] {
-  return readItems(tenantId).sort((a, b) => (b.lastUsedAt || b.createdAt).localeCompare(a.lastUsedAt || a.createdAt));
+export function listApkItems(): ApkLibraryItem[] {
+  return readItems().sort((a, b) => (b.lastUsedAt || b.createdAt).localeCompare(a.lastUsedAt || a.createdAt));
 }
 
-export function getApkItem(itemId: string, tenantId?: string): ApkLibraryItem | undefined {
-  return readItems(tenantId).find(item => item.id === itemId);
+export function getApkItem(itemId: string): ApkLibraryItem | undefined {
+  return readItems().find(item => item.id === itemId);
 }
 
 export function addOrGetApkItem(
   originalName: string,
   data: Buffer,
-  tenantId?: string,
 ): { item: ApkLibraryItem; created: boolean } {
-  const items = readItems(tenantId);
-  const { baseDir } = getTenantPaths(tenantId);
+  const items = readItems();
+  const baseDir = APK_LIBRARY_DIR;
   const digest = sha256(data);
   const createdAt = nowIso();
   const displayName = safeFilename(normalizeOriginalName(originalName || 'uploaded.apk'));
@@ -129,7 +102,7 @@ export function addOrGetApkItem(
     if (item.sha256 === digest) {
       item.lastUsedAt = createdAt;
       item.name = displayName;
-      writeItems(items, tenantId);
+      writeItems(items);
       return { item, created: false };
     }
   }
@@ -155,17 +128,16 @@ export function addOrGetApkItem(
   };
 
   items.push(item);
-  writeItems(items, tenantId);
+  writeItems(items);
   return { item, created: true };
 }
 
 export async function addOrGetApkItemFromFile(
   originalName: string,
   tempPath: string,
-  tenantId?: string,
 ): Promise<{ item: ApkLibraryItem; created: boolean }> {
-  const items = readItems(tenantId);
-  const { baseDir } = getTenantPaths(tenantId);
+  const items = readItems();
+  const baseDir = APK_LIBRARY_DIR;
   const displayName = safeFilename(normalizeOriginalName(originalName || 'uploaded.apk'));
   const createdAt = nowIso();
   const digest = await sha256File(tempPath);
@@ -174,7 +146,7 @@ export async function addOrGetApkItemFromFile(
     if (item.sha256 === digest) {
       item.lastUsedAt = createdAt;
       item.name = displayName;
-      writeItems(items, tenantId);
+      writeItems(items);
       try {
         fs.rmSync(tempPath, { force: true });
       } catch {
@@ -206,46 +178,47 @@ export async function addOrGetApkItemFromFile(
   };
 
   items.push(item);
-  writeItems(items, tenantId);
+  writeItems(items);
   return { item, created: true };
 }
 
-export function touchApkItem(itemId: string, tenantId?: string): ApkLibraryItem | undefined {
-  const items = readItems(tenantId);
+export function touchApkItem(itemId: string): ApkLibraryItem | undefined {
+  const items = readItems();
   const item = items.find(entry => entry.id === itemId);
   if (!item) {
     return undefined;
   }
   item.lastUsedAt = nowIso();
-  writeItems(items, tenantId);
+  writeItems(items);
   return item;
 }
 
-export function deleteApkItem(itemId: string, tenantId?: string): boolean {
-  const items = readItems(tenantId);
+export function deleteApkItem(itemId: string): boolean {
+  const items = readItems();
   const idx = items.findIndex(entry => entry.id === itemId);
   if (idx < 0) {
     return false;
   }
   const item = items[idx];
+  const filePath = item.filePath;
+  items.splice(idx, 1);
+  writeItems(items);
   // Remove stored file and cache if any
   try {
-    if (item.filePath && fs.existsSync(item.filePath)) {
-      fs.rmSync(item.filePath, { force: true });
+    if (filePath && fs.existsSync(filePath)) {
+      fs.rmSync(filePath, { force: true });
     }
   } catch {
     // ignore file removal errors
   }
   try {
-    const cacheDir = cacheDirForItem(item, tenantId);
+    const cacheDir = cacheDirForItem(item);
     if (fs.existsSync(cacheDir)) {
       fs.rmSync(cacheDir, { recursive: true, force: true });
     }
   } catch {
     // ignore cache removal errors
   }
-  items.splice(idx, 1);
-  writeItems(items, tenantId);
   return true;
 }
 
@@ -253,19 +226,18 @@ export function updateParseCache(
   itemId: string,
   decodedDir: string,
   apkInfo: ApkInfo | null,
-  tenantId?: string,
 ): ApkLibraryItem | undefined {
   if (!fs.existsSync(decodedDir)) {
     return undefined;
   }
 
-  const items = readItems(tenantId);
+  const items = readItems();
   const item = items.find(entry => entry.id === itemId);
   if (!item) {
     return undefined;
   }
 
-  const cacheDir = path.join(cacheDirForItem(item, tenantId), 'decoded');
+  const cacheDir = path.join(cacheDirForItem(item), 'decoded');
   fs.rmSync(cacheDir, { recursive: true, force: true });
   fs.mkdirSync(path.dirname(cacheDir), { recursive: true });
   fs.cpSync(decodedDir, cacheDir, { recursive: true });
@@ -274,8 +246,6 @@ export function updateParseCache(
   item.decodeCachePath = cacheDir;
   item.apkInfo = apkInfo;
   item.lastUsedAt = nowIso();
-  writeItems(items, tenantId);
+  writeItems(items);
   return item;
 }
-
-// deleteApkItem with tenantId is defined above

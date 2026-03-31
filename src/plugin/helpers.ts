@@ -1,25 +1,12 @@
 import fs from 'fs';
 import path from 'path';
-import {
-  ApkLibraryItem,
-  Task,
-  FilePatch,
-  UnityPatch,
-  ModPayload,
-} from '../types';
+import { Task, FilePatch, ModPayload } from '../types';
 import { isValidPackageName, isValidVersionCode } from '../validators';
 import { fetchArtifactToLocal } from '../artifactService';
 import { updateTask, logTask } from '../taskStore';
 import { normalizeRelPath } from '../validators';
 import { toSafeFileStem } from '../validators';
 import { PLUGIN_MANIFEST_PATH } from '../config';
-import {
-  createTaskFromLibraryItem,
-  createTaskFromArtifact,
-  attachCachedIconForTask,
-  ensureUploadedArtifact,
-  mapProgress,
-} from '../common/taskUtils';
 
 export function getPluginManifest(): unknown {
   return JSON.parse(fs.readFileSync(PLUGIN_MANIFEST_PATH, 'utf8')) as unknown;
@@ -80,7 +67,6 @@ export function hasAnyModification(payload: ModPayload): boolean {
 }
 
 export async function buildModPayload(
-  tenantId: string,
   modifications: NonNullable<ModPayload> & { [key: string]: any },
   task?: Task,
 ): Promise<ModPayload> {
@@ -101,7 +87,7 @@ export async function buildModPayload(
     };
     if (normalizedPatch.mode === 'file_replace' && normalizedPatch.replacementArtifactId && !normalizedPatch.replacementBase64) {
       if (task) logTask(task, `[Host] Fetching replacement artifact from host: ${normalizedPatch.replacementArtifactId}`);
-      const replacementPath = fetchArtifactToLocal(normalizedPatch.replacementArtifactId, tenantId);
+      const replacementPath = fetchArtifactToLocal(normalizedPatch.replacementArtifactId);
       normalizedPatch.replacementBase64 = fs.readFileSync(replacementPath).toString('base64');
       if (task) logTask(task, `[Host] Fetched and encoded artifact: ${normalizedPatch.replacementArtifactId}`);
     }
@@ -111,7 +97,7 @@ export async function buildModPayload(
   let iconUploadPath: string | null = null;
   if (modifications?.iconArtifactId) {
     if (task) logTask(task, `[Host] Fetching icon artifact from host: ${modifications.iconArtifactId}`);
-    iconUploadPath = fetchArtifactToLocal(modifications.iconArtifactId, tenantId);
+    iconUploadPath = fetchArtifactToLocal(modifications.iconArtifactId);
     if (task) logTask(task, `[Host] Fetched icon path: ${iconUploadPath}`);
   }
 

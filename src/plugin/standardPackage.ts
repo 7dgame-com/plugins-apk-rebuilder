@@ -1,8 +1,6 @@
 import fs from 'fs';
-import path from 'path';
 import { BUILTIN_STANDARD_APK_NAME, BUILTIN_STANDARD_APK_PATH, STANDARD_PACKAGE_PATH } from '../config';
 import { addOrGetApkItem, getApkItem } from '../apkLibrary';
-import { normalizeSafeSegment } from '../validators';
 
 export type StandardPackageConfig = {
   activeStandardId: string | null;
@@ -20,23 +18,12 @@ const DEFAULT_CONFIG: StandardPackageConfig = {
   updatedAt: null,
 };
 
-function getStandardPackagePath(tenantId?: string): string {
-  const safeTenantId = normalizeSafeSegment(tenantId || 'default');
-  if (safeTenantId === 'default') {
-    return STANDARD_PACKAGE_PATH;
-  }
-  const baseDir = path.join(path.dirname(STANDARD_PACKAGE_PATH), 'standard-packages');
-  fs.mkdirSync(baseDir, { recursive: true });
-  return path.join(baseDir, `${safeTenantId}.json`);
-}
-
-export function readStandardPackageConfig(tenantId?: string): StandardPackageConfig {
-  const filePath = getStandardPackagePath(tenantId);
-  if (!fs.existsSync(filePath)) {
+export function readStandardPackageConfig(): StandardPackageConfig {
+  if (!fs.existsSync(STANDARD_PACKAGE_PATH)) {
     return { ...DEFAULT_CONFIG };
   }
   try {
-    const raw = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const raw = JSON.parse(fs.readFileSync(STANDARD_PACKAGE_PATH, 'utf8'));
     return {
       activeStandardId: typeof raw.activeStandardId === 'string' ? raw.activeStandardId : null,
       previousStandardId: typeof raw.previousStandardId === 'string' ? raw.previousStandardId : null,
@@ -49,53 +36,66 @@ export function readStandardPackageConfig(tenantId?: string): StandardPackageCon
   }
 }
 
-export function writeStandardPackageConfig(config: StandardPackageConfig, tenantId?: string): void {
-  const filePath = getStandardPackagePath(tenantId);
-  fs.writeFileSync(filePath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
+export function writeStandardPackageConfig(config: StandardPackageConfig): void {
+  fs.writeFileSync(STANDARD_PACKAGE_PATH, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
 }
 
 export function updateStandardPackageConfig(
   next: Partial<StandardPackageConfig>,
-  tenantId?: string,
 ): StandardPackageConfig {
-  const current = readStandardPackageConfig(tenantId);
+  const current = readStandardPackageConfig();
   const merged: StandardPackageConfig = {
     ...current,
     ...next,
     disabledIds: Array.isArray(next.disabledIds) ? next.disabledIds : current.disabledIds,
     updatedAt: new Date().toISOString(),
   };
-  writeStandardPackageConfig(merged, tenantId);
+  writeStandardPackageConfig(merged);
   return merged;
 }
 
-export function resolveStandardLibraryItem(tenantId?: string): {
+export function resolveStandardLibraryItem(): {
   libraryItemId: string | null;
   usedFallback: boolean;
   reason?: string;
 } {
-  const config = readStandardPackageConfig(tenantId);
+  const config = readStandardPackageConfig();
   const now = Date.now();
   if (config.lockedUntil && now < config.lockedUntil) {
     return { libraryItemId: null, usedFallback: false, reason: 'STANDARD_PACKAGE_LOCKED' };
   }
 
   const isDisabled = (id?: string | null) => Boolean(id && config.disabledIds.includes(id));
-  const exists = (id?: string | null) => Boolean(id && getApkItem(id, tenantId));
+  const exists = (id?: string | null) => Boolean(id && getApkItem(id));
 
   if (config.activeStandardId && !isDisabled(config.activeStandardId) && exists(config.activeStandardId)) {
-    return { libraryItemId: config.activeStandardId, usedFallback: false };
+    return {
+      libraryItemId: config.activeStandardId,
+      usedFallback: false,
+    };
   }
 
-  if (config.previousStandardId && !isDisabled(config.previousStandardId) && exists(config.previousStandardId)) {
-    return { libraryItemId: config.previousStandardId, usedFallback: true, reason: 'FALLBACK_TO_PREVIOUS' };
+  if (
+    config.previousStandardId &&
+    !isDisabled(config.previousStandardId) &&
+    exists(config.previousStandardId)
+  ) {
+    return {
+      libraryItemId: config.previousStandardId,
+      usedFallback: true,
+      reason: 'FALLBACK_TO_PREVIOUS',
+    };
   }
 
   if (BUILTIN_STANDARD_APK_PATH && fs.existsSync(BUILTIN_STANDARD_APK_PATH)) {
     try {
       const data = fs.readFileSync(BUILTIN_STANDARD_APK_PATH);
-      const { item } = addOrGetApkItem(BUILTIN_STANDARD_APK_NAME, data, tenantId);
-      return { libraryItemId: item.id, usedFallback: true, reason: 'FALLBACK_TO_BUILTIN' };
+      const { item } = addOrGetApkItem(BUILTIN_STANDARD_APK_NAME, data);
+      return {
+        libraryItemId: item.id,
+        usedFallback: true,
+        reason: 'FALLBACK_TO_BUILTIN',
+      };
     } catch {
       // ignore builtin errors and fall through
     }

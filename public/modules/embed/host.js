@@ -8,7 +8,6 @@ export function createEmbedHost() {
   const logAlways = (...args) => console.info('[APK-REBUILDER]', ...args);
   const state = {
     apiBase: '',
-    tenantId: '',
     token: '',
     config: {},
     hostApiBase: '',
@@ -27,35 +26,6 @@ export function createEmbedHost() {
     } catch {
       return true;
     }
-  }
-
-  function normalizeTenant(value) {
-    return String(value || '')
-      .trim()
-      .replace(/[^a-zA-Z0-9._-]+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '')
-      .slice(0, 80);
-  }
-
-  function deriveEmbedTenantId() {
-    let host = '';
-    try {
-      if (state.hostApiBase) host = new URL(state.hostApiBase).hostname;
-    } catch {}
-    if (!host && parentOrigin && parentOrigin !== '*') {
-      try {
-        host = new URL(parentOrigin).hostname;
-      } catch {}
-    }
-    if (!host) {
-      try {
-        if (document.referrer) host = new URL(document.referrer).hostname;
-      } catch {}
-    }
-    if (!host) host = window.location.hostname || '';
-    const safeHost = normalizeTenant(host) || 'unknown';
-    return `embed-${safeHost}`;
   }
 
   function ensureInit(timeout = 2000) {
@@ -88,7 +58,6 @@ export function createEmbedHost() {
     }
     const cfg = state.config || {};
     const apiBase = cfg.apiBase || cfg.api_base || payload.apiBase;
-    const tenantId = cfg.tenantId || cfg.tenant_id || payload.tenantId;
     const hostApiBase = cfg.hostApiBase || cfg.mainApiBase || cfg.host_api_base || payload.hostApiBase;
     const rawRoles =
       payload.roles ??
@@ -97,8 +66,6 @@ export function createEmbedHost() {
       cfg.roles ??
       cfg.role;
     if (apiBase) state.apiBase = String(apiBase).trim();
-    if (tenantId) state.tenantId = String(tenantId).trim();
-    if (!state.tenantId) state.tenantId = deriveEmbedTenantId();
     if (hostApiBase) state.hostApiBase = String(hostApiBase).trim();
     if (rawRoles) {
       if (Array.isArray(rawRoles)) {
@@ -111,7 +78,6 @@ export function createEmbedHost() {
     }
     logAlways('INIT received', {
       apiBase: state.apiBase,
-      tenantId: state.tenantId,
       hostApiBase: state.hostApiBase,
       token: state.token ? `${state.token.slice(0, 6)}...` : '',
       roles: state.roles,
@@ -206,7 +172,6 @@ export function createEmbedHost() {
     await ensureInit();
     const headers = new Headers(options.headers || {});
     if (state.token) headers.set('authorization', `Bearer ${state.token}`);
-    if (state.tenantId) headers.set('x-tenant-id', state.tenantId);
     logAlways('authFetch', { path: String(path), token: !!state.token });
     let res;
     try {
@@ -226,7 +191,6 @@ export function createEmbedHost() {
     state.token = String(refreshed.token).trim();
     const retryHeaders = new Headers(options.headers || {});
     retryHeaders.set('authorization', `Bearer ${state.token}`);
-    if (state.tenantId) retryHeaders.set('x-tenant-id', state.tenantId);
     try {
       const retryRes = await fetch(buildUrl(path), { ...options, headers: retryHeaders });
       await logResponse('authFetch retry', retryRes);

@@ -110,49 +110,6 @@ function readTokenFromUrl() {
   }
 }
 
-function normalizeTenant(value) {
-  return String(value || '')
-    .trim()
-    .replace(/[^a-zA-Z0-9._-]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 80);
-}
-
-function readTenantFromUrl() {
-  try {
-    const params = new URLSearchParams(window.location.search || '');
-    return (
-      params.get('tenantId') ||
-      params.get('tenant_id') ||
-      params.get('tenant') ||
-      ''
-    );
-  } catch {
-    return '';
-  }
-}
-
-function inferTenantId() {
-  if (window.__APK_TENANT__) return normalizeTenant(window.__APK_TENANT__);
-  const fromUrl = readTenantFromUrl();
-  if (fromUrl) return normalizeTenant(fromUrl);
-
-  const path = window.location.pathname || '';
-  const isEmbed = /embed\.html$/i.test(path) || /embed/i.test(path);
-  if (isEmbed) {
-    let host = '';
-    try {
-      if (document.referrer) host = new URL(document.referrer).hostname;
-    } catch {}
-    if (!host) host = window.location.hostname || '';
-    const safeHost = normalizeTenant(host) || 'unknown';
-    return `embed-${safeHost}`;
-  }
-
-  return 'full';
-}
-
 function getAuthToken() {
   if (window.__APK_TOKEN__) {
     return normalizeBearer(window.__APK_TOKEN__);
@@ -191,8 +148,6 @@ export async function api(url, options = {}) {
   const headers = new Headers(options.headers || {});
   const token = getAuthToken();
   if (token) headers.set('authorization', token);
-  const tenantId = inferTenantId();
-  if (tenantId) headers.set('x-tenant-id', tenantId);
   const res = await fetch(url, { ...options, headers });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.success === false) {

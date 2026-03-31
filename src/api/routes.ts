@@ -144,14 +144,14 @@ export function createApiRouter(): Router {
     return { name: path.basename(current), path: relPath, type: 'file', size: stat.size };
   }
 
-  function startTaskFromLibraryItem(item: ApkLibraryItem, tenantId?: string, logPrefix?: string): Record<string, unknown> {
+  function startTaskFromLibraryItem(item: ApkLibraryItem, logPrefix?: string): Record<string, unknown> {
     if (!fs.existsSync(item.filePath)) {
       throw new Error('APK file is missing from storage');
     }
-    const task = createTask(item.filePath, item.name || path.basename(item.filePath), item.id, tenantId);
+    const task = createTask(item.filePath, item.name || path.basename(item.filePath), item.id);
     logTask(task, `${logPrefix || 'Using APK from library'}: ${item.name || path.basename(item.filePath)} (id=${item.id})`);
     
-    const touched = touchApkItem(item.id, tenantId);
+    const touched = touchApkItem(item.id);
     const activeItem = touched || item;
     const cacheHit = Boolean(activeItem.parsedReady && activeItem.decodeCachePath && fs.existsSync(activeItem.decodeCachePath));
 
@@ -197,16 +197,14 @@ export function createApiRouter(): Router {
       fail(res, 400, 'Missing apk file field "apk"', 'BAD_REQUEST');
       return;
     }
-    const tenantId = req.header('x-tenant-id');
     try {
       const filePath = (req.file as Express.Multer.File).path;
       const { item, created } = await addOrGetApkItemFromFile(
         req.file.originalname || 'uploaded.apk',
         filePath,
-        tenantId || undefined,
       );
       const logPrefix = created ? 'Uploaded file' : 'Deduplicated upload (reused)';
-      ok(res, { ...startTaskFromLibraryItem(item, tenantId, logPrefix), deduplicatedUpload: !created });
+      ok(res, { ...startTaskFromLibraryItem(item, logPrefix), deduplicatedUpload: !created });
     } catch (error) {
       console.error('[APK-REBUILDER] upload failed', error);
       fail(res, 500, 'Upload failed', 'UPLOAD_FAILED');
@@ -214,8 +212,7 @@ export function createApiRouter(): Router {
   });
 
   router.get('/library/apks', (req, res) => {
-    const tenantId = req.header('x-tenant-id');
-    const items = listApkItems(tenantId || undefined).map(item => {
+    const items = listApkItems().map(item => {
       // when we have a decoded cache we can provide an icon URL that will
       // return the appropriate image derived from the cache. this keeps the
       // library UI from showing a blank square.
@@ -230,8 +227,7 @@ export function createApiRouter(): Router {
 
   // serve an icon directly from the library cache without creating a task
   router.get('/library/icon/:itemId', (req, res) => {
-    const tenantId = req.header('x-tenant-id');
-    const item = getApkItem(req.params['itemId'], tenantId || undefined);
+    const item = getApkItem(req.params['itemId']);
     if (!item || !item.decodeCachePath) {
       fail(res, 404, 'Icon not found', 'NOT_FOUND');
       return;
@@ -246,22 +242,20 @@ export function createApiRouter(): Router {
 
   router.post('/library/use', (req, res) => {
     const itemId = String(req.body?.id || '').trim();
-    const tenantId = req.header('x-tenant-id');
     if (!itemId) {
       fail(res, 400, 'Missing apk library id', 'BAD_REQUEST');
       return;
     }
-    const item = getApkItem(itemId, tenantId || undefined);
+    const item = getApkItem(itemId);
     if (!item) {
       fail(res, 404, 'APK not found in library', 'NOT_FOUND');
       return;
     }
-    ok(res, startTaskFromLibraryItem(item, tenantId, 'Using APK from library'));
+    ok(res, startTaskFromLibraryItem(item, 'Using APK from library'));
   });
 
   router.delete('/library/apks/:itemId', (req, res) => {
-    const tenantId = req.header('x-tenant-id');
-    if (!deleteApkItem(req.params['itemId'], tenantId || undefined)) {
+    if (!deleteApkItem(req.params['itemId'])) {
       fail(res, 404, 'APK not found in library', 'NOT_FOUND');
       return;
     }
