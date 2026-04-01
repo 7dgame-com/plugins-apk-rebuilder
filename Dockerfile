@@ -56,6 +56,7 @@ COPY --from=build /opt/tooling/apktool.jar /opt/apktool/apktool.jar
 COPY --from=build /opt/tooling/build-tools.zip /tmp/build-tools.zip
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/src/plugin ./src/plugin
 COPY scripts ./scripts
 COPY public ./public
 
