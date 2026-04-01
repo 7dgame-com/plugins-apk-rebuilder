@@ -80,6 +80,7 @@ export function createEmbedHost() {
       cfg.role;
     if (apiBase) state.apiBase = String(apiBase).trim();
     if (hostApiBase) state.hostApiBase = String(hostApiBase).trim();
+    if (!state.hostApiBase) state.hostApiBase = '/api';
     if (rawRoles) {
       if (Array.isArray(rawRoles)) {
         state.roles = rawRoles.map(r => String(r).trim()).filter(Boolean);

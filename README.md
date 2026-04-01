@@ -108,6 +108,16 @@ redis-cli -h <host> -p <port> ping
 - `/api/*` 仍保留用于旧页面和本地调试，**仅用于本仓库构建的独立前端界面**，而非宿主平台的插件接口。
 - 默认内置本地 artifact 存储兼容层；若宿主平台提供独立 artifact service，可继续替换实现而不改插件 API。
 
+### 与 user-management 对齐的反代约定
+
+部署在独立域名时，建议采用与 `user-management` 相同的反代划分：
+- `/api/*`：反代到主后端（如 `https://api.d.xrteeth.com`），用于 `allowed-actions` / `verify-token` 等主系统接口
+- `/plugin/*`：反代到 apk-rebuilder 本地后端（如 `http://127.0.0.1:3005/plugin/`），用于执行改包任务
+
+注意：
+- 不要再将 `extraConfig.apiBase` 设为 `/api`，否则会把插件自身 `/plugin/*` 请求错误导向主后端。
+- 嵌入端当前默认 `hostApiBase=/api`（未显式配置时），可直接复用 user-management 的主后端代理路径。
+
 ## 后端接口
 
 - `GET /api/health`（包含 Redis 与工具链状态）
