@@ -1,0 +1,28 @@
+{
+  "id": "apk-rebuilder",
+  "schemaVersion": "1",
+  "nameI18n": {
+    "zh-CN": "APK 改包",
+    "zh-TW": "APK 改包",
+    "en-US": "APK Rebuilder",
+    "ja-JP": "APK リビルダー",
+    "th-TH": "APK Rebuilder"
+  },
+  "descriptionI18n": {
+    "zh-CN": "标准包驱动的 APK 改包与重签名工具",
+    "zh-TW": "標準包驅動的 APK 改包與重簽名工具",
+    "en-US": "Standard-package driven APK patching and re-signing tool",
+    "ja-JP": "標準パッケージ駆動の APK 改変・再署名ツール",
+    "th-TH": "เครื่องมือแก้ไขและลงนาม APK ใหม่ด้วยแพ็กเกจมาตรฐาน"
+  },
+  "group": {
+    "id": "tools",
+    "nameI18n": {
+      "zh-CN": "实用工具",
+      "zh-TW": "實用工具",
+      "en-US": "Utilities",
+      "ja-JP": "ユーティリティ",
+      "th-TH": "เครื่องมือ"
+    }
+  }
+}

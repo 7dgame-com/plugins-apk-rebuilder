@@ -1,3 +1,5 @@
+import { applyThemeSettings } from '../theme.js';
+
 export function createEmbedHost() {
   const debug =
     new URLSearchParams(window.location.search).get('debug') === '1' ||
@@ -19,6 +21,17 @@ export function createEmbedHost() {
   const initReady = new Promise((resolve) => {
     initResolve = resolve;
   });
+
+  function genId(prefix = 'msg') {
+    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  }
+
+  function postToParent(type, payload) {
+    if (!window.parent) return;
+    const message = { type, id: genId(type.toLowerCase()) };
+    if (payload !== undefined) message.payload = payload;
+    window.parent.postMessage(message, parentOrigin || '*');
+  }
 
   function isInIframe() {
     try {
@@ -92,12 +105,8 @@ export function createEmbedHost() {
   }
 
   function sendPluginReady() {
-    if (!window.parent) return;
     logAlways('postMessage -> PLUGIN_READY', { origin: parentOrigin });
-    window.parent.postMessage(
-      { type: 'PLUGIN_READY', id: `ready-${Date.now()}` },
-      parentOrigin || '*'
-    );
+    postToParent('PLUGIN_READY');
   }
 
   function buildUrl(path) {
@@ -164,7 +173,7 @@ export function createEmbedHost() {
       }, timeout);
       window.addEventListener('message', onMessage);
       logAlways('TOKEN_REFRESH_REQUEST -> parent');
-      window.parent.postMessage({ type: 'TOKEN_REFRESH_REQUEST' }, parentOrigin);
+      postToParent('TOKEN_REFRESH_REQUEST');
     });
   }
 
@@ -185,7 +194,7 @@ export function createEmbedHost() {
 
     const refreshed = await requestParentTokenRefresh();
     if (!refreshed || !refreshed.token) {
-      window.parent.postMessage({ type: 'TOKEN_EXPIRED' }, parentOrigin);
+      postToParent('TOKEN_EXPIRED');
       return res;
     }
     state.token = String(refreshed.token).trim();
@@ -218,7 +227,7 @@ export function createEmbedHost() {
 
     const refreshed = await requestParentTokenRefresh();
     if (!refreshed || !refreshed.token) {
-      window.parent.postMessage({ type: 'TOKEN_EXPIRED' }, parentOrigin);
+      postToParent('TOKEN_EXPIRED');
       return res;
     }
     state.token = String(refreshed.token).trim();
@@ -245,6 +254,17 @@ export function createEmbedHost() {
     if (msg.type === 'TOKEN_UPDATE' && msg.payload) {
       if (msg.payload.token) state.token = String(msg.payload.token).trim();
       logAlways('TOKEN_UPDATE', { token: state.token ? `${state.token.slice(0, 6)}...` : '' });
+    }
+    if (msg.type === 'LANG_CHANGE' && msg.payload) {
+      applyThemeSettings({
+        language: msg.payload.language,
+        lang: msg.payload.lang,
+      });
+      logAlways('LANG_CHANGE', { lang: msg.payload.lang || msg.payload.language });
+    }
+    if (msg.type === 'THEME_CHANGE' && msg.payload) {
+      applyThemeSettings(msg.payload);
+      logAlways('THEME_CHANGE');
     }
     if (msg.type === 'DESTROY') {
       logAlways('DESTROY received');

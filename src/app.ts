@@ -63,7 +63,12 @@ app.get('*', (req, res) => {
   if (APK_REBUILDER_UI_MODE === 'embed') {
     const normalized = requested.replace(/^\/+/, '');
     const allowPrefixes = ['styles/', 'modules/'];
-    const allowRootFiles = new Set(['embed.html', 'index.html', 'logs.html']);
+    const allowRootFiles = new Set([
+      'embed.html',
+      'index.html',
+      'logs.html',
+      'plugin-manifest.json',
+    ]);
     const isAllowed =
       allowRootFiles.has(normalized) ||
       allowPrefixes.some(prefix => normalized.startsWith(prefix));
