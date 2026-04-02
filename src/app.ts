@@ -39,6 +39,15 @@ app.use('/plugin', createPluginRouter());
 // optional local UI / debugging API (for development/demo only)
 app.use('/api', createApiRouter());
 
+app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error('[request] unhandled route error', {
+    method: req.method,
+    path: req.path,
+    error: err instanceof Error ? err.message : String(err),
+  });
+  fail(res, 500, 'Request failed', 'REQUEST_FAILED');
+});
+
 // static fallback used by local frontend
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api')) {

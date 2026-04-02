@@ -45,4 +45,5 @@ sh /etc/nginx/nginx-entrypoint-apk-rebuilder.sh
 - `/api/` 反代用于访问主后端插件 API（`/v1/plugin/*`、`/v1/plugin-user/*`），与 user-management 一致。
 - `/api/upload`、`/api/tools` 走插件本地后端（`127.0.0.1:3005`）以支持标准包上传与工具链检测，其余 `/api/*` 继续走主后端。
 - `/plugin/` 反代到 apk-rebuilder 本地后端（`127.0.0.1:3005/plugin/`），供嵌入页执行改包任务。
+- `POST /plugin/admin/upload-standard` 使用独立 location，关闭 `proxy_request_buffering` 并放宽超时，降低大文件上传时 `502` 风险。
 - 已在 server 级别设置 `client_max_body_size 500m`，避免标准包上传触发 `413 Content Too Large`。
