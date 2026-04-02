@@ -40,12 +40,28 @@ app.use('/plugin', createPluginRouter());
 app.use('/api', createApiRouter());
 
 app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  const anyErr = err as { message?: string; code?: string; stack?: string };
+  const message = anyErr?.message || String(err);
+  const code = anyErr?.code || 'REQUEST_FAILED';
+  const isUploadStreamError =
+    message.includes('Unexpected end of form') ||
+    code === 'LIMIT_FILE_SIZE' ||
+    code === 'LIMIT_UNEXPECTED_FILE';
+  const status = isUploadStreamError ? 400 : 500;
   console.error('[request] unhandled route error', {
     method: req.method,
     path: req.path,
-    error: err instanceof Error ? err.message : String(err),
+    code,
+    error: message,
+    stack: anyErr?.stack || '',
   });
-  fail(res, 500, 'Request failed', 'REQUEST_FAILED');
+  fail(
+    res,
+    status,
+    isUploadStreamError ? 'Upload request failed' : 'Request failed',
+    code,
+    { message },
+  );
 });
 
 // static fallback used by local frontend
