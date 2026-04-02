@@ -12,6 +12,10 @@ import './taskQueue'; // Initialize BullMQ worker
 
 const app = express();
 
+// Trust the first proxy (Nginx) so express-rate-limit can read X-Forwarded-For
+// Without this, rate-limit throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR and returns 500
+app.set('trust proxy', 1);
+
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 100,
