@@ -18,7 +18,7 @@ import {
   buildModPayload,
 } from './helpers';
 import { mapProgress, ensureUploadedArtifact, createTaskFromLibraryItem, createTaskFromArtifact } from '../common/taskUtils';
-import { deleteApkItem, getApkItem, listApkItems } from '../apkLibrary';
+import { addOrGetApkItemFromFile, deleteApkItem, getApkItem, listApkItems } from '../apkLibrary';
 import { updateTask, logTask, getTask } from '../taskStore';
 import { fetchArtifactToLocal, getArtifact, uploadArtifact } from '../artifactService';
 import {
@@ -26,9 +26,19 @@ import {
   updateStandardPackageConfig,
   resolveStandardLibraryItem,
 } from './standardPackage';
-import { MOD_UPLOAD_DIR } from '../config';
+import { MOD_UPLOAD_DIR, UPLOAD_DIR } from '../config';
+import { getToolchainStatus } from '../toolchain';
 
 const upload = multer({ storage: multer.memoryStorage() });
+const uploadApk = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname || '') || '.apk';
+      cb(null, `${randomUUID()}${ext}`);
+    },
+  }),
+});
 
 function applyCors(req: Request, res: Response): void {
   const origin = req.header('origin');
@@ -201,6 +211,37 @@ export function createPluginRouter(): Router {
           disabledIds: config.disabledIds,
         },
       });
+    } catch (error) {
+      const mapped = mapPluginError(error);
+      fail(res, mapped.status, mapped.message, mapped.code);
+    }
+  });
+
+  router.post('/admin/upload-standard', uploadApk.single('apk'), async (req: Request, res: Response) => {
+    try {
+      getLoosePrincipal(req);
+      await requireHostPermission(req, 'apk.rebuilder.admin');
+      if (!req.file) {
+        fail(res, 400, 'Missing apk file field "apk"', 'BAD_REQUEST');
+        return;
+      }
+      const filePath = (req.file as Express.Multer.File).path;
+      const { item, created } = await addOrGetApkItemFromFile(
+        req.file.originalname || 'uploaded.apk',
+        filePath,
+      );
+      ok(res, { item, deduplicatedUpload: !created });
+    } catch (error) {
+      const mapped = mapPluginError(error);
+      fail(res, mapped.status, mapped.message, mapped.code);
+    }
+  });
+
+  router.get('/admin/tools', async (req: Request, res: Response) => {
+    try {
+      getLoosePrincipal(req);
+      await requireHostPermission(req, 'apk.rebuilder.admin');
+      ok(res, getToolchainStatus());
     } catch (error) {
       const mapped = mapPluginError(error);
       fail(res, mapped.status, mapped.message, mapped.code);

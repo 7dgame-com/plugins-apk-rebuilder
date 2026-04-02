@@ -178,10 +178,10 @@ export function createStandardPackageSection({ host, canAdmin = true }) {
     }
     const form = new FormData();
     form.append('apk', file);
-    console.info('[APK-REBUILDER] call /api/upload');
+    console.info('[APK-REBUILDER] call /plugin/admin/upload-standard');
     setUploadBusy(true);
     try {
-      const res = await host.authFetch('/api/upload', { method: 'POST', body: form });
+      const res = await host.authFetch('/plugin/admin/upload-standard', { method: 'POST', body: form });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error?.message || '上传失败');
       await load();

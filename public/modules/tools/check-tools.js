@@ -16,7 +16,7 @@ export function renderToolsCheck(container) {
   );
 }
 
-export function createToolsCheck({ state, api }) {
+export function createToolsCheck({ state, api, host = null }) {
   function renderTools(data) {
     const tools = data?.tools || {};
     const names = Object.keys(tools);
@@ -63,6 +63,15 @@ export function createToolsCheck({ state, api }) {
 
   async function refreshTools() {
     try {
+      if (host) {
+        const res = await host.authFetch('/plugin/admin/tools');
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(json?.error?.message || json?.message || `HTTP ${res.status}`);
+        }
+        renderTools(json?.data ?? json);
+        return;
+      }
       renderTools(await api('/api/tools'));
     } catch (e) {
       alert(t('tools.checkFailed', { message: e.message }));

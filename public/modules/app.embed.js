@@ -82,7 +82,7 @@ function buildUi() {
   renderIconEditorModal(document.body);
 
   const standardSection = canAdmin ? createStandardPackageSection({ host, canAdmin }) : null;
-  const tools = canAdmin ? createToolsCheck({ state, api }) : null;
+  const tools = canAdmin ? createToolsCheck({ state, api, host }) : null;
   const iconModal = createIconEditor({ state, onIconChanged: () => setIcon('newIcon', 'newIconEmpty', state.iconPreviewUrl) });
   const sceneSection = createSceneConfigSection({ host, perPage: 10 });
 
