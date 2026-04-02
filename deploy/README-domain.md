@@ -44,3 +44,4 @@ sh /etc/nginx/nginx-entrypoint-apk-rebuilder.sh
 - 后续如需收敛宿主域名，可在 Nginx 加 `Content-Security-Policy: frame-ancestors ...`。
 - `/api/` 反代用于访问主后端插件 API（`/v1/plugin/*`、`/v1/plugin-user/*`），与 user-management 一致。
 - `/plugin/` 反代到 apk-rebuilder 本地后端（`127.0.0.1:3005/plugin/`），供嵌入页执行改包任务。
+- 已在 server 级别设置 `client_max_body_size 500m`，避免标准包上传触发 `413 Content Too Large`。

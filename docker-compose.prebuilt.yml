@@ -2,7 +2,7 @@ services:
   apk-rebuilder:
     image: ${APK_REBUILDER_IMAGE:-hkccr.ccs.tencentyun.com/plugins/apk-rebuilder:latest}
     ports:
-      - '3006:80'
+      - '3007:80'
     environment:
       - APP_API_1_URL=https://api.d.xrteeth.com
       - APP_API_2_URL=https://api.d.tmrpp.com

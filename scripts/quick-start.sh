@@ -28,7 +28,7 @@ if [[ -n "${IMAGE}" ]]; then
   if docker pull "${IMAGE}" >/dev/null 2>&1; then
     echo "[quick-start] Prebuilt image is available, starting from image."
     docker compose -f docker-compose.yml -f docker-compose.prebuilt.yml up -d
-    echo "[quick-start] Done. Open: http://localhost:3006"
+    echo "[quick-start] Done. Open: http://localhost:3007"
     exit 0
   fi
   echo "[quick-start] Prebuilt image not accessible, falling back to local build."
@@ -36,4 +36,4 @@ fi
 
 echo "[quick-start] Starting local build (platform=${APK_REBUILDER_PLATFORM:-auto})"
 docker compose up -d --build
-echo "[quick-start] Done. Open: http://localhost:3006"
+echo "[quick-start] Done. Open: http://localhost:3007"
