@@ -9,7 +9,7 @@ services:
     environment:
       - APP_API_1_URL=https://api.d.xrteeth.com
       - APP_API_2_URL=https://api.d.tmrpp.com
-      - PORT=3005
+      - PORT=3007
       - HOST=0.0.0.0
       - PLUGIN_MODE=true
       - APK_REBUILDER_UI_MODE=embed

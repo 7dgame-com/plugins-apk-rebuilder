@@ -15,7 +15,7 @@ services:
       - apk_rebuilder_data:/app/data
     environment:
       - APP_API_1_URL=http://host.docker.internal:8081
-      - PORT=3005
+      - PORT=3007
       - HOST=0.0.0.0
       - PLUGIN_MODE=true
       - APK_REBUILDER_UI_MODE=embed

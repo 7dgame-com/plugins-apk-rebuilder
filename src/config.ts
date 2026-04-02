@@ -64,7 +64,7 @@ function detectJavaHome(): { javaPath: string; javaHome: string; keytoolPath: st
 const detectedJava = detectJavaHome();
 const localTools = detectLocalTools();
 
-export const PORT = Number.parseInt(process.env['PORT'] || '3005', 10);
+export const PORT = Number.parseInt(process.env['PORT'] || '3007', 10);
 export const HOST = process.env['HOST'] || '127.0.0.1';
 
 export const REDIS_HOST = process.env['REDIS_HOST'] || '127.0.0.1';

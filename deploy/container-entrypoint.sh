@@ -2,7 +2,7 @@
 set -e
 
 NODE_HOST="${HOST:-0.0.0.0}"
-NODE_PORT="${PORT:-3005}"
+NODE_PORT="${PORT:-3007}"
 
 echo "[entrypoint] starting apk-rebuilder backend on ${NODE_HOST}:${NODE_PORT}"
 node /app/dist/index.js &

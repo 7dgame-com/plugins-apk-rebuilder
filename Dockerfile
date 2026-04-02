@@ -92,7 +92,7 @@ ENV ZIPALIGN_PATH=/usr/local/bin/zipalign
 ENV APKSIGNER_PATH=/usr/local/bin/apksigner
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ENV HOST=0.0.0.0
-ENV PORT=3005
+ENV PORT=3007
 
 EXPOSE 80
 CMD ["/usr/local/bin/container-entrypoint.sh"]
