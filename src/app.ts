@@ -22,6 +22,7 @@ const apiLimiter = rateLimit({
   message: { success: false, error: { message: 'Too many requests, please try again later.', code: 'RATE_LIMIT_EXCEEDED' } },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { trustProxy: false, xForwardedForHeader: false },
 });
 
 app.use('/api', apiLimiter);
