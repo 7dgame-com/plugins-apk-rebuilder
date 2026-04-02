@@ -27,11 +27,19 @@ import {
   updateStandardPackageConfig,
   resolveStandardLibraryItem,
 } from './standardPackage';
-import { MOD_UPLOAD_DIR } from '../config';
+import { MOD_UPLOAD_DIR, UPLOAD_DIR } from '../config';
 import { getToolchainStatus } from '../toolchain';
 
 const upload = multer({ storage: multer.memoryStorage() });
-const uploadStandardApk = multer({ storage: multer.memoryStorage() });
+const uploadStandardApk = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname || '') || '.apk';
+      cb(null, `${randomUUID()}${ext}`);
+    },
+  }),
+});
 
 function applyCors(req: Request, res: Response): void {
   const origin = req.header('origin');
@@ -214,22 +222,21 @@ export function createPluginRouter(): Router {
     try {
       getLoosePrincipal(req);
       await requireHostPermission(req, 'apk.rebuilder.admin');
-      const file = (req as any).file as { originalname?: string; buffer?: Buffer } | undefined;
-      if (!file || !file.buffer) {
+      const file = (req as any).file as Express.Multer.File | undefined;
+      if (!file || !file.path) {
         fail(res, 400, 'Missing apk file field "apk"', 'BAD_REQUEST');
         return;
       }
-      const ext = path.extname(file.originalname || '').toLowerCase() || '.apk';
-      const tempPath = path.join(os.tmpdir(), `${randomUUID()}${ext === '.apk' ? '.apk' : ext}`);
-      fs.writeFileSync(tempPath, file.buffer);
       try {
         const { item, created } = await addOrGetApkItemFromFile(
           file.originalname || 'uploaded.apk',
-          tempPath,
+          file.path,
         );
         ok(res, { item, deduplicatedUpload: !created });
       } finally {
-        fs.rmSync(tempPath, { force: true });
+        // addOrGetApkItemFromFile moves or cleans up the temp file,
+        // but ensure cleanup if it still exists
+        try { fs.rmSync(file.path, { force: true }); } catch { /* ignore */ }
       }
     } catch (error) {
       const mapped = mapPluginError(error);
