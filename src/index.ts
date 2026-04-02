@@ -26,9 +26,13 @@ async function boot(): Promise<void> {
     await ensureRedisReady();
   }
 
-  app.listen(PORT, HOST, () => {
+  const server = app.listen(PORT, HOST, () => {
     console.info(`apk-rebuilder listening on http://${HOST}:${PORT} (mode=${APK_REBUILDER_MODE})`);
   });
+
+  // Set timeouts for large file uploads (10 minutes)
+  server.requestTimeout = 600000;
+  server.headersTimeout = 601000;
 }
 
 boot().catch((error) => {
