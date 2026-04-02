@@ -13,8 +13,15 @@ function applyThemeMeta({ theme, isDark } = {}) {
     document.documentElement.setAttribute('data-theme', theme);
     document.body?.setAttribute('data-theme', theme);
   }
-  const dark = typeof isDark === 'boolean' ? isDark : DARK_THEMES.has(theme);
-  document.body?.setAttribute('data-mode', dark ? 'dark' : 'light');
+  const dark = typeof isDark === 'boolean' ? isDark : (theme ? DARK_THEMES.has(theme) : null);
+  if (dark !== null) {
+    document.body?.setAttribute('data-mode', dark ? 'dark' : 'light');
+    if (dark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }
 }
 
 function applyThemeVars(vars) {
@@ -26,23 +33,29 @@ function applyThemeVars(vars) {
   });
 }
 
+/**
+ * Reactive Theme & Language Applicator
+ */
 export function applyThemeSettings(payload = {}) {
-  applyLanguage(payload.language || payload.lang);
-  applyThemeMeta({ theme: payload.theme, isDark: payload.isDark });
-  applyThemeVars(payload.themeVars);
+  if (payload.language || payload.lang) {
+    applyLanguage(payload.language || payload.lang);
+  }
+  if (payload.theme || typeof payload.isDark === 'boolean') {
+    applyThemeMeta({ theme: payload.theme, isDark: payload.isDark });
+  }
+  if (payload.themeVars) {
+    applyThemeVars(payload.themeVars);
+  }
 }
 
+/**
+ * Initial sync from URL parameters
+ */
 export function initThemeSync() {
   const params = new URLSearchParams(window.location.search);
   applyThemeSettings({
     lang: params.get('lang') || params.get('language'),
     theme: params.get('theme'),
   });
-
-  window.addEventListener('message', (e) => {
-    const msg = e.data || {};
-    if (msg.type !== 'EVENT') return;
-    if (msg.payload?.type !== 'SETTINGS_UPDATE') return;
-    applyThemeSettings(msg.payload);
-  });
+  // Note: Reactive updates are now handled by bridge.js which calls applyThemeSettings
 }
