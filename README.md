@@ -8,7 +8,7 @@
 docker compose up -d --build
 ```
 
-启动后访问：`http://localhost:3005`
+启动后访问：`http://localhost:3006`
 
 ## 运行配置（三种）
 

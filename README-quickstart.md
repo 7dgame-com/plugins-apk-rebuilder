@@ -6,7 +6,7 @@
 docker compose up -d --build
 ```
 
-Open: `http://localhost:3005`
+Open: `http://localhost:3006`
 
 ## Optional prebuilt image
 

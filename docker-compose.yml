@@ -10,7 +10,7 @@ services:
         ANDROID_BUILD_TOOLS_VERSION: ${ANDROID_BUILD_TOOLS_VERSION:-34.0.0}
         ANDROID_BUILD_TOOLS_URL: ${ANDROID_BUILD_TOOLS_URL:-https://dl.google.com/android/repository/build-tools_r34-linux.zip}
     ports:
-      - '127.0.0.1:3005:80'
+      - '127.0.0.1:3006:80'
     volumes:
       - apk_rebuilder_data:/app/data
     environment:
