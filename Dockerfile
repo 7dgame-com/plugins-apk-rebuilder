@@ -45,6 +45,7 @@ RUN set -eux; \
   apt-get update; \
   apt-get install -y --no-install-recommends \
     openjdk-17-jre-headless \
+    nginx \
     unzip \
     ca-certificates \
     curl \
@@ -59,6 +60,11 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/src/plugin ./src/plugin
 COPY scripts ./scripts
 COPY public ./public
+COPY public /var/www/apk-rebuilder
+COPY deploy/nginx-apk-rebuilder.template.conf /etc/nginx/templates/default.conf.template
+COPY deploy/nginx-entrypoint-apk-rebuilder.sh /usr/local/bin/nginx-entrypoint-apk-rebuilder.sh
+COPY deploy/container-entrypoint.sh /usr/local/bin/container-entrypoint.sh
+RUN rm -f /etc/nginx/sites-enabled/default /etc/nginx/conf.d/default.conf
 
 RUN set -eux; \
   mkdir -p /opt/android/build-tools/${ANDROID_BUILD_TOOLS_VERSION}; \
@@ -79,7 +85,7 @@ RUN set -eux; \
   printf '%s\n' '#!/bin/sh' "exec ${zipalign_path} \"\$@\"" > /usr/local/bin/zipalign; \
   printf '%s\n' '#!/bin/sh' "exec ${apksigner_path} \"\$@\"" > /usr/local/bin/apksigner; \
   printf '%s\n' '#!/bin/sh' 'exec java -jar /opt/apktool/apktool.jar "$@"' > /usr/local/bin/apktool; \
-  chmod +x /usr/local/bin/apktool /usr/local/bin/zipalign /usr/local/bin/apksigner "${zipalign_path}" "${apksigner_path}"
+  chmod +x /usr/local/bin/apktool /usr/local/bin/zipalign /usr/local/bin/apksigner /usr/local/bin/nginx-entrypoint-apk-rebuilder.sh /usr/local/bin/container-entrypoint.sh "${zipalign_path}" "${apksigner_path}"
 
 ENV APKTOOL_PATH=/usr/local/bin/apktool
 ENV ZIPALIGN_PATH=/usr/local/bin/zipalign
@@ -88,5 +94,5 @@ ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ENV HOST=0.0.0.0
 ENV PORT=3005
 
-EXPOSE 3005
-CMD ["node", "dist/index.js"]
+EXPOSE 80
+CMD ["/usr/local/bin/container-entrypoint.sh"]

@@ -9,7 +9,6 @@ export function createEmbedHost() {
   };
   const logAlways = (...args) => console.info('[APK-REBUILDER]', ...args);
   const state = {
-    apiBase: '',
     token: '',
     config: {},
     hostApiBase: '',
@@ -70,7 +69,6 @@ export function createEmbedHost() {
       state.config = payload.config || {};
     }
     const cfg = state.config || {};
-    const apiBase = cfg.apiBase || cfg.api_base || payload.apiBase;
     const hostApiBase = cfg.hostApiBase || cfg.mainApiBase || cfg.host_api_base || payload.hostApiBase;
     const rawRoles =
       payload.roles ??
@@ -78,7 +76,6 @@ export function createEmbedHost() {
       payload.user?.roles ??
       cfg.roles ??
       cfg.role;
-    if (apiBase) state.apiBase = String(apiBase).trim();
     if (hostApiBase) state.hostApiBase = String(hostApiBase).trim();
     if (!state.hostApiBase) state.hostApiBase = '/api';
     if (rawRoles) {
@@ -91,7 +88,6 @@ export function createEmbedHost() {
       }
     }
     logAlways('INIT received', {
-      apiBase: state.apiBase,
       hostApiBase: state.hostApiBase,
       token: state.token ? `${state.token.slice(0, 6)}...` : '',
       roles: state.roles,
@@ -111,11 +107,9 @@ export function createEmbedHost() {
   }
 
   function buildUrl(path) {
-    if (!path) return state.apiBase || '';
+    if (!path) return '';
     if (path.startsWith('http')) return path;
-    const base = state.apiBase || '';
-    if (!base) return path;
-    return `${base}${path.startsWith('/') ? path : `/${path}`}`;
+    return path.startsWith('/') ? path : `/${path}`;
   }
 
   function buildHostUrl(path) {

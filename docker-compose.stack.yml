@@ -1,10 +1,14 @@
 services:
-  apk-rebuilder:
+  apk-rebuilder-d:
     image: hkccr.ccs.tencentyun.com/plugins/apk-rebuilder:latest
     networks:
       - proxy
       - internal
+    volumes:
+      - apk_rebuilder_data:/app/data
     environment:
+      - APP_API_1_URL=https://api.d.xrteeth.com
+      - APP_API_2_URL=https://api.d.tmrpp.com
       - PORT=3005
       - HOST=0.0.0.0
       - PLUGIN_MODE=true
@@ -14,17 +18,17 @@ services:
       - REDIS_PORT=6379
     labels:
       - traefik.enable=true
-      - "traefik.http.routers.apk-rebuilder.rule=Host(`apk-rebuilder.plugins.xrugc.com`)"
-      - traefik.http.routers.apk-rebuilder.entrypoints=websecure
-      - traefik.http.routers.apk-rebuilder.tls.certresolver=letsencrypt
-      - traefik.http.services.apk-rebuilder.loadbalancer.server.port=3005
+      - "traefik.http.routers.apk-rebuilder_d.rule=Host(`apk-rebuilder.d.plugins.xrugc.com`)"
+      - traefik.http.routers.apk-rebuilder_d.entrypoints=websecure
+      - traefik.http.routers.apk-rebuilder_d.tls.certresolver=letsencrypt
+      - traefik.http.services.apk-rebuilder_d.loadbalancer.server.port=80
       - traefik.docker.network=proxy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:3005/api/health"]
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1/health"]
       interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
     depends_on:
       redis-apk-rebuilder:
@@ -52,3 +56,4 @@ networks:
 
 volumes:
   apk_rebuilder_redis_data:
+  apk_rebuilder_data:

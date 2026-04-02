@@ -10,10 +10,11 @@ services:
         ANDROID_BUILD_TOOLS_VERSION: ${ANDROID_BUILD_TOOLS_VERSION:-34.0.0}
         ANDROID_BUILD_TOOLS_URL: ${ANDROID_BUILD_TOOLS_URL:-https://dl.google.com/android/repository/build-tools_r34-linux.zip}
     ports:
-      - '127.0.0.1:3005:3005'
+      - '127.0.0.1:3005:80'
     volumes:
       - apk_rebuilder_data:/app/data
     environment:
+      - APP_API_1_URL=http://host.docker.internal:8081
       - PORT=3005
       - HOST=0.0.0.0
       - PLUGIN_MODE=true
@@ -30,7 +31,7 @@ services:
       - HOST_AUTH_DEBUG=${HOST_AUTH_DEBUG:-false}
     # command: ["npm", "run", "dev"] # 开发模式可改回
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://127.0.0.1:3005/api/health >/dev/null 2>&1"]
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1/health >/dev/null 2>&1"]
       interval: 30s
       timeout: 5s
       retries: 3
