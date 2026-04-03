@@ -75,6 +75,13 @@ redis-cli -h <host> -p <port> ping
 - 如果设置了 `APK_REBUILDER_IMAGE`，脚本会优先尝试拉预构建镜像。
 - 拉取失败或未设置时，自动回退本地构建。
 
+## 标准包内置保底目录
+
+- 内置保底包目录：`builtin-packages/`
+- 默认内置包路径：`builtin-packages/standard.apk`
+- 当标准包配置为空、被禁用或找不到时，会自动尝试使用内置包保底。
+- 可通过环境变量 `BUILTIN_STANDARD_APK_PATH` 覆盖默认路径。
+
 ## 项目结构
 
 - `src/`: Express + TypeScript 后端源码
@@ -236,5 +243,7 @@ npm run start:prod
 - `HOST_AUTH_TIMEOUT_MS` 默认 `5000`
 - `HOST_PERMISSION_CACHE_TTL_MS` 默认 `30000`
 - `HOST_AUTH_DEBUG` 默认 `false`
+- `BUILTIN_STANDARD_APK_PATH` 默认 `./builtin-packages/standard.apk`
+- `BUILTIN_STANDARD_APK_NAME` 默认 `mrpp-apk-rebuilder.apk`
 
 说明：在部分架构（如 arm64 容器）若 `zipalign` 不可执行，系统会自动降级为“跳过 zipalign 后签名”，保证流程可用。

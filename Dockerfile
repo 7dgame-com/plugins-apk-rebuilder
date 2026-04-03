@@ -29,6 +29,7 @@ RUN set -eux; \
 
 COPY src ./src
 COPY public ./public
+COPY builtin-packages ./builtin-packages
 RUN npm run build
 RUN npm prune --omit=dev
 
@@ -60,6 +61,7 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/src/plugin ./src/plugin
 COPY scripts ./scripts
 COPY public ./public
+COPY builtin-packages ./builtin-packages
 COPY public /var/www/apk-rebuilder
 COPY deploy/nginx-apk-rebuilder.template.conf /etc/nginx/templates/default.conf.template
 COPY deploy/nginx-entrypoint-apk-rebuilder.sh /usr/local/bin/nginx-entrypoint-apk-rebuilder.sh

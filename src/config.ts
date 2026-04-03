@@ -84,6 +84,7 @@ export const ARTIFACTS_DIR = path.join(DATA_ROOT, 'artifacts');
 export const ARTIFACT_INDEX_PATH = path.join(DATA_ROOT, 'artifacts.json');
 export const STANDARD_PACKAGE_PATH = path.join(DATA_ROOT, 'standard-package.json');
 export const PLUGIN_MANIFEST_PATH = path.join(process.cwd(), 'src', 'plugin', 'manifest.json');
+export const BUILTIN_STANDARD_APK_DIR = path.join(process.cwd(), 'builtin-packages');
 
 export const APKTOOL_PATH = process.env['APKTOOL_PATH'] || localTools.apktoolJar || 'apktool';
 export const ZIPALIGN_PATH = process.env['ZIPALIGN_PATH'] || localTools.zipalign || detectBuildTool('zipalign');
@@ -128,9 +129,10 @@ export const REDIS_CONNECT_RETRY_DELAY_MS = Number.parseInt(
 export const TOOLCHAIN_FALLBACK_LOCAL = process.env['TOOLCHAIN_FALLBACK_LOCAL'] !== 'false';
 
 export const BUILTIN_STANDARD_APK_PATH =
-  process.env['BUILTIN_STANDARD_APK_PATH'] || '';
+  process.env['BUILTIN_STANDARD_APK_PATH'] || path.join(BUILTIN_STANDARD_APK_DIR, 'standard.apk');
 export const BUILTIN_STANDARD_APK_NAME =
   process.env['BUILTIN_STANDARD_APK_NAME'] || 'mrpp-apk-rebuilder.apk';
+export const BUILTIN_STANDARD_APK_PATH_FROM_ENV = Boolean(process.env['BUILTIN_STANDARD_APK_PATH']);
 
 export function validateRuntimeConfig(): void {
   if (PLUGIN_MODE && !HOST_API_BASE.trim()) {
@@ -150,6 +152,7 @@ export function ensureRuntimeDirs(): void {
     APK_LIBRARY_DIR,
     APK_LIBRARY_CACHE_ROOT,
     ARTIFACTS_DIR,
+    BUILTIN_STANDARD_APK_DIR,
   ].forEach(dir => fs.mkdirSync(dir, { recursive: true }));
 
   if (!fs.existsSync(APK_LIBRARY_INDEX_PATH)) {
