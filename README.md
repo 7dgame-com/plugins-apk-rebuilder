@@ -1,109 +1,144 @@
-# APK Rebuilder (Express + TypeScript + Static UI)
+# APK Rebuilder
 
-这是一个后端单仓版本：`Node.js + Express + TypeScript`，前端为 `public/` 下静态页面（无需单独前端工程）。
+`apk-rebuilder` 是一个用于 APK 改包的独立后端插件服务，基于 `Node.js + Express + TypeScript` 实现，内置静态前端页面、任务队列、APK 库缓存和标准包管理能力。
 
-## 一键启动（推荐）
+它有两种典型使用方式：
+
+1. 作为宿主平台插件运行，暴露 `/plugin/*` 接口，供主系统发起改包任务、查询运行状态、拉取产物。
+2. 作为独立服务运行，使用 `/api/*` 和内置页面做本地调试、验证工具链和演练整个改包流程。
+
+## 核心能力
+
+- 上传 APK 或复用 APK 库中的历史文件
+- 修改应用名、包名、版本号、版本码、图标
+- 支持 Unity 配置补丁和任意文件补丁
+- 任务异步执行，状态与日志可追踪
+- 构建完成后输出签名 APK，并以 artifact 形式提供下载
+- 支持标准包切换、禁用和回退
+- 支持 Docker 一键启动，也支持本地 Node.js 开发
+
+## 目录结构
+
+```text
+apk-rebuilder/
+├── src/                     # 后端源码
+│   ├── api/                 # 本地调试 / 独立服务接口
+│   ├── plugin/              # 插件接口、权限校验、manifest、标准包管理
+│   ├── common/              # 响应封装、任务辅助逻辑
+│   ├── middleware/          # 鉴权中间件
+│   ├── buildService.ts      # 反编译、修改、重打包主流程
+│   ├── taskQueue.ts         # BullMQ + Redis 队列
+│   ├── taskStore.ts         # 任务状态持久化
+│   └── toolchain.ts         # 工具链探测与校验
+├── public/                  # 前端源码（Vite 开发态）
+├── frontend-dist/           # 前端构建产物
+├── data/                    # 运行时数据目录
+├── builtin-packages/        # 内置标准包保底目录
+├── tools/                   # 可选本地工具链目录
+├── scripts/                 # 启动、自检、工具下载脚本
+├── Dockerfile
+├── docker-compose.yml
+├── docker-compose.prebuilt.yml
+└── docker-compose.stack.yml
+```
+
+## 快速开始
+
+### 方式一：Docker Compose
+
+这是最推荐的启动方式，依赖最少，也最接近部署环境。
 
 ```bash
 docker compose up -d --build
 ```
 
-启动后访问：`http://localhost:3007`
+启动后访问：
 
-## 运行配置（三种）
+- 插件页面：`http://localhost:3007`
+- 健康检查：`http://localhost:3007/api/health`
 
-**配置 1：本地开发（Vite + 热重启）**  
-适用于前后端联调与 UI 调试。后端走 `ts-node-dev`，前端走 Vite HMR。`APK_REBUILDER_MODE=dev` 时，后端会拒绝直接返回 `index.html`，提示使用 Vite 地址。  
-启动命令：`npm install && npm run dev`  
-访问方式：前端 `http://127.0.0.1:5173`，后端 `http://127.0.0.1:3007`  
-如果设置了 `HOST_API_BASE`，还会使用主系统的 API：
-```
-HOST_API_BASE=https://localhost:11000/v1/plugin # 前端无需配跨域，Nginx 做了代理
-```
-
-#### Nginx Docker 运行测试
-
-本地可使用自带的 `docker-compose.yml`
+如果你有预构建镜像，也可以使用：
 
 ```bash
-docker-compose up -d --build
-```
-访问方式：`http://HOST:PORT`（默认 `http://127.0.0.1:3007`）  
-依赖：需要 Redis 与工具链（同上）。
-
-**配置 3：容器运行（Docker Compose）**  
-适用于本地/部署环境一键拉起。默认 `docker-compose.yml` 本地构建镜像，并内置 Redis。  
-启动命令：`docker compose up -d --build`  
-可选：使用预构建镜像 `docker compose -f docker-compose.prebuilt.yml up -d` 或运行 `./scripts/quick-start.sh`  
-说明：容器内工具链路径固定为 `/usr/local/bin/apktool|zipalign|apksigner`。
-
-> 线上默认 `PLUGIN_MODE=true`，并配合 `APK_REBUILDER_UI_MODE=embed` 仅暴露嵌入版 UI（`/embed.html`）。
-> Docker 编排使用 Redis healthcheck + `service_healthy`，确保 Redis 就绪后再启动插件服务。
-
-### 工具链策略（线上）
-
-线上优先使用 Docker 镜像内置工具链；若镜像启动失败或不使用容器，可启用本地保底：
-- `TOOLCHAIN_FALLBACK_LOCAL=true` 时，会尝试 `TOOLS_ROOT/<platform>` 下的工具（当前仅提供 `tools/darwin`）。
-- 若本地不存在工具，则使用系统 PATH 中的 `apktool/zipalign/apksigner/keytool/java`。
-- `PLUGIN_MODE=true` 默认启用 `STRICT_TOOLCHAIN`，若工具不可用会直接启动失败（避免生产进入 stub）。
-
-## 运行自检
-
-用于校验 apktool/zipalign/apksigner/keytool 以及 Redis 连接：
-
-```bash
-npm run self-check
-```
-
-## Redis 就绪探测
-
-```bash
-# Docker 方式（apk-rebuilder 的 compose）
-docker compose exec redis-apk-rebuilder redis-cli ping
-
-# 直接探测本机/远程 Redis
-redis-cli -h <host> -p <port> ping
-```
-
-## 快速启动脚本
-
-```bash
+export APK_REBUILDER_IMAGE=hkccr.ccs.tencentyun.com/plugins/apk-rebuilder:latest
 ./scripts/quick-start.sh
 ```
 
+脚本逻辑：
+
+- 优先尝试拉取 `APK_REBUILDER_IMAGE`
+- 拉取失败时自动回退到本地构建
+- 默认监听 `127.0.0.1:3007`
+
+### 方式二：本地 Node.js 开发
+
+要求：
+
+- Node.js 20+
+- Redis 可用
+- `apktool`、`zipalign`、`apksigner`、`keytool`、`java` 已安装，或放在 `tools/<platform>/` 下
+
+安装依赖：
+
+```bash
+npm install
+```
+
+启动开发环境：
+
+```bash
+npm run dev
+```
+
+这会同时启动：
+
+- `npm run dev:server`：后端热重载
+- `npm run dev:ui`：Vite 前端开发服务器
+
+默认访问地址：
+
+- 前端开发页：`http://127.0.0.1:5173`
+- 后端接口：`http://127.0.0.1:3007`
+
 说明：
-- 如果设置了 `APK_REBUILDER_IMAGE`，脚本会优先尝试拉预构建镜像。
-- 拉取失败或未设置时，自动回退本地构建。
 
-## 标准包内置保底目录
+- 开发模式下，后端不会直接提供 `index.html` 或 `embed.html`
+- 请始终通过 Vite 地址访问页面
 
-- 内置保底包目录：`builtin-packages/`
-- 默认内置包路径：`builtin-packages/standard.apk`
-- 当标准包配置为空、被禁用或找不到时，会自动尝试使用内置包保底。
-- 可通过环境变量 `BUILTIN_STANDARD_APK_PATH` 覆盖默认路径。
+## 常用命令
 
-## 项目结构
+```bash
+npm run dev           # 本地开发：后端热重载 + Vite
+npm run build         # 构建后端和前端
+npm run start         # 运行构建后的服务
+npm run start:prod    # 生产启动
+npm run type-check    # TS 类型检查
+npm run test:unit     # 内建单元测试
+npm run self-check    # 自检工具链 + Redis
+npm run bootstrap-tools
+```
 
-- `src/`: Express + TypeScript 后端源码
-  - `src/plugin/`: 插件相关路由、认证、辅助函数（这是插件的核心）
-  - `src/api/`: 可选的本地 UI/调试接口实现。
-    在本仓库中，这些路由被挂载到 `/api` 前缀下，因此前端可以直接访问 `/api/upload`, `/api/status/:taskId` 等。
-    如果将本项目作为后端插件嵌入宿主平台，可以忽略该前缀，路由自身在 `createApiRouter()` 内部定义为 `/upload`, `/status/:id` 等。
-  - `src/common/`: 公共工具函数（响应格式、任务处理等）
-  - `src/middleware/`: 中间件（例如 `requireAuth`）
-- `public/`: 静态前端页面（仅供本仓库内的调试界面使用）
-- `embed.html`: 插件 iframe 入口
-- `styles/theme.css`: 主题变量（含日/夜两套）
-- `styles/ui.base.css`: 通用 UI 样式
-- `styles/ui.embed.css`: 嵌入版局部样式
-- `modules/app.embed.js`: 嵌入端入口模块
-- `EMBED_STRUCTURE.md`: 嵌入端结构说明（脚本与样式拆分说明）
-- `Dockerfile`: 生产镜像构建
-- `docker-compose.yml`: 本地/部署启动
+## 运行模型
+
+服务包含两套入口：
+
+- `/plugin/*`：宿主平台集成入口
+- `/api/*`：独立服务 / 本地调试入口
+
+任务执行模型如下：
+
+1. 接收上传文件、artifact 或 APK 库条目
+2. 创建任务并写入本地任务存储
+3. 将任务投递到 BullMQ 队列
+4. Worker 执行反编译、补丁、重打包、签名
+5. 输出产物并登记 artifact
+6. 通过状态接口查询任务进度和结果
 
 ## 插件接口
 
-本仓库本身只是 **一个独立的后端插件实现**，并不包含宿主框架。 在一个平台中可能会有多个类似插件，`apk-rebuilder` 是其中之一，本项目演示了后端插件的最小结构。标准入口如下：
+插件接口主要面向宿主系统，默认由 Bearer Token 驱动，并通过宿主权限接口完成校验。
+
+### 核心接口
 
 - `GET /plugin/manifest`
 - `POST /plugin/execute`
@@ -111,139 +146,335 @@ redis-cli -h <host> -p <port> ping
 - `GET /plugin/standard-package`
 - `GET /plugin/admin/standard-package`
 - `PUT /plugin/admin/standard-package`
+- `POST /plugin/admin/upload-standard`
 - `GET /plugin/admin/apk-library`
 - `DELETE /plugin/admin/apk-library/:itemId`
+- `GET /plugin/admin/tools`
 - `GET /plugin/runs/:runId`
 - `GET /plugin/artifacts/:artifactId`
 
-说明：
-- `/plugin/*` 需要 `Authorization: Bearer <token>`，并通过 `HOST_API_BASE` 调用宿主 `/v1/plugin/check-permission` 校验权限（带缓存，默认 30s）。
-- `PLUGIN_TOKEN_SECRET` 若配置，会校验 HS256 插件 token；未配置时会降级为“宽松 principal”，但 **仍然要求 Bearer token 才能通过宿主权限校验**。
-- `/api/*` 仍保留用于旧页面和本地调试，**仅用于本仓库构建的独立前端界面**，而非宿主平台的插件接口。
-- 默认内置本地 artifact 存储兼容层；若宿主平台提供独立 artifact service，可继续替换实现而不改插件 API。
+### `POST /plugin/execute`
 
-### 与 user-management 对齐的反代约定
+这是主执行入口，支持三类输入来源：
 
-部署在独立域名时，建议采用与 `user-management` 相同的反代划分：
-- `/api/*`：反代到主后端（如 `https://api.d.xrteeth.com`），用于 `allowed-actions` / `verify-token` 等主系统接口
-- `/plugin/*`：反代到 apk-rebuilder 本地后端（如 `http://127.0.0.1:3007/plugin/`），用于执行改包任务
+- `source.artifactId`
+- `source.libraryItemId`
+- `options.useStandardPackage=true`
 
-注意：
-- 不要再将 `extraConfig.apiBase` 设为 `/api`，否则会把插件自身 `/plugin/*` 请求错误导向主后端。
-- 嵌入端当前默认 `hostApiBase=/api`（未显式配置时），可直接复用 user-management 的主后端代理路径。
+支持的改动字段：
 
-## 后端接口
+- `appName`
+- `packageName`
+- `versionName`
+- `versionCode`
+- `iconArtifactId`
+- `unityConfigPath`
+- `unityPatches`
+- `filePatches`
 
-- `GET /api/health`（包含 Redis 与工具链状态）
-- `GET /api/tools`（工具链探测）
+任务响应示例：
+
+```json
+{
+  "success": true,
+  "data": {
+    "runId": "task_xxx",
+    "status": "queued",
+    "cacheHit": false
+  }
+}
+```
+
+运行结果通过 `GET /plugin/runs/:runId` 查询；若有输出 APK，会返回 `artifactId` 列表。
+
+### 权限要求
+
+`/plugin/*` 接口会调用宿主权限校验，当前代码中使用的权限点包括：
+
+- `apk.rebuilder.run`
+- `apk.rebuilder.read`
+- `apk.rebuilder.admin`
+
+产物下载接口 `GET /plugin/artifacts/:artifactId` 支持：
+
+- `Authorization: Bearer <token>`
+- `?token=<token>`
+
+## 本地调试接口
+
+`/api/*` 用于本地调试、旧页面兼容和开发态验证，不建议作为宿主集成协议依赖。
+
+### 基础接口
+
+- `GET /api/health`
+- `GET /api/tools`
 - `POST /api/upload`
-- `GET /api/library/apks` (返回库项列表，若存在缓存会包含 `apkInfo.iconUrl`)
-- `GET /api/library/icon/:id` (获取库 APK 的图标，用于显示)
-- `POST /api/library/use`
-- `DELETE /api/library/apks/:id`
-- `POST /api/mod` (可选 API Key)
-- `GET /api/status/:taskId`（含 `logs`）
+- `GET /api/status/:taskId`
 - `GET /api/tasks`
-- `GET /api/logs/tasks` (可选 API Key)
-- `GET /api/logs/tasks/:taskId` (可选 API Key)
-- `GET /api/logs/tasks/:taskId/files` (可选 API Key)
-- `GET /api/logs/tasks/:taskId/file` (可选 API Key)
-- `GET /api/logs/ui` (可选 API Key)
+- `GET /api/download/:taskId`
+
+### APK 库
+
+- `GET /api/library/apks`
+- `GET /api/library/icon/:itemId`
+- `POST /api/library/use`
+- `DELETE /api/library/apks/:itemId`
+
+### 日志与工作目录
+
+以下接口默认需要鉴权：
+
+- `GET /api/logs/tasks`
+- `GET /api/logs/tasks/:taskId`
+- `GET /api/logs/tasks/:taskId/files`
+- `GET /api/logs/tasks/:taskId/file`
+- `GET /api/logs/ui`
+
+### 文件与配置编辑
+
 - `GET /api/icon/:taskId`
 - `GET /api/unity-config/:taskId`
 - `GET /api/edit-file/:taskId`
 - `GET /api/files/:taskId/tree`
 - `GET /api/files/:taskId/content`
-- `GET /api/download/:taskId` (可选 API Key) – 下载时文件名会使用 APK 中的 appName，若存在则附带版本号；如无则退回包名或任务 ID。
 
-> **注意**: 上述路径是指向运行在此仓库编译出的服务器且附带 `/api` 前缀的情况；如果你在其他宿主应用中挂载路由，可直接使用去掉 `api` 前缀的版本，例如 `/upload`、`/status/:id` 等。
+## 鉴权说明
 
-### 调试提示
+### `/plugin/*`
 
-为了方便在开发或 CI 环境中无工具链测试，该服务会在无法调用 apktool/apksigner 时自动启用 **stub 模式**：
+- 需要 Bearer Token
+- 服务端会调用 `HOST_API_BASE` 对应的宿主接口做权限验证
+- 如果配置了 `PLUGIN_TOKEN_SECRET`，会额外校验 HS256 插件 token
 
-- 上传任何文件都会跳过真实反编译，并生成一个包含 `<application/>` 的最小 `AndroidManifest.xml`。
-- 后续的修改/构建也会模拟完毕，日志中会出现 `Build tools unavailable, running stub mod flow` 和 `Stub mod workflow finished` 记录。
-- `downloadReady` 会变为 `true`，并可从 `/api/download/:taskId` 获取一个占位 APK。
+### `/api/*`
 
-此外，当前版本已将任务日志 (`task.logs`) 加入到 `/api/status` 和 `/api/tasks` 返回值中，前端页面会显示它们并据此调整进度条。这样即便没有安装外部工具，也能完整演练上传、修改、构建流程。
+部分本地调试接口支持 API Key 保护，支持三种传参方式：
 
-## 本地开发
-
-```bash
-npm install
-npm run dev
-```
-
-> `npm run dev` 会同时启动后端热重启（ts-node-dev）与前端 HMR（Vite）。你也可以分别执行：
->
-> - `npm run dev:server`
-> - `npm run dev:ui`
->
-> 访问前端时请打开 Vite 地址（默认 `http://127.0.0.1:5173`）。
-
-## 构建和运行
-
-```bash
-npm run build
-npm start
-```
-
-生产模式可使用：
-
-```bash
-npm run start:prod
-```
-
-## 鉴权
-
-设置 `API_KEY`（或 `AUTH_TOKEN`）后开启鉴权。
-
-需要鉴权的接口：
-- `POST /api/mod`
-- `GET /api/download/:taskId`
-- `GET /api/logs/*`
-
-可通过以下方式传 token：
 - `Authorization: Bearer <API_KEY>`
 - `x-api-key: <API_KEY>`
 - `?api_key=<API_KEY>`
 
-插件接口额外支持：
-- `PLUGIN_TOKEN_SECRET`：用于校验 `/plugin/*` 的 HS256 Bearer token
+相关环境变量：
+
+- `API_KEY`
+- `AUTH_TOKEN`
+- `AUTH_ENABLED`
 
 ## 环境变量
 
-- `PORT` 默认 `3007`
-- `HOST` 默认 `127.0.0.1`
-- `APK_REBUILDER_MODE` 默认 `prod`（`dev` 启动前端 HMR）
-- `APK_REBUILDER_UI_MODE` 默认 `full`（`embed` 仅提供 `embed.html` 与必需静态资源）
-- `PLUGIN_MODE` 默认 `false`（`true` 时要求 `HOST_API_BASE`，用于插件集成）
-- `STRICT_TOOLCHAIN` 默认 `false`（`PLUGIN_MODE=true` 时自动开启，缺工具链会直接启动失败）
-- `STRICT_REDIS` 默认 `false`（`PLUGIN_MODE=true` 时自动开启，Redis 未就绪会启动失败）
-- `REDIS_HOST` 默认 `127.0.0.1`
-- `REDIS_PORT` 默认 `6379`
-- `REDIS_PASSWORD` 默认空
-- `REDIS_CONNECT_TIMEOUT_MS` 默认 `8000`（启动等待 Redis 最长时间）
-- `REDIS_CONNECT_RETRY_DELAY_MS` 默认 `500`
-- `APKTOOL_PATH` 默认 `apktool`
-- `ZIPALIGN_PATH` 默认自动探测 Android build-tools 中的 `zipalign`
-- `APKSIGNER_PATH` 默认自动探测 Android build-tools 中的 `apksigner`
-- `KEYTOOL_PATH` 默认 `keytool`
-- `JAVA_PATH` 默认 `java`
-- `JAVA_HOME` 默认空
-- `TOOLS_ROOT` 默认 `./tools`（本地工具链目录根）
-- `TOOLCHAIN_FALLBACK_LOCAL` 默认 `true`（优先使用系统工具；不可用时尝试 `TOOLS_ROOT/<platform>`）
-- `DEBUG_KEY_ALIAS` 默认 `androiddebugkey`
-- `DEBUG_KEY_PASS` 默认 `android`
-- `API_KEY` 默认空
-- `PLUGIN_ID` 默认 `apk-rebuilder`
-- `PLUGIN_TOKEN_SECRET` 默认空
-- `HOST_API_BASE` 默认空（宿主权限校验地址，`PLUGIN_MODE=true` 时必填）
-- `HOST_AUTH_TIMEOUT_MS` 默认 `5000`
-- `HOST_PERMISSION_CACHE_TTL_MS` 默认 `30000`
-- `HOST_AUTH_DEBUG` 默认 `false`
-- `BUILTIN_STANDARD_APK_PATH` 默认 `./builtin-packages/standard.apk`
-- `BUILTIN_STANDARD_APK_NAME` 默认 `mrpp-apk-rebuilder.apk`
+以下变量是当前项目里最常用、最值得关心的一组。
 
-说明：在部分架构（如 arm64 容器）若 `zipalign` 不可执行，系统会自动降级为“跳过 zipalign 后签名”，保证流程可用。
+### 服务与运行模式
+
+- `PORT`：服务端口，默认 `3007`
+- `HOST`：监听地址，默认 `127.0.0.1`
+- `APK_REBUILDER_MODE`：运行模式，`dev` 或 `prod`
+- `APK_REBUILDER_UI_MODE`：`full` 或 `embed`
+- `PLUGIN_ID`：插件 ID，默认 `apk-rebuilder`
+
+说明：
+
+- 默认不是插件模式；宿主集成时请显式设置 `PLUGIN_MODE=true`
+- `PLUGIN_MODE=true` 时，建议同时设置 `APK_REBUILDER_UI_MODE=embed`
+
+### Redis
+
+- `REDIS_HOST`：默认 `127.0.0.1`
+- `REDIS_PORT`：默认 `6379`
+- `REDIS_PASSWORD`：默认空
+- `REDIS_CONNECT_TIMEOUT_MS`：默认 `8000`
+- `REDIS_CONNECT_RETRY_DELAY_MS`：默认 `500`
+- `STRICT_REDIS`：严格模式下，Redis 不可用会阻止启动
+
+### 工具链
+
+- `APKTOOL_PATH`
+- `ZIPALIGN_PATH`
+- `APKSIGNER_PATH`
+- `KEYTOOL_PATH`
+- `JAVA_PATH`
+- `JAVA_HOME`
+- `TOOLS_ROOT`：默认 `./tools`
+- `TOOLCHAIN_FALLBACK_LOCAL`：默认启用本地工具回退
+- `STRICT_TOOLCHAIN`：严格模式下缺失工具会阻止启动
+
+### 插件集成
+
+- `HOST_API_BASE`：宿主 API 根地址
+- `MAIN_API_URL`：会作为 `HOST_API_BASE` 的别名来源
+- `PLUGIN_TOKEN_SECRET`：插件 Bearer Token 的 HS256 密钥
+- `HOST_AUTH_ROLE_FALLBACK`：是否在宿主权限接口异常时回退到本地角色推断，默认关闭
+- `HOST_AUTH_TIMEOUT_MS`
+- `HOST_PERMISSION_CACHE_TTL_MS`
+- `HOST_AUTH_DEBUG`
+
+### 调试签名
+
+- `DEBUG_KEY_ALIAS`：默认 `androiddebugkey`
+- `DEBUG_KEY_PASS`：默认 `android`
+
+### 标准包
+
+- `BUILTIN_STANDARD_APK_PATH`：默认 `./builtin-packages/standard.apk`
+- `BUILTIN_STANDARD_APK_NAME`：默认 `mrpp-apk-rebuilder.apk`
+
+## 本地工具链
+
+如果你不走 Docker，可以使用 `tools/` 目录作为本地工具兜底。
+
+目录结构：
+
+```text
+tools/
+  darwin/
+    apktool/apktool.jar
+    build-tools/zipalign
+    build-tools/apksigner
+  linux/
+    apktool/apktool.jar
+    build-tools/zipalign
+    build-tools/apksigner
+```
+
+自动下载脚本：
+
+```bash
+npm run bootstrap-tools
+```
+
+如果自动下载失败，可以手动将二进制文件放入对应目录。
+
+## 自检与排障
+
+### 自检
+
+```bash
+npm run self-check
+```
+
+会检查：
+
+- `apktool`
+- `zipalign`
+- `apksigner`
+- `keytool`
+- Redis 连通性
+
+### Redis 检查
+
+```bash
+docker compose exec redis-apk-rebuilder redis-cli ping
+```
+
+或者：
+
+```bash
+redis-cli -h <host> -p <port> ping
+```
+
+### 健康检查
+
+```bash
+curl http://127.0.0.1:3007/api/health
+```
+
+### 常见问题
+
+#### 1. 页面打不开
+
+先区分运行模式：
+
+- 开发模式：访问 `http://127.0.0.1:5173`
+- 生产 / Docker：访问 `http://127.0.0.1:3007`
+
+#### 2. 服务启动即退出
+
+优先检查两件事：
+
+- Redis 是否可连接
+- 工具链是否可用
+
+严格模式下，这两类依赖缺失会直接阻止服务启动。
+
+#### 3. 构建成功但下载不到 APK
+
+检查：
+
+- `GET /plugin/runs/:runId` 是否已有 artifact
+- `data/artifacts` 是否生成产物
+- 对应下载请求是否带上 Bearer Token
+
+## Docker 与部署
+
+### 本地 Compose
+
+```bash
+docker compose up -d --build
+```
+
+默认行为：
+
+- 启动 `apk-rebuilder`
+- 启动 `redis:7-alpine`
+- 通过 volume 持久化 `data/`
+- 服务监听 `127.0.0.1:3007`
+
+### 使用预构建镜像
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prebuilt.yml up -d
+```
+
+或者：
+
+```bash
+export APK_REBUILDER_IMAGE=hkccr.ccs.tencentyun.com/plugins/apk-rebuilder:latest
+./scripts/quick-start.sh
+```
+
+### 服务器 Stack 部署
+
+```bash
+export APK_REBUILDER_IMAGE=hkccr.ccs.tencentyun.com/plugins/apk-rebuilder:latest
+docker compose -f docker-compose.stack.yml pull
+docker compose -f docker-compose.stack.yml up -d
+```
+
+更多 CI 与镜像部署说明见：
+
+- `README-quickstart.md`
+- `deploy/README-ci-deploy.md`
+- `docs/INTEGRATION.md`
+- `docs/STRUCTURE.md`
+
+## 数据目录说明
+
+运行时数据默认写入 `data/`：
+
+- `data/uploads/`：上传 APK
+- `data/mod-uploads/`：图标或补丁中转文件
+- `data/work/`：任务工作目录
+- `data/apk-library/`：APK 库原始文件
+- `data/apk-library-cache/`：已反编译缓存
+- `data/artifacts/`：最终产物
+- `data/tasks.json`：任务索引
+- `data/artifacts.json`：产物索引
+- `data/standard-package.json`：标准包配置
+
+## 开发建议
+
+- 宿主集成只依赖 `/plugin/*`，不要把 `/api/*` 当成正式协议
+- 本地联调优先使用 `npm run dev`
+- 部署优先使用 Docker，避免宿主机工具链差异
+- 如果需要稳定复用基础 APK，优先使用标准包和 APK 库，而不是每次重新上传
+
+## 相关文件
+
+- `src/plugin/manifest.json`：插件声明与输入输出 schema
+- `scripts/quick-start.sh`：优先拉预构建镜像的快速启动脚本
+- `scripts/self-check.js`：本地自检脚本
+- `tools/README.md`：本地工具链目录说明
+- `deploy/README-ci-deploy.md`：CI 与镜像发布说明
+- `plugins.json.example`：主系统注册示例
+- `docs/INTEGRATION.md`：宿主接入说明
+- `docs/STRUCTURE.md`：目录结构与模块职责说明

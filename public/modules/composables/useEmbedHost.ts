@@ -1,38 +1,45 @@
-import { applyThemeSettings } from '../theme.js';
+import { applyThemeSettings } from '../theme';
+import type { EmbedHostApi, EmbedHostPayload, EmbedHostState } from '../types';
 
-export function createEmbedHost() {
+type HostError = Error & { code?: string };
+
+export function useEmbedHost(): EmbedHostApi {
   const debug =
     new URLSearchParams(window.location.search).get('debug') === '1' ||
     localStorage.getItem('apk-rebuilder-debug') === '1';
-  const log = (...args) => {
+
+  const log = (...args: unknown[]) => {
     if (debug) console.info('[APK-REBUILDER]', ...args);
   };
-  const logAlways = (...args) => console.info('[APK-REBUILDER]', ...args);
-  const state = {
+  const logAlways = (...args: unknown[]) => console.info('[APK-REBUILDER]', ...args);
+
+  const state: EmbedHostState = {
     token: '',
     config: {},
     hostApiBase: '',
     roles: [],
+    lastInitError: '',
   };
+
   let parentOrigin = '*';
   let initResolved = false;
-  let initResolve;
-  const initReady = new Promise((resolve) => {
+  let initResolve: ((value: void | PromiseLike<void>) => void) | undefined;
+  const initReady = new Promise<void>((resolve) => {
     initResolve = resolve;
   });
 
-  function genId(prefix = 'msg') {
+  function genId(prefix = 'msg'): string {
     return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
   }
 
-  function postToParent(type, payload) {
+  function postToParent(type: string, payload?: unknown): void {
     if (!window.parent) return;
-    const message = { type, id: genId(type.toLowerCase()) };
+    const message: { type: string; id: string; payload?: unknown } = { type, id: genId(type.toLowerCase()) };
     if (payload !== undefined) message.payload = payload;
     window.parent.postMessage(message, parentOrigin || '*');
   }
 
-  function isInIframe() {
+  function isInIframe(): boolean {
     try {
       return window.self !== window.top;
     } catch {
@@ -40,53 +47,70 @@ export function createEmbedHost() {
     }
   }
 
-  function ensureInit(timeout = 2000) {
+  function createHostError(code: string, message = code): HostError {
+    const error = new Error(message) as HostError;
+    error.code = code;
+    return error;
+  }
+
+  function ensureInit(timeout = 2000): Promise<void> {
     if (initResolved) return Promise.resolve();
     return Promise.race([
       initReady,
-      new Promise((_, reject) =>
+      new Promise<void>((_, reject) =>
         setTimeout(() => {
-          logAlways('INIT wait timeout (blocked)');
-          reject(new Error('INIT_TIMEOUT'));
-        }, timeout)
+          state.lastInitError = 'INIT_TIMEOUT';
+          logAlways('INIT wait timeout (blocked)', {
+            timeout,
+            parentOrigin,
+            hostApiBase: state.hostApiBase || '',
+            hasToken: Boolean(state.token),
+          });
+          reject(createHostError('INIT_TIMEOUT', 'Host INIT timeout'));
+        }, timeout),
       ),
     ]);
   }
 
-  async function ensureHostEntry(timeout = 2000) {
+  async function ensureHostEntry(timeout = 2000): Promise<void> {
     if (!isInIframe()) {
-      throw new Error('REQUIRE_IFRAME_ENTRY');
+      throw createHostError('REQUIRE_IFRAME_ENTRY', 'Plugin must run inside host iframe');
     }
     await ensureInit(timeout);
     if (!state.token) {
-      throw new Error('MISSING_HOST_TOKEN');
+      state.lastInitError = 'MISSING_HOST_TOKEN';
+      logAlways('INIT completed without host token', {
+        parentOrigin,
+        hostApiBase: state.hostApiBase || '',
+        roles: state.roles,
+      });
+      throw createHostError('MISSING_HOST_TOKEN', 'Host token missing after INIT');
     }
+    state.lastInitError = '';
   }
 
-  function applyInit(payload = {}) {
+  function applyInit(payload: EmbedHostPayload = {}): void {
     if (payload.token) state.token = String(payload.token).trim();
     if (payload.config && typeof payload.config === 'object') {
       state.config = payload.config || {};
     }
     const cfg = state.config || {};
     const hostApiBase = cfg.hostApiBase || cfg.mainApiBase || cfg.host_api_base || payload.hostApiBase;
-    const rawRoles =
-      payload.roles ??
-      payload.role ??
-      payload.user?.roles ??
-      cfg.roles ??
-      cfg.role;
+    const rawRoles = payload.roles ?? payload.role ?? payload.user?.roles ?? cfg.roles ?? cfg.role;
+
     if (hostApiBase) state.hostApiBase = String(hostApiBase).trim();
     if (!state.hostApiBase) state.hostApiBase = '/api';
+
     if (rawRoles) {
       if (Array.isArray(rawRoles)) {
-        state.roles = rawRoles.map(r => String(r).trim()).filter(Boolean);
+        state.roles = rawRoles.map((role) => String(role).trim()).filter(Boolean);
       } else if (typeof rawRoles === 'string') {
-        state.roles = rawRoles.split(',').map(r => r.trim()).filter(Boolean);
+        state.roles = rawRoles.split(',').map((role) => role.trim()).filter(Boolean);
       } else {
         state.roles = [];
       }
     }
+
     logAlways('INIT received', {
       hostApiBase: state.hostApiBase,
       token: state.token ? `${state.token.slice(0, 6)}...` : '',
@@ -101,18 +125,18 @@ export function createEmbedHost() {
     }
   }
 
-  function sendPluginReady() {
+  function sendPluginReady(): void {
     logAlways('postMessage -> PLUGIN_READY', { origin: parentOrigin });
     postToParent('PLUGIN_READY');
   }
 
-  function buildUrl(path) {
+  function buildUrl(path: string): string {
     if (!path) return '';
     if (path.startsWith('http')) return path;
     return path.startsWith('/') ? path : `/${path}`;
   }
 
-  function buildHostUrl(path) {
+  function buildHostUrl(path: string): string {
     if (!path) return state.hostApiBase || '';
     if (path.startsWith('http')) return path;
     const base = state.hostApiBase || '';
@@ -120,9 +144,9 @@ export function createEmbedHost() {
     return `${base}${path.startsWith('/') ? path : `/${path}`}`;
   }
 
-  async function logResponse(label, res) {
+  async function logResponse(label: string, res: Response | null | undefined): Promise<void> {
     if (!res) return;
-    const info = {
+    const info: { status: number; ok: boolean; url: string; contentType?: string } = {
       status: res.status,
       ok: res.ok,
       url: res.url,
@@ -142,12 +166,12 @@ export function createEmbedHost() {
     }
   }
 
-  async function requestParentTokenRefresh(timeout = 3000) {
+  async function requestParentTokenRefresh(timeout = 3000): Promise<{ token: string } | null> {
     return await new Promise((resolve) => {
       let settled = false;
-      const onMessage = (event) => {
+      const onMessage = (event: MessageEvent) => {
         if (event.source !== window.parent) return;
-        const { type, payload } = event.data || {};
+        const { type, payload } = (event.data || {}) as { type?: string; payload?: { token?: string } };
         if (type === 'TOKEN_UPDATE' && payload?.token) {
           if (settled) return;
           settled = true;
@@ -159,25 +183,36 @@ export function createEmbedHost() {
           resolve({ token: payload.token });
         }
       };
+
       const timer = setTimeout(() => {
         if (settled) return;
         settled = true;
         window.removeEventListener('message', onMessage);
-        logAlways('TOKEN_REFRESH_REQUEST timeout');
+        logAlways('TOKEN_REFRESH_REQUEST timeout', {
+          timeout,
+          parentOrigin,
+          hostApiBase: state.hostApiBase || '',
+        });
         resolve(null);
       }, timeout);
+
       window.addEventListener('message', onMessage);
       logAlways('TOKEN_REFRESH_REQUEST -> parent');
       postToParent('TOKEN_REFRESH_REQUEST');
     });
   }
 
-  async function authFetch(path, options = {}) {
+  async function authFetch(path: string, options: RequestInit = {}): Promise<Response> {
     await ensureInit();
     const headers = new Headers(options.headers || {});
     if (state.token) headers.set('authorization', `Bearer ${state.token}`);
-    logAlways('authFetch', { path: String(path), token: !!state.token });
-    let res;
+    logAlways('authFetch', {
+      method: String(options.method || 'GET').toUpperCase(),
+      path: String(path),
+      token: !!state.token,
+    });
+
+    let res: Response;
     try {
       res = await fetch(buildUrl(path), { ...options, headers });
       await logResponse('authFetch', res);
@@ -192,6 +227,7 @@ export function createEmbedHost() {
       postToParent('TOKEN_EXPIRED');
       return res;
     }
+
     state.token = String(refreshed.token).trim();
     const retryHeaders = new Headers(options.headers || {});
     retryHeaders.set('authorization', `Bearer ${state.token}`);
@@ -205,12 +241,18 @@ export function createEmbedHost() {
     }
   }
 
-  async function hostFetch(path, options = {}) {
+  async function hostFetch(path: string, options: RequestInit = {}): Promise<Response> {
     await ensureInit();
     const headers = new Headers(options.headers || {});
     if (state.token) headers.set('authorization', `Bearer ${state.token}`);
-    logAlways('hostFetch', { path: String(path), token: !!state.token });
-    let res;
+    logAlways('hostFetch', {
+      method: String(options.method || 'GET').toUpperCase(),
+      path: String(path),
+      token: !!state.token,
+      hostApiBase: state.hostApiBase || '',
+    });
+
+    let res: Response;
     try {
       res = await fetch(buildHostUrl(path), { ...options, headers });
       await logResponse('hostFetch', res);
@@ -225,6 +267,7 @@ export function createEmbedHost() {
       postToParent('TOKEN_EXPIRED');
       return res;
     }
+
     state.token = String(refreshed.token).trim();
     const retryHeaders = new Headers(options.headers || {});
     retryHeaders.set('authorization', `Bearer ${state.token}`);
@@ -238,12 +281,16 @@ export function createEmbedHost() {
     }
   }
 
-  window.addEventListener('message', (e) => {
-    if (e.source !== window.parent) return;
-    const msg = e.data || {};
-    if (e.origin) parentOrigin = e.origin;
+  window.addEventListener('message', (event: MessageEvent) => {
+    if (event.source !== window.parent) return;
+    const msg = (event.data || {}) as {
+      type?: string;
+      payload?: EmbedHostPayload & { token?: string; lang?: string; language?: string; theme?: string };
+    };
+    if (event.origin) parentOrigin = event.origin;
+
     if (msg.type === 'INIT' && msg.payload) {
-      logAlways('postMessage <- INIT', { origin: e.origin });
+      logAlways('postMessage <- INIT', { origin: event.origin });
       applyInit(msg.payload);
     }
     if (msg.type === 'TOKEN_UPDATE' && msg.payload) {
@@ -267,15 +314,15 @@ export function createEmbedHost() {
     }
   });
 
-  // Align with host handshake: notify readiness immediately so host can send INIT.
   sendPluginReady();
 
   return {
     state,
     isInIframe,
+    ensureInit,
     ensureHostEntry,
-    applyInit,
     buildUrl,
+    buildHostUrl,
     authFetch,
     hostFetch,
   };

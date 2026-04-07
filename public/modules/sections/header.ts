@@ -1,19 +1,25 @@
-import { t } from '../i18n.js';
+import { t } from '../i18n';
 
-export function renderHeader(container, options = {}) {
+type HeaderOptions = {
+  title?: string;
+  subtitle?: string;
+  showSubtitle?: boolean;
+  showToolsCheck?: boolean;
+  version?: string;
+};
+
+export function renderHeader(container: HTMLElement, options: HeaderOptions = {}): void {
   const {
     title = t('app.title'),
     subtitle = t('header.subtitle.short'),
     showSubtitle = true,
     showToolsCheck = false,
     version = '',
-  } = options || {};
+  } = options;
 
   const toolsHtml = showToolsCheck ? '<div class="apk-header-tools" id="toolsCheckSlot"></div>' : '';
   const versionHtml = version ? `<div class="apk-header-version">${version}</div>` : '';
-  const rightHtml = (toolsHtml || versionHtml)
-    ? `<div class="apk-header-right">${toolsHtml}${versionHtml}</div>`
-    : '';
+  const rightHtml = toolsHtml || versionHtml ? `<div class="apk-header-right">${toolsHtml}${versionHtml}</div>` : '';
 
   container.insertAdjacentHTML(
     'beforeend',

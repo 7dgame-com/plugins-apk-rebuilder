@@ -94,13 +94,33 @@ export function requireScope(principal: PluginPrincipal, scope: string): void {
  * frontend token can still access plugin routes.
  */
 export function getLoosePrincipal(req: Request): PluginPrincipal {
+  const token = extractBearerToken(req);
   try {
-    return getPluginPrincipal(req);
+    const payload = verifyHs256(token);
+    const pluginId = String(payload['pluginId'] || '').trim();
+    const exp = typeof payload['exp'] === 'number' ? payload['exp'] : null;
+
+    if (!pluginId) {
+      throw new Error('Missing pluginId in token');
+    }
+    if (exp !== null && exp * 1000 <= Date.now()) {
+      throw new Error('Token expired');
+    }
+    if (pluginId !== PLUGIN_ID) {
+      throw new Error('Token pluginId does not match');
+    }
+
+    return {
+      userId: typeof payload['sub'] === 'string' && payload['sub'].trim() ? payload['sub'].trim() : null,
+      pluginId,
+      scopes: normalizeScopes(payload['scopes']),
+      exp,
+    };
   } catch {
     return {
       userId: null,
       pluginId: PLUGIN_ID,
-      scopes: ['apk.rebuilder.run', 'apk.rebuilder.read', 'apk.rebuilder.admin'],
+      scopes: [],
       exp: null,
     };
   }

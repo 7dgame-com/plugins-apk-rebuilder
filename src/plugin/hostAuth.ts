@@ -1,5 +1,12 @@
 import { Request } from 'express';
-import { HOST_API_BASE, HOST_PERMISSION_CACHE_TTL_MS, PLUGIN_ID, HOST_AUTH_DEBUG, HOST_AUTH_TIMEOUT_MS } from '../config';
+import {
+  HOST_API_BASE,
+  HOST_PERMISSION_CACHE_TTL_MS,
+  HOST_AUTH_ROLE_FALLBACK,
+  PLUGIN_ID,
+  HOST_AUTH_DEBUG,
+  HOST_AUTH_TIMEOUT_MS,
+} from '../config';
 
 type CacheEntry = {
   expiresAt: number;
@@ -138,6 +145,10 @@ async function fetchRoles(token: string): Promise<string[]> {
 }
 
 async function fallbackByRoles(token: string, action: string): Promise<boolean> {
+  if (!HOST_AUTH_ROLE_FALLBACK) {
+    console.info(`[HOST_AUTH] role fallback disabled action=${action}`);
+    return false;
+  }
   try {
     const roles = await fetchRoles(token);
     const allowed = isRoleAllowed(roles, action);
@@ -180,33 +191,26 @@ export async function checkHostPermission(req: Request, action: string): Promise
     });
   } catch (error) {
     console.info('[HOST_AUTH] network error', error);
-    const fallbackAllowed = await fallbackByRoles(token, action);
-    permissionCache.set(key, {
-      allowed: fallbackAllowed,
-      expiresAt: Date.now() + Math.max(1000, HOST_PERMISSION_CACHE_TTL_MS),
-    });
-    return fallbackAllowed;
+    throw new Error('Host auth unavailable');
   } finally {
     clearTimeout(timer);
   }
 
   if (response.status === 401) {
     await logResponse('unauthorized', response, startedAt);
-    const fallbackAllowed = await fallbackByRoles(token, action);
-    permissionCache.set(key, {
-      allowed: fallbackAllowed,
-      expiresAt: Date.now() + Math.max(1000, HOST_PERMISSION_CACHE_TTL_MS),
-    });
-    return fallbackAllowed;
+    throw new Error('Host auth unauthorized');
   }
   if (!response.ok) {
     await logResponse('error', response, startedAt);
-    const fallbackAllowed = await fallbackByRoles(token, action);
-    permissionCache.set(key, {
-      allowed: fallbackAllowed,
-      expiresAt: Date.now() + Math.max(1000, HOST_PERMISSION_CACHE_TTL_MS),
-    });
-    return fallbackAllowed;
+    if (HOST_AUTH_ROLE_FALLBACK) {
+      const fallbackAllowed = await fallbackByRoles(token, action);
+      permissionCache.set(key, {
+        allowed: fallbackAllowed,
+        expiresAt: Date.now() + Math.max(1000, HOST_PERMISSION_CACHE_TTL_MS),
+      });
+      return fallbackAllowed;
+    }
+    throw new Error('Host auth unavailable');
   }
 
   await logResponse('success', response, startedAt);

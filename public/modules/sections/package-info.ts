@@ -1,6 +1,21 @@
-import { t } from '../i18n.js';
+import { t } from '../i18n';
 
-export function renderPackageInfoSection(container, options = {}) {
+type PackageInfoField = 'appName' | 'packageName' | 'versionName' | 'versionCode';
+
+type PackageInfoOptions = {
+  showOriginal?: boolean;
+  fields?: PackageInfoField[];
+  showIcon?: boolean;
+  showChangeCount?: boolean;
+  title?: string;
+};
+
+type PackageInfoDeps = {
+  onInputChange: EventListener;
+  onPickIcon: (file: File) => void;
+};
+
+export function renderPackageInfoSection(container: HTMLElement, options: PackageInfoOptions = {}): void {
   const {
     showOriginal = true,
     fields = ['appName', 'packageName', 'versionName', 'versionCode'],
@@ -9,14 +24,14 @@ export function renderPackageInfoSection(container, options = {}) {
     title = t('pkg.title'),
   } = options;
 
-  const fieldLabelMap = {
+  const fieldLabelMap: Record<PackageInfoField, string> = {
     appName: t('pkg.appName'),
     packageName: t('pkg.packageName'),
     versionName: t('pkg.versionName'),
     versionCode: t('pkg.versionCode'),
   };
 
-  const renderField = (field) => {
+  const renderField = (field: PackageInfoField): string => {
     const label = fieldLabelMap[field] || field;
     return `<div class="field"><label>${label}</label><input id="${field}" type="text" /></div>`;
   };
@@ -84,16 +99,16 @@ export function renderPackageInfoSection(container, options = {}) {
   );
 }
 
-export function bindPackageInfoSection({ onInputChange, onPickIcon }) {
+export function bindPackageInfoSection({ onInputChange, onPickIcon }: PackageInfoDeps): void {
   ['appName', 'packageName', 'versionName', 'versionCode'].forEach((id) => {
-    const el = document.getElementById(id);
+    const el = document.getElementById(id) as HTMLInputElement | null;
     if (!el) return;
     el.addEventListener('input', onInputChange);
     el.addEventListener('change', onInputChange);
   });
 
-  const pickBtn = document.getElementById('pickIconBtn');
-  const iconFile = document.getElementById('iconFile');
+  const pickBtn = document.getElementById('pickIconBtn') as HTMLButtonElement | null;
+  const iconFile = document.getElementById('iconFile') as HTMLInputElement | null;
   if (pickBtn && iconFile) {
     pickBtn.addEventListener('click', () => iconFile.click());
     iconFile.addEventListener('change', () => {

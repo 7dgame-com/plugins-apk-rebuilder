@@ -1,58 +1,46 @@
-/**
- * APK Rebuilder - Iframe Message Bridge (Standard Protocol)
- * 
- * Implements the standard handshake and communication protocol for platform plugins.
- */
+import { state, RUNTIME_MODE } from './state';
+import { applyThemeSettings } from './theme';
+import { useAuthToken } from './composables/useAuthToken';
 
-import { state, setAuthToken } from './state.js';
-import { applyThemeSettings } from './theme.js';
+type BridgeMessage = {
+  type: string;
+  id: string;
+  payload?: any;
+  requestId?: string;
+};
 
-let lastRequestId = null;
-const handlers = new Map();
+let lastRequestId: string | null = null;
+const handlers = new Map<string, (payload: any, msg: BridgeMessage) => void>();
+const authToken = useAuthToken();
 
-/**
- * Generate a unique message ID
- */
-function genId() {
+function genId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-/**
- * Send a message to the host framework
- */
-export function postToHost(type, payload) {
-  const msg = { type, id: genId() };
+export function postToHost(type: string, payload?: any): void {
+  const msg: BridgeMessage = { type, id: genId() };
   if (payload !== undefined) msg.payload = payload;
   if (window.parent !== window) {
     window.parent.postMessage(msg, '*');
   }
 }
 
-/**
- * Send a response message to a specific request
- */
-export function postResponseToHost(payload, requestId) {
-  const msg = { type: 'RESPONSE', id: genId(), payload };
+export function postResponseToHost(payload: any, requestId?: string | null): void {
+  const msg: BridgeMessage = { type: 'RESPONSE', id: genId(), payload };
   const rid = requestId || lastRequestId;
   if (rid) msg.requestId = rid;
   window.parent.postMessage(msg, '*');
 }
 
-/**
- * Register a custom message handler
- */
-export function onHostMessage(type, handler) {
+export function onHostMessage(type: string, handler: (payload: any, msg: BridgeMessage) => void): void {
   handlers.set(type, handler);
 }
 
-/**
- * Core message router
- */
-function handleMessage(event) {
+function handleMessage(event: MessageEvent): void {
   try {
     if (event.source !== window.parent) return;
 
-    const msg = event.data;
+    const msg = event.data as BridgeMessage;
     if (!msg || typeof msg.type !== 'string') return;
 
     console.log(`[Bridge] Received message type="${msg.type}"`, msg.payload);
@@ -61,94 +49,88 @@ function handleMessage(event) {
       lastRequestId = msg.id;
     }
 
-    // Standard Protocol Handlers
     switch (msg.type) {
       case 'INIT':
         if (msg.payload?.token) {
-          setAuthToken(msg.payload.token);
+          authToken.setAuthToken(msg.payload.token);
         }
         if (msg.payload?.config) {
           applyThemeSettings({
             theme: msg.payload.config.theme,
             lang: msg.payload.config.language || msg.payload.config.lang,
             themeVars: msg.payload.config.themeVars,
-            isDark: msg.payload.config.isDark
+            isDark: msg.payload.config.isDark,
           });
         }
         state.isReady = true;
         break;
-
       case 'TOKEN_UPDATE':
         if (msg.payload?.token) {
-          setAuthToken(msg.payload.token);
+          authToken.setAuthToken(msg.payload.token);
         }
         break;
-
       case 'THEME_CHANGE':
         if (msg.payload?.theme) {
           applyThemeSettings({ theme: msg.payload.theme });
         }
         break;
-        
       case 'LANG_CHANGE':
         if (msg.payload?.lang || msg.payload?.language) {
           applyThemeSettings({ lang: msg.payload.lang || msg.payload.language });
         }
         break;
-
       case 'DESTROY':
-        setAuthToken(null);
+        authToken.setAuthToken(null);
         state.isReady = false;
         break;
     }
 
-    // Custom handlers
     const handler = handlers.get(msg.type);
     if (handler) {
       handler(msg.payload, msg);
     }
-  } catch (e) {
-    console.error('[Bridge] Error handling message:', e);
+  } catch (error) {
+    console.error('[Bridge] Error handling message:', error);
   }
 }
 
-/**
- * Initialize the bridge and perform the PLUGIN_READY handshake
- */
-export function initBridge() {
+export function initBridge(): void {
+  if (state.runtimeMode === RUNTIME_MODE.EMBED) {
+    console.warn('[Bridge] initBridge skipped in embed mode; use embed/host.js instead.');
+    return;
+  }
   window.addEventListener('message', handleMessage);
-  
-  // Initial sync from URL parameters for immediate feedback
+
   const params = new URLSearchParams(window.location.search);
   const initialToken = params.get('token') || params.get('access_token');
-  if (initialToken) setAuthToken(initialToken);
-  
+  if (initialToken) authToken.setAuthToken(initialToken);
+
   applyThemeSettings({
-    theme: params.get('theme'),
-    lang: params.get('lang') || params.get('language')
+    theme: params.get('theme') || undefined,
+    lang: params.get('lang') || params.get('language') || undefined,
   });
 
-  // Handshake
   postToHost('PLUGIN_READY');
   console.log('[Bridge] Handshake sent: PLUGIN_READY');
 }
 
-/**
- * Request a token refresh from the host
- */
-export function requestHostTokenRefresh(timeout = 3000) {
+export function requestHostTokenRefresh(timeout = 3000): Promise<string | null> {
+  if (state.runtimeMode === RUNTIME_MODE.EMBED) {
+    console.warn('[Bridge] requestHostTokenRefresh called in embed mode; use embed host refresh instead.');
+    return Promise.resolve(null);
+  }
   return new Promise((resolve) => {
     let settled = false;
 
-    const onUpdate = (event) => {
+    const onUpdate = (event: MessageEvent) => {
       if (event.source !== window.parent) return;
-      const { type, payload } = event.data || {};
+      const { type, payload } = (event.data || {}) as { type?: string; payload?: { token?: string } };
       if (type === 'TOKEN_UPDATE' && payload?.token) {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
         window.removeEventListener('message', onUpdate);
-        setAuthToken(payload.token);
+        authToken.setAuthToken(payload.token);
         resolve(payload.token);
       }
     };

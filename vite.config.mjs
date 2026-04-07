@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import path from 'path';
 
 const backendPort = Number.parseInt(process.env.PORT || '3007', 10);
 
@@ -19,6 +20,15 @@ export default defineConfig({
   base: './',
   define: {
     __APP_VERSION__: JSON.stringify(buildVersion()),
+  },
+  build: {
+    rollupOptions: {
+      input: {
+        index: path.resolve(__dirname, 'public/index.html'),
+        embed: path.resolve(__dirname, 'public/embed.html'),
+        logs: path.resolve(__dirname, 'public/logs.html'),
+      },
+    },
   },
   server: {
     port: 5173,

@@ -52,6 +52,20 @@ function applyCors(req: Request, res: Response): void {
   res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
 }
 
+function detectAuthSource(req: Request): 'authorization' | 'query-token' | 'none' {
+  if (req.header('authorization')) return 'authorization';
+  if (req.query?.token) return 'query-token';
+  return 'none';
+}
+
+function principalPreview(principal: { userId: string | null; pluginId: string; scopes: string[] }) {
+  return {
+    userId: principal.userId,
+    pluginId: principal.pluginId,
+    scopes: principal.scopes,
+  };
+}
+
 export function createPluginRouter(): Router {
   const router = Router();
 
@@ -81,6 +95,20 @@ export function createPluginRouter(): Router {
         fail(res, 400, 'source.artifactId and source.libraryItemId are mutually exclusive', 'BAD_REQUEST');
         return;
       }
+
+      console.info('[APK-REBUILDER] /plugin/execute accepted', {
+        principal: principalPreview(principal),
+        authSource: detectAuthSource(req),
+        source: {
+          artifactId: artifactId || null,
+          libraryItemId: libraryItemId || null,
+          useStandardPackage,
+        },
+        options: {
+          async: options.async !== false,
+          reuseDecodedCache: options.reuseDecodedCache !== false,
+        },
+      });
 
       validateModifications(modifications);
 
@@ -132,7 +160,14 @@ export function createPluginRouter(): Router {
       void modQueue.add('apk-mod', { type: 'plugin-run', taskId: task.id, payload });
 
       ok(res, { runId: task.id, status: task.status, cacheHit });
+      console.info('[APK-REBUILDER] /plugin/execute queued', {
+        runId: task.id,
+        status: task.status,
+        cacheHit,
+        principal: principalPreview(principal),
+      });
     } catch (error) {
+      console.error('[APK-REBUILDER] /plugin/execute failed', error);
       const mapped = mapPluginError(error);
       fail(res, mapped.status, mapped.message, mapped.code);
     }
@@ -325,7 +360,14 @@ export function createPluginRouter(): Router {
       const principal = getLoosePrincipal(req);
       await requireHostPermission(req, 'apk.rebuilder.read');
 
-      const task = getTask(String(req.params['runId']));
+      const runId = String(req.params['runId']);
+      console.info('[APK-REBUILDER] /plugin/runs/:runId', {
+        runId,
+        principal: principalPreview(principal),
+        authSource: detectAuthSource(req),
+      });
+
+      const task = getTask(runId);
       if (!task) {
         fail(res, 404, 'Task not found', 'TASK_NOT_FOUND');
         return;
@@ -351,7 +393,13 @@ export function createPluginRouter(): Router {
             }
           : null,
       });
+      console.info('[APK-REBUILDER] /plugin/runs/:runId result', {
+        runId: updatedTask.id,
+        status: updatedTask.status,
+        outputArtifactId: updatedTask.outputArtifactId || null,
+      });
     } catch (error) {
+      console.error('[APK-REBUILDER] /plugin/runs/:runId failed', error);
       const mapped = mapPluginError(error);
       fail(res, mapped.status, mapped.message, mapped.code);
     }
@@ -359,6 +407,7 @@ export function createPluginRouter(): Router {
 
   router.get('/artifacts/:artifactId', async (req: Request, res: Response) => {
     applyCors(req, res);
+    const authSourceBeforeRewrite = detectAuthSource(req);
     if (!req.header('authorization') && req.query?.token) {
       const token = String(req.query.token || '').trim();
       if (token) {
@@ -366,6 +415,9 @@ export function createPluginRouter(): Router {
           ...req.headers,
           authorization: `Bearer ${token}`,
         };
+        console.info('[APK-REBUILDER] /plugin/artifacts/:artifactId token injected from query', {
+          artifactId: String(req.params['artifactId']),
+        });
       }
     }
     try {
@@ -374,14 +426,27 @@ export function createPluginRouter(): Router {
       const artifactId = String(req.params['artifactId']);
       const localPath = fetchArtifactToLocal(artifactId);
       const artifact = getArtifact(artifactId);
-
       const shouldInline = String(req.query['raw'] || '').toLowerCase() === 'true';
+
+      console.info('[APK-REBUILDER] /plugin/artifacts/:artifactId authorized', {
+        artifactId,
+        principal: principalPreview(principal),
+        authSource: authSourceBeforeRewrite === 'none' ? detectAuthSource(req) : authSourceBeforeRewrite,
+        shouldInline,
+        download: String(req.query['download'] || '') === '1',
+        artifactName: artifact?.name || path.basename(localPath),
+      });
+
       if (shouldInline) {
         res.setHeader('Content-Type', artifact?.mimeType || 'application/octet-stream');
         res.setHeader('Content-Disposition', `inline; filename="${artifact?.name || path.basename(localPath)}"`);
         res.sendFile(localPath, (sendError) => {
           if (sendError) {
             console.error('[APK-REBUILDER] artifact inline stream failed', sendError);
+          } else {
+            console.info('[APK-REBUILDER] artifact inline stream complete', {
+              artifactId,
+            });
           }
         });
         return;
@@ -395,9 +460,18 @@ export function createPluginRouter(): Router {
           } else {
             console.error('[APK-REBUILDER] artifact download streaming failed', downloadError);
           }
+        } else {
+          console.info('[APK-REBUILDER] artifact download complete', {
+            artifactId,
+            artifactName: artifact?.name || path.basename(localPath),
+          });
         }
       });
     } catch (error) {
+      console.error('[APK-REBUILDER] /plugin/artifacts/:artifactId failed', {
+        artifactId: String(req.params['artifactId']),
+        error,
+      });
       const mapped = mapPluginError(error);
       fail(res, mapped.status, mapped.message, mapped.code);
     }

@@ -1,13 +1,13 @@
-import { t } from '../i18n.js';
+import { t } from '../i18n';
 
-let modalEl;
-let modalTitle;
-let modalBody;
-let okBtn;
-let cancelBtn;
-let currentResolve;
+let modalEl: HTMLDivElement | null;
+let modalTitle: HTMLElement | null;
+let modalBody: HTMLElement | null;
+let okBtn: HTMLButtonElement | null;
+let cancelBtn: HTMLButtonElement | null;
+let currentResolve: ((value: boolean) => void) | null;
 
-function ensureModal() {
+function ensureModal(): void {
   if (modalEl) return;
   const mask = document.createElement('div');
   mask.className = 'modal-mask';
@@ -30,35 +30,43 @@ function ensureModal() {
   modalBody = mask.querySelector('#apkModalBody');
   okBtn = mask.querySelector('#apkModalOk');
   cancelBtn = mask.querySelector('#apkModalCancel');
-  const closeBtn = mask.querySelector('#apkModalClose');
-  const close = (value) => {
+  const closeBtn = mask.querySelector('#apkModalClose') as HTMLButtonElement | null;
+  const close = (value: boolean) => {
     mask.classList.remove('open');
     if (currentResolve) {
       currentResolve(value);
       currentResolve = null;
     }
   };
-  okBtn.addEventListener('click', () => close(true));
-  cancelBtn.addEventListener('click', () => close(false));
-  closeBtn.addEventListener('click', () => close(false));
+  okBtn?.addEventListener('click', () => close(true));
+  cancelBtn?.addEventListener('click', () => close(false));
+  closeBtn?.addEventListener('click', () => close(false));
 }
 
-function openModal({ title, message, confirm = false }) {
+function openModal({
+  title,
+  message,
+  confirm = false,
+}: {
+  title?: string;
+  message?: string;
+  confirm?: boolean;
+}): Promise<boolean> {
   ensureModal();
-  modalTitle.textContent = title || t('notify.title');
-  modalBody.textContent = message || '';
-  cancelBtn.style.display = confirm ? 'inline-flex' : 'none';
-  okBtn.textContent = confirm ? t('notify.ok') : t('notify.gotIt');
-  modalEl.classList.add('open');
+  if (modalTitle) modalTitle.textContent = title || t('notify.title');
+  if (modalBody) modalBody.textContent = message || '';
+  if (cancelBtn) cancelBtn.style.display = confirm ? 'inline-flex' : 'none';
+  if (okBtn) okBtn.textContent = confirm ? t('notify.ok') : t('notify.gotIt');
+  modalEl?.classList.add('open');
   return new Promise((resolve) => {
     currentResolve = resolve;
   });
 }
 
-export function showAlert(message, title = t('notify.title')) {
+export function showAlert(message: string, title = t('notify.title')): Promise<boolean> {
   return openModal({ title, message, confirm: false });
 }
 
-export function showConfirm(message, title = t('notify.confirmTitle')) {
+export function showConfirm(message: string, title = t('notify.confirmTitle')): Promise<boolean> {
   return openModal({ title, message, confirm: true });
 }

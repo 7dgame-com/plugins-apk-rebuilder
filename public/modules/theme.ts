@@ -1,19 +1,27 @@
-import { setLanguage } from './i18n.js';
+import { setLanguage } from './i18n';
 
 const DARK_THEMES = new Set(['deep-space', 'cyber-tech']);
 
-function applyLanguage(lang) {
+type ThemePayload = {
+  language?: string;
+  lang?: string;
+  theme?: string;
+  isDark?: boolean;
+  themeVars?: Record<string, string>;
+};
+
+function applyLanguage(lang: string): void {
   if (!lang) return;
   document.documentElement.setAttribute('lang', lang);
   setLanguage(lang);
 }
 
-function applyThemeMeta({ theme, isDark } = {}) {
+function applyThemeMeta({ theme, isDark }: { theme?: string; isDark?: boolean } = {}): void {
   if (theme) {
     document.documentElement.setAttribute('data-theme', theme);
     document.body?.setAttribute('data-theme', theme);
   }
-  const dark = typeof isDark === 'boolean' ? isDark : (theme ? DARK_THEMES.has(theme) : null);
+  const dark = typeof isDark === 'boolean' ? isDark : theme ? DARK_THEMES.has(theme) : null;
   if (dark !== null) {
     document.body?.setAttribute('data-mode', dark ? 'dark' : 'light');
     if (dark) {
@@ -24,7 +32,7 @@ function applyThemeMeta({ theme, isDark } = {}) {
   }
 }
 
-function applyThemeVars(vars) {
+function applyThemeVars(vars: Record<string, string>): void {
   if (!vars || typeof vars !== 'object') return;
   const root = document.documentElement;
   Object.entries(vars).forEach(([key, value]) => {
@@ -33,12 +41,10 @@ function applyThemeVars(vars) {
   });
 }
 
-/**
- * Reactive Theme & Language Applicator
- */
-export function applyThemeSettings(payload = {}) {
-  if (payload.language || payload.lang) {
-    applyLanguage(payload.language || payload.lang);
+export function applyThemeSettings(payload: ThemePayload = {}): void {
+  const nextLang = payload.language || payload.lang;
+  if (nextLang) {
+    applyLanguage(nextLang);
   }
   if (payload.theme || typeof payload.isDark === 'boolean') {
     applyThemeMeta({ theme: payload.theme, isDark: payload.isDark });
@@ -48,14 +54,10 @@ export function applyThemeSettings(payload = {}) {
   }
 }
 
-/**
- * Initial sync from URL parameters
- */
-export function initThemeSync() {
+export function initThemeSync(): void {
   const params = new URLSearchParams(window.location.search);
   applyThemeSettings({
-    lang: params.get('lang') || params.get('language'),
-    theme: params.get('theme'),
+    lang: params.get('lang') || params.get('language') || undefined,
+    theme: params.get('theme') || undefined,
   });
-  // Note: Reactive updates are now handled by bridge.js which calls applyThemeSettings
 }

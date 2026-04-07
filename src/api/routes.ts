@@ -15,7 +15,7 @@ import { getRedisStatus } from '../taskQueue';
 import { readUnityConfig, parseUnityPatchesInput } from '../unityConfigService';
 import { ApkInfo, ApkLibraryItem, ModPayload } from '../types';
 import { normalizeRelPath, toSafeFileStem } from '../validators';
-import { FRONTEND_PUBLIC_DIR, MOD_UPLOAD_DIR, UPLOAD_DIR } from '../config';
+import { FRONTEND_DIST_READY, FRONTEND_PUBLIC_DIR, MOD_UPLOAD_DIR, UPLOAD_DIR } from '../config';
 import { requireAuth } from '../middleware/auth';
 import { ok, fail } from '../common/response';
 
@@ -599,6 +599,10 @@ export function createApiRouter(): Router {
   router.get('*', (req, res) => {
     if (req.path.startsWith('/api')) {
       fail(res, 404, `Route not found: GET ${req.path}`, 'NOT_FOUND');
+      return;
+    }
+    if (!FRONTEND_DIST_READY) {
+      fail(res, 503, 'Frontend assets are not built. Run `npm run build` before serving the bundled UI.', 'UI_BUILD_MISSING');
       return;
     }
     if (!fs.existsSync(FRONTEND_PUBLIC_DIR)) {
