@@ -2,27 +2,55 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches:
+      - main
+      - develop
+      - 'feature/**'
   pull_request:
-    branches: [main, develop]
+  workflow_dispatch:
 
 jobs:
-  build:
-    name: Build
+  validate:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: package-lock.json
-      - run: npm ci
-        working-directory: .
-      - run: npm run build
-        working-directory: .
-      - uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
-          retention-days: 7
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Build
+        run: npm run build
+
+      - name: Self-check
+        env:
+          CI: "true"
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
+        run: npm test
+
+      - name: Docker build validation
+        run: docker build --progress=plain --build-arg DEBIAN_MIRROR= -t apk-rebuilder:ci .

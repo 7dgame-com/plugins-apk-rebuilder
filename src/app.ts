@@ -3,7 +3,15 @@ import path from 'path';
 import express from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
-import { APK_REBUILDER_MODE, APK_REBUILDER_UI_MODE, HOST, PORT, FRONTEND_PUBLIC_DIR, ensureRuntimeDirs } from './config';
+import {
+  APK_REBUILDER_MODE,
+  APK_REBUILDER_UI_MODE,
+  HOST,
+  PORT,
+  FRONTEND_DIST_READY,
+  FRONTEND_PUBLIC_DIR,
+  ensureRuntimeDirs,
+} from './config';
 import { createPluginRouter } from './plugin/routes';
 import { createApiRouter } from './api/routes';
 import { ok, fail } from './common/response';
@@ -69,10 +77,22 @@ app.use((err: unknown, req: express.Request, res: express.Response, _next: expre
   );
 });
 
+function failUiBuildMissing(res: express.Response): void {
+  fail(res, 503, 'Frontend assets are not built. Run `npm run build` before serving the bundled UI.', 'UI_BUILD_MISSING');
+}
+
 // static fallback used by local frontend
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api')) {
     fail(res, 404, `Route not found: GET ${req.path}`, 'NOT_FOUND');
+    return;
+  }
+  if (!FRONTEND_DIST_READY) {
+    if (APK_REBUILDER_MODE === 'dev') {
+      fail(res, 404, 'Dev mode enabled. Please use the Vite dev server for UI.', 'DEV_MODE_UI');
+      return;
+    }
+    failUiBuildMissing(res);
     return;
   }
   const requested = req.path === '/' ? 'embed.html' : req.path.replace(/^\/+/, '');
@@ -92,7 +112,7 @@ app.get('*', (req, res) => {
   
   if (APK_REBUILDER_UI_MODE === 'embed') {
     const normalized = requested.replace(/^\/+/, '');
-    const allowPrefixes = ['styles/', 'modules/'];
+    const allowPrefixes = ['styles/', 'modules/', 'assets/'];
     const allowRootFiles = new Set([
       'embed.html',
       'index.html',

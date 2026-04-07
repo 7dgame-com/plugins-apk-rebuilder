@@ -1,6 +1,11 @@
-import { t } from '../i18n.js';
+import { t } from '../i18n';
 
-export function renderUploadSection(container) {
+type UploadSectionDeps = {
+  onUpload: (file: File) => void;
+  onStageChange?: () => void;
+};
+
+export function renderUploadSection(container: HTMLElement): void {
   container.insertAdjacentHTML(
     'beforeend',
     `
@@ -19,9 +24,9 @@ export function renderUploadSection(container) {
   );
 }
 
-export function bindUploadSection({ onUpload, onStageChange }) {
-  const dropzone = document.getElementById('dropzone');
-  const apkFile = document.getElementById('apkFile');
+export function bindUploadSection({ onUpload, onStageChange }: UploadSectionDeps): void {
+  const dropzone = document.getElementById('dropzone') as HTMLElement | null;
+  const apkFile = document.getElementById('apkFile') as HTMLInputElement | null;
 
   if (!dropzone || !apkFile) return;
 
@@ -31,36 +36,36 @@ export function bindUploadSection({ onUpload, onStageChange }) {
     if (file) onUpload(file);
   });
 
-  ['dragenter', 'dragover'].forEach((evt) => {
-    dropzone.addEventListener(evt, (e) => {
-      e.preventDefault();
-      e.stopPropagation();
+  ['dragenter', 'dragover'].forEach((eventName) => {
+    dropzone.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      event.stopPropagation();
       dropzone.classList.add('dragover');
     });
   });
 
-  ['dragleave', 'dragend'].forEach((evt) => {
-    dropzone.addEventListener(evt, (e) => {
-      e.preventDefault();
-      e.stopPropagation();
+  ['dragleave', 'dragend'].forEach((eventName) => {
+    dropzone.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      event.stopPropagation();
       dropzone.classList.remove('dragover');
     });
   });
 
-  dropzone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  dropzone.addEventListener('drop', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
     dropzone.classList.remove('dragover');
-    const file = e.dataTransfer?.files?.[0];
+    const file = event.dataTransfer?.files?.[0];
     if (file) onUpload(file);
   });
 
   if (onStageChange) onStageChange();
 }
 
-export function setUploadBusy(isBusy) {
-  const drop = document.getElementById('dropzone');
-  const apkFile = document.getElementById('apkFile');
+export function setUploadBusy(isBusy: boolean): void {
+  const drop = document.getElementById('dropzone') as HTMLElement | null;
+  const apkFile = document.getElementById('apkFile') as HTMLInputElement | null;
   if (!drop || !apkFile) return;
   drop.classList.toggle('loading', Boolean(isBusy));
   drop.textContent = isBusy ? t('upload.dropBusy') : t('upload.dropHint');

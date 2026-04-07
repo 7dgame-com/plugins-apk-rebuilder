@@ -1,6 +1,6 @@
 services:
   apk-rebuilder-d:
-    image: hkccr.ccs.tencentyun.com/plugins/apk-rebuilder:latest
+    image: ${APK_REBUILDER_IMAGE:-hkccr.ccs.tencentyun.com/plugins/apk-rebuilder:latest}
     networks:
       - proxy
       - internal

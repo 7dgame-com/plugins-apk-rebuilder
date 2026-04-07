@@ -1,0 +1,28 @@
+{
+  "_说明": "将下方插件条目复制到主系统的 web/public/config/plugins.json 的 plugins 数组中。",
+  "_注意事项": [
+    "1. url 应指向 apk-rebuilder 的嵌入入口页面，而不是主系统页面",
+    "2. allowedOrigin 必须和 url 的 origin 一致，用于 iframe postMessage 安全校验",
+    "3. extraConfig.hostApiBase 应指向主系统 API 根路径，供插件前端调用 /v1/plugin/*",
+    "4. extraConfig.apiBaseUrl 应指向 apk-rebuilder 自身的 /plugin 根路径，供宿主读取或调试",
+    "5. 生产环境建议通过反向代理统一域名，并将 /plugin/* 转发到 apk-rebuilder 服务"
+  ],
+  "plugins": [
+    {
+      "id": "apk-rebuilder",
+      "name": "APK Rebuilder",
+      "description": "APK 改包插件，支持标准包、图标替换、包名与版本信息修改、Unity 与文件补丁。",
+      "url": "http://localhost:3007/embed.html",
+      "icon": "Box",
+      "group": "tools",
+      "enabled": true,
+      "order": 10,
+      "allowedOrigin": "http://localhost:3007",
+      "version": "2.0.0",
+      "extraConfig": {
+        "hostApiBase": "http://localhost:8091",
+        "apiBaseUrl": "http://localhost:3007/plugin"
+      }
+    }
+  ]
+}

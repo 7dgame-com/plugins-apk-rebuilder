@@ -1,7 +1,7 @@
 {
   "id": "apk-rebuilder",
   "name": "APK Rebuilder",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "backend",
   "entry": {
     "backend": "/plugin"

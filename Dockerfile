@@ -2,6 +2,7 @@ ARG NODE_IMAGE=node:20-bookworm-slim
 ARG DEBIAN_MIRROR=mirrors.tuna.tsinghua.edu.cn
 
 FROM ${NODE_IMAGE} AS build
+ARG DEBIAN_MIRROR
 WORKDIR /app
 
 # Use configurable Debian mirror to avoid unstable deb.debian.org connection.
@@ -19,13 +20,13 @@ ARG APKTOOL_VERSION=2.11.1
 ARG APKTOOL_JAR_URL=https://github.com/iBotPeaches/Apktool/releases/download/v${APKTOOL_VERSION}/apktool_${APKTOOL_VERSION}.jar
 ARG ANDROID_BUILD_TOOLS_URL=https://dl.google.com/android/repository/build-tools_r34-linux.zip
 
-COPY package.json package-lock.json tsconfig.json ./
+COPY package.json package-lock.json tsconfig.json tsconfig.frontend.json vite.config.mjs ./
 RUN npm ci
 
 RUN set -eux; \
   mkdir -p /opt/tooling; \
-  curl -fsSL --retry 3 --retry-delay 2 "${APKTOOL_JAR_URL}" -o /opt/tooling/apktool.jar; \
-  curl -fsSL --retry 3 --retry-delay 2 "${ANDROID_BUILD_TOOLS_URL}" -o /opt/tooling/build-tools.zip
+  curl -fsSL --connect-timeout 20 --max-time 300 --retry 3 --retry-delay 2 "${APKTOOL_JAR_URL}" -o /opt/tooling/apktool.jar; \
+  curl -fsSL --connect-timeout 20 --max-time 600 --retry 3 --retry-delay 2 "${ANDROID_BUILD_TOOLS_URL}" -o /opt/tooling/build-tools.zip
 
 COPY src ./src
 COPY public ./public
@@ -34,6 +35,7 @@ RUN npm run build
 RUN npm prune --omit=dev
 
 FROM ${NODE_IMAGE} AS runtime
+ARG DEBIAN_MIRROR
 WORKDIR /app
 
 # 安装运行时依赖（二次回退仍使用同一镜像源并加 --fix-missing）
@@ -58,11 +60,12 @@ COPY --from=build /opt/tooling/apktool.jar /opt/apktool/apktool.jar
 COPY --from=build /opt/tooling/build-tools.zip /tmp/build-tools.zip
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/frontend-dist ./frontend-dist
 COPY --from=build /app/src/plugin ./src/plugin
 COPY scripts ./scripts
 COPY public ./public
 COPY builtin-packages ./builtin-packages
-COPY public /var/www/apk-rebuilder
+COPY --from=build /app/frontend-dist /var/www/apk-rebuilder
 COPY deploy/nginx-apk-rebuilder.template.conf /etc/nginx/templates/default.conf.template
 COPY deploy/nginx-entrypoint-apk-rebuilder.sh /usr/local/bin/nginx-entrypoint-apk-rebuilder.sh
 COPY deploy/container-entrypoint.sh /usr/local/bin/container-entrypoint.sh

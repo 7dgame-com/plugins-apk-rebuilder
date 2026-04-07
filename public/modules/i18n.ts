@@ -200,6 +200,7 @@ const DICTIONARY = {
     'embed.requireMainSystem': '请从主框架中打开 APK Rebuilder 插件。',
     'embed.authNotReady': '主框架认证未就绪，请返回主框架重新进入。',
     'embed.roleNotAllowed': '权限不足，无法使用该插件。',
+    'embed.sessionExpired': '主框架登录已过期，请重新登录后再进入插件。',
   },
   'en-US': {
     'app.title': 'APK Rebuilder',
@@ -402,6 +403,7 @@ const DICTIONARY = {
     'embed.requireMainSystem': 'Please open APK Rebuilder from the host application.',
     'embed.authNotReady': 'Host authentication is not ready. Please re-enter from the host application.',
     'embed.roleNotAllowed': 'Insufficient permissions to use this plugin.',
+    'embed.sessionExpired': 'Your host session has expired. Please sign in again and reopen the plugin.',
   },
   'zh-TW': {
     'app.title': 'APK 重構工具',
@@ -604,6 +606,7 @@ const DICTIONARY = {
     'embed.requireMainSystem': '請從主框架中開啟 APK Rebuilder 外掛。',
     'embed.authNotReady': '主框架認證尚未就緒，請返回主框架重新進入。',
     'embed.roleNotAllowed': '權限不足，無法使用該外掛。',
+    'embed.sessionExpired': '主框架登入已過期，請重新登入後再進入外掛。',
   },
   'ja-JP': {
     'app.title': 'APK リビルドツール',
@@ -806,6 +809,7 @@ const DICTIONARY = {
     'embed.requireMainSystem': 'APK Rebuilder はホストアプリから開いてください。',
     'embed.authNotReady': 'ホスト認証の準備ができていません。ホストから再度開いてください。',
     'embed.roleNotAllowed': '権限が不足しているため利用できません。',
+    'embed.sessionExpired': 'ホスト側のログイン期限が切れています。再ログイン後にプラグインを開き直してください。',
   },
   'th-TH': {
     'app.title': 'เครื่องมือสร้าง APK',
@@ -1008,34 +1012,61 @@ const DICTIONARY = {
     'embed.requireMainSystem': 'โปรดเปิดปลั๊กอิน APK Rebuilder จากระบบหลัก',
     'embed.authNotReady': 'การยืนยันตัวตนจากระบบหลักยังไม่พร้อม โปรดกลับไปเข้าใหม่จากระบบหลัก',
     'embed.roleNotAllowed': 'สิทธิ์ไม่เพียงพอในการใช้งานปลั๊กอินนี้',
+    'embed.sessionExpired': 'เซสชันของระบบหลักหมดอายุแล้ว โปรดเข้าสู่ระบบใหม่แล้วเปิดปลั๊กอินอีกครั้ง',
   },
 };
 
-const FALLBACK_LANG = 'zh-CN';
-let currentLanguage = normalizeLang(document.documentElement.lang || FALLBACK_LANG);
-const listeners = new Set();
+type TranslationParams = Record<string, unknown>;
+type Messages = Record<string, string>;
+type LanguageChangeListener = (lang: string) => void;
 
-function normalizeLang(lang) {
+const FALLBACK_LANG = 'zh-CN';
+const FALLBACK_SECONDARY_LANG = 'en-US';
+export const SUPPORTED_LANGUAGES: readonly string[] = Object.freeze([
+  'zh-CN',
+  'en-US',
+  'zh-TW',
+  'ja-JP',
+  'th-TH',
+]);
+const LANGUAGE_ALIASES: Readonly<Record<string, string>> = Object.freeze({
+  en: 'en-US',
+  'en-us': 'en-US',
+  zh: 'zh-CN',
+  'zh-cn': 'zh-CN',
+  'zh-hans': 'zh-CN',
+  'zh-tw': 'zh-TW',
+  'zh-hant': 'zh-TW',
+  ja: 'ja-JP',
+  'ja-jp': 'ja-JP',
+  th: 'th-TH',
+  'th-th': 'th-TH',
+});
+let currentLanguage: string = normalizeLang(document.documentElement.lang || FALLBACK_LANG);
+const listeners = new Set<LanguageChangeListener>();
+
+function normalizeLang(lang: string | null | undefined): string {
   if (!lang) return FALLBACK_LANG;
-  if (DICTIONARY[lang]) return lang;
+  if ((DICTIONARY as Record<string, Messages>)[lang]) return lang;
   const lower = String(lang).toLowerCase();
+  if (LANGUAGE_ALIASES[lower]) return LANGUAGE_ALIASES[lower];
   if (lower.startsWith('en')) return 'en-US';
-  if (lower.startsWith('zh-tw')) return 'zh-TW';
+  if (lower.startsWith('zh-tw') || lower.startsWith('zh-hant')) return 'zh-TW';
   if (lower.startsWith('zh')) return 'zh-CN';
   if (lower.startsWith('ja')) return 'ja-JP';
   if (lower.startsWith('th')) return 'th-TH';
   return FALLBACK_LANG;
 }
 
-function format(template, params) {
+function format(template: string, params?: TranslationParams): string {
   if (!params) return template;
-  return template.replace(/\{(\w+)\}/g, (_, key) => {
+  return template.replace(/\{(\w+)\}/g, (_match: string, key: string) => {
     const value = params[key];
     return value === undefined || value === null ? '' : String(value);
   });
 }
 
-export function setLanguage(lang) {
+export function setLanguage(lang: string): void {
   const next = normalizeLang(lang);
   if (!next || next === currentLanguage) return;
   currentLanguage = next;
@@ -1043,19 +1074,29 @@ export function setLanguage(lang) {
   listeners.forEach((fn) => fn(next));
 }
 
-export function getLanguage() {
+export function getLanguage(): string {
   return currentLanguage;
 }
 
-export function onLanguageChange(fn) {
+export function getMessages(lang = currentLanguage): Messages {
+  const normalized = normalizeLang(lang);
+  return (DICTIONARY as Record<string, Messages>)[normalized] || (DICTIONARY as Record<string, Messages>)[FALLBACK_LANG];
+}
+
+export function hasTranslation(key: string, lang = currentLanguage): boolean {
+  const messages = getMessages(lang);
+  return Object.prototype.hasOwnProperty.call(messages, key);
+}
+
+export function onLanguageChange(fn: LanguageChangeListener): () => boolean | void {
   if (typeof fn !== 'function') return () => {};
   listeners.add(fn);
   return () => listeners.delete(fn);
 }
 
-export function t(key, params) {
-  const dict = DICTIONARY[currentLanguage] || DICTIONARY[FALLBACK_LANG];
-  const fallback = DICTIONARY['en-US'] || DICTIONARY[FALLBACK_LANG];
-  const template = dict[key] || fallback[key] || DICTIONARY[FALLBACK_LANG][key] || key;
+export function t(key: string, params?: TranslationParams): string {
+  const dict = getMessages(currentLanguage);
+  const fallback = getMessages(FALLBACK_SECONDARY_LANG);
+  const template = dict[key] || fallback[key] || ((DICTIONARY as Record<string, Messages>)[FALLBACK_LANG] || {})[key] || key;
   return format(template, params);
 }

@@ -1,7 +1,13 @@
-import { iconEditor } from '../state.js';
-import { t } from '../i18n.js';
+import { iconEditor } from '../state';
+import { t } from '../i18n';
+import type { AppState } from '../types';
 
-export function renderIconEditorModal(container) {
+type IconEditorDeps = {
+  state: AppState;
+  onIconChanged: () => void;
+};
+
+export function renderIconEditorModal(container: HTMLElement): void {
   container.insertAdjacentHTML(
     'beforeend',
     `
@@ -47,23 +53,24 @@ export function renderIconEditorModal(container) {
   );
 }
 
-export function createIconEditor({ state, onIconChanged }) {
-  const getEl = (id) => document.getElementById(id);
+export function createIconEditor({ state, onIconChanged }: IconEditorDeps) {
+  const getEl = (id: string): HTMLElement | null => document.getElementById(id);
+  const getInputEl = (id: string): HTMLInputElement | null => getEl(id) as HTMLInputElement | null;
 
-  function openIconEditor() {
+  function openIconEditor(): void {
     const mask = getEl('iconEditorMask');
     if (mask) mask.classList.add('open');
   }
 
-  function closeIconEditor() {
+  function closeIconEditor(): void {
     const mask = getEl('iconEditorMask');
     if (mask) mask.classList.remove('open');
   }
 
-  function renderIconEditorCanvas() {
-    const canvas = getEl('iconEditorCanvas');
+  function renderIconEditorCanvas(): void {
+    const canvas = getEl('iconEditorCanvas') as HTMLCanvasElement | null;
     const ctx = canvas?.getContext('2d');
-    const img = iconEditor.sourceImage;
+    const img = iconEditor.sourceImage as HTMLImageElement | null;
     if (!ctx || !canvas || !img) return;
     const cw = canvas.width;
     const ch = canvas.height;
@@ -80,7 +87,7 @@ export function createIconEditor({ state, onIconChanged }) {
     ctx.drawImage(img, x, y, drawW, drawH);
   }
 
-  async function prepareIconEditor(file) {
+  async function prepareIconEditor(file: File): Promise<void> {
     if (iconEditor.sourceUrl) {
       URL.revokeObjectURL(iconEditor.sourceUrl);
     }
@@ -90,17 +97,17 @@ export function createIconEditor({ state, onIconChanged }) {
     iconEditor.offsetX = 0;
     iconEditor.offsetY = 0;
 
-    const scale = getEl('iconScale');
-    const offsetX = getEl('iconOffsetX');
-    const offsetY = getEl('iconOffsetY');
+    const scale = getInputEl('iconScale');
+    const offsetX = getInputEl('iconOffsetX');
+    const offsetY = getInputEl('iconOffsetY');
     if (scale) scale.value = '1';
     if (offsetX) offsetX.value = '0';
     if (offsetY) offsetY.value = '0';
 
     const img = new Image();
-    await new Promise((resolve, reject) => {
-      img.onload = resolve;
-      img.onerror = reject;
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error('icon load failed'));
       img.src = iconEditor.sourceUrl;
     });
     iconEditor.sourceImage = img;
@@ -108,10 +115,10 @@ export function createIconEditor({ state, onIconChanged }) {
     openIconEditor();
   }
 
-  async function applyIconEditor() {
-    const canvas = getEl('iconEditorCanvas');
+  async function applyIconEditor(): Promise<void> {
+    const canvas = getEl('iconEditorCanvas') as HTMLCanvasElement | null;
     if (!canvas) return;
-    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
     if (!blob) {
       alert(t('icon.failed'));
       return;
@@ -121,11 +128,11 @@ export function createIconEditor({ state, onIconChanged }) {
     const previewUrl = URL.createObjectURL(blob);
     setIconSelection(file, previewUrl, file.name);
     closeIconEditor();
-    const iconFile = getEl('iconFile');
+    const iconFile = getInputEl('iconFile');
     if (iconFile) iconFile.value = '';
   }
 
-  function setIconSelection(file, previewUrl, nameText) {
+  function setIconSelection(file: File | null, previewUrl: string, nameText: string): void {
     if (state.iconPreviewUrl && state.iconPreviewUrl !== previewUrl) {
       URL.revokeObjectURL(state.iconPreviewUrl);
     }
@@ -136,27 +143,33 @@ export function createIconEditor({ state, onIconChanged }) {
     onIconChanged();
   }
 
-  function bind() {
-    const scale = getEl('iconScale');
-    const offsetX = getEl('iconOffsetX');
-    const offsetY = getEl('iconOffsetY');
-    const resetBtn = getEl('iconEditorResetBtn');
-    const closeBtn = getEl('iconEditorCloseBtn');
-    const applyBtn = getEl('iconEditorApplyBtn');
+  function bind(): void {
+    const scale = getInputEl('iconScale');
+    const offsetX = getInputEl('iconOffsetX');
+    const offsetY = getInputEl('iconOffsetY');
+    const resetBtn = getEl('iconEditorResetBtn') as HTMLButtonElement | null;
+    const closeBtn = getEl('iconEditorCloseBtn') as HTMLButtonElement | null;
+    const applyBtn = getEl('iconEditorApplyBtn') as HTMLButtonElement | null;
     const mask = getEl('iconEditorMask');
 
-    if (scale) scale.addEventListener('input', () => {
-      iconEditor.scale = Number(scale.value);
-      renderIconEditorCanvas();
-    });
-    if (offsetX) offsetX.addEventListener('input', () => {
-      iconEditor.offsetX = Number(offsetX.value);
-      renderIconEditorCanvas();
-    });
-    if (offsetY) offsetY.addEventListener('input', () => {
-      iconEditor.offsetY = Number(offsetY.value);
-      renderIconEditorCanvas();
-    });
+    if (scale) {
+      scale.addEventListener('input', () => {
+        iconEditor.scale = Number(scale.value);
+        renderIconEditorCanvas();
+      });
+    }
+    if (offsetX) {
+      offsetX.addEventListener('input', () => {
+        iconEditor.offsetX = Number(offsetX.value);
+        renderIconEditorCanvas();
+      });
+    }
+    if (offsetY) {
+      offsetY.addEventListener('input', () => {
+        iconEditor.offsetY = Number(offsetY.value);
+        renderIconEditorCanvas();
+      });
+    }
     if (resetBtn) {
       resetBtn.addEventListener('click', () => {
         iconEditor.scale = 1;
@@ -171,16 +184,18 @@ export function createIconEditor({ state, onIconChanged }) {
     if (closeBtn) {
       closeBtn.addEventListener('click', () => {
         closeIconEditor();
-        const iconFile = getEl('iconFile');
+        const iconFile = getInputEl('iconFile');
         if (iconFile) iconFile.value = '';
       });
     }
-    if (applyBtn) applyBtn.addEventListener('click', () => applyIconEditor().catch(() => alert(t('icon.failed'))));
+    if (applyBtn) {
+      applyBtn.addEventListener('click', () => applyIconEditor().catch(() => alert(t('icon.failed'))));
+    }
     if (mask) {
-      mask.addEventListener('click', (e) => {
-        if (e.target === mask) {
+      mask.addEventListener('click', (event) => {
+        if (event.target === mask) {
           closeIconEditor();
-          const iconFile = getEl('iconFile');
+          const iconFile = getInputEl('iconFile');
           if (iconFile) iconFile.value = '';
         }
       });

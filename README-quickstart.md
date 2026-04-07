@@ -18,3 +18,11 @@ export APK_REBUILDER_IMAGE=hkccr.ccs.tencentyun.com/plugins/apk-rebuilder:latest
 ```
 
 If prebuilt pull fails, script falls back to local build automatically.
+
+## CI / Deploy
+
+This project also includes:
+
+- `.github/workflows/ci.yml` for install, type-check, build, self-check and Docker build validation
+- `.github/workflows/publish-image.yml` for publishing container images
+- `deploy/README-ci-deploy.md` for server-side deployment usage

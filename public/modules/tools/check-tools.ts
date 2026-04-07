@@ -1,6 +1,23 @@
-import { t } from '../i18n.js';
+import { t } from '../i18n';
+import { normalizeEmbedErrorMessage } from '../embed/errors';
+import type { AppState, EmbedHostApi } from '../types';
 
-export function renderToolsCheck(container) {
+type ToolsCheckDeps = {
+  state: AppState;
+  api: (url: string, options?: RequestInit) => Promise<any>;
+  host?: EmbedHostApi | null;
+};
+
+type ToolStatus = {
+  ok?: boolean;
+  detail?: string;
+};
+
+type ToolsResponse = {
+  tools?: Record<string, ToolStatus>;
+};
+
+export function renderToolsCheck(container: HTMLElement): void {
   container.insertAdjacentHTML(
     'beforeend',
     `
@@ -16,12 +33,12 @@ export function renderToolsCheck(container) {
   );
 }
 
-export function createToolsCheck({ state, api, host = null }) {
-  function renderTools(data) {
+export function createToolsCheck({ state, api, host = null }: ToolsCheckDeps) {
+  function renderTools(data: ToolsResponse | Record<string, any>): void {
     const tools = data?.tools || {};
     const names = Object.keys(tools);
     const total = names.length;
-    const okCount = names.filter((k) => Boolean(tools[k]?.ok)).length;
+    const okCount = names.filter((key) => Boolean(tools[key]?.ok)).length;
     const btn = document.getElementById('refreshTools');
     const summary = document.getElementById('toolsCheckSummary');
     if (!btn || !summary) return;
@@ -33,7 +50,7 @@ export function createToolsCheck({ state, api, host = null }) {
       else summary.classList.add('fail');
     }
     const detail = names
-      .map((k) => `${k}: ${tools[k]?.ok ? 'OK' : 'FAIL'}${tools[k]?.detail ? ` | ${tools[k].detail}` : ''}`)
+      .map((key) => `${key}: ${tools[key]?.ok ? 'OK' : 'FAIL'}${tools[key]?.detail ? ` | ${tools[key].detail}` : ''}`)
       .join('\n');
     btn.title = detail;
     summary.title = detail;
@@ -45,23 +62,23 @@ export function createToolsCheck({ state, api, host = null }) {
       return;
     }
     list.innerHTML = names
-      .map((k) => {
-        const t = tools[k] || {};
-        const cls = t.ok ? 'ok' : 'fail';
-        const detailText = t.detail ? ` | ${t.detail}` : '';
-        return `<div class="tools-popover-item ${cls}"><strong>${k}</strong>: ${t.ok ? 'OK' : 'FAIL'}${detailText}</div>`;
+      .map((key) => {
+        const tool = tools[key] || {};
+        const cls = tool.ok ? 'ok' : 'fail';
+        const detailText = tool.detail ? ` | ${tool.detail}` : '';
+        return `<div class="tools-popover-item ${cls}"><strong>${key}</strong>: ${tool.ok ? 'OK' : 'FAIL'}${detailText}</div>`;
       })
       .join('');
   }
 
-  function setToolsPopoverOpen(open) {
+  function setToolsPopoverOpen(open: boolean): void {
     state.toolsPopoverOpen = Boolean(open);
     const pop = document.getElementById('toolsPopover');
     if (!pop) return;
     pop.classList.toggle('open', state.toolsPopoverOpen);
   }
 
-  async function refreshTools() {
+  async function refreshTools(): Promise<void> {
     try {
       if (host) {
         const res = await host.authFetch('/plugin/admin/tools');
@@ -73,12 +90,12 @@ export function createToolsCheck({ state, api, host = null }) {
         return;
       }
       renderTools(await api('/api/tools'));
-    } catch (e) {
-      alert(t('tools.checkFailed', { message: e.message }));
+    } catch (error) {
+      alert(t('tools.checkFailed', { message: normalizeEmbedErrorMessage(error, t, '') }));
     }
   }
 
-  function bind() {
+  function bind(): void {
     const refreshBtn = document.getElementById('refreshTools');
     if (refreshBtn) {
       refreshBtn.addEventListener('click', async () => {
@@ -87,15 +104,18 @@ export function createToolsCheck({ state, api, host = null }) {
         setToolsPopoverOpen(true);
         try {
           await refreshTools();
-        } catch (e) {
-          if (list) list.innerHTML = `<div class="tools-popover-item fail">${t('tools.results.fail', { message: e?.message || '未知错误' })}</div>`;
+        } catch (error) {
+          if (list) {
+            const message = error instanceof Error ? error.message : '未知错误';
+            list.innerHTML = `<div class="tools-popover-item fail">${t('tools.results.fail', { message })}</div>`;
+          }
         }
       });
     }
 
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', (event) => {
       if (!state.toolsPopoverOpen) return;
-      const wrap = e.target instanceof Element ? e.target.closest('.tools-check-wrap') : null;
+      const wrap = event.target instanceof Element ? event.target.closest('.tools-check-wrap') : null;
       if (!wrap) setToolsPopoverOpen(false);
     });
   }

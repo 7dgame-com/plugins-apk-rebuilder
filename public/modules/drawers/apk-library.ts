@@ -1,7 +1,27 @@
-import { formatBytes, fmtTime } from '../state.js';
-import { t } from '../i18n.js';
+import { formatBytes, fmtTime } from '../state';
+import { t } from '../i18n';
+import type { AppState } from '../types';
 
-export function renderApkLibraryDrawer(container) {
+type ApkLibraryItem = {
+  id: string;
+  name?: string;
+  storedName?: string;
+  size?: number | string;
+  createdAt?: string;
+  lastUsedAt?: string;
+};
+
+type ApkLibraryResponse = {
+  items?: ApkLibraryItem[];
+};
+
+type ApkLibraryDeps = {
+  state: AppState;
+  api: (url: string, options?: RequestInit) => Promise<any>;
+  onUseApk: (apkId: string) => Promise<void>;
+};
+
+export function renderApkLibraryDrawer(container: HTMLElement): void {
   container.insertAdjacentHTML(
     'beforeend',
     `
@@ -24,8 +44,8 @@ export function renderApkLibraryDrawer(container) {
   );
 }
 
-export function createApkLibraryDrawer({ state, api, onUseApk }) {
-  function applyDrawerState() {
+export function createApkLibraryDrawer({ state, api, onUseApk }: ApkLibraryDeps) {
+  function applyDrawerState(): void {
     const el = document.getElementById('apkDrawer');
     if (!el) return;
     el.classList.toggle('collapsed', state.apkDrawerCollapsed);
@@ -40,9 +60,9 @@ export function createApkLibraryDrawer({ state, api, onUseApk }) {
     }
   }
 
-  function renderApkLibrary() {
-    const root = document.getElementById('apkLibraryList');
-    const items = state.apkLibraryItems || [];
+  function renderApkLibrary(): void {
+    const root = document.getElementById('apkLibraryList') as HTMLElement | null;
+    const items = (state.apkLibraryItems || []) as ApkLibraryItem[];
     if (!root) return;
     if (!items.length) {
       root.innerHTML = `<div class="muted">${t('apkLibrary.empty')}</div>`;
@@ -55,8 +75,8 @@ export function createApkLibraryDrawer({ state, api, onUseApk }) {
           <div class="apk-item">
             <div class="apk-item-name">${name}</div>
             <div class="apk-item-meta">${t('apkLibrary.size', { size: formatBytes(Number(item.size || 0)) })}</div>
-            <div class="apk-item-meta">${t('apkLibrary.uploadedAt', { time: fmtTime(item.createdAt) })}</div>
-            <div class="apk-item-meta">${t('apkLibrary.lastUsed', { time: fmtTime(item.lastUsedAt || item.createdAt) })}</div>
+            <div class="apk-item-meta">${t('apkLibrary.uploadedAt', { time: fmtTime(item.createdAt || '') })}</div>
+            <div class="apk-item-meta">${t('apkLibrary.lastUsed', { time: fmtTime(item.lastUsedAt || item.createdAt || '') })}</div>
             <div class="apk-item-row">
               <button type="button" class="secondary" data-use-apk-id="${item.id}">${t('apkLibrary.use')}</button>
               <button type="button" class="secondary" data-del-apk-id="${item.id}">${t('apkLibrary.delete')}</button>
@@ -66,15 +86,17 @@ export function createApkLibraryDrawer({ state, api, onUseApk }) {
       })
       .join('');
 
-    root.querySelectorAll('[data-use-apk-id]').forEach((el) => {
-      el.addEventListener('click', () => {
-        const id = el.getAttribute('data-use-apk-id');
-        if (id) onUseApk(id).catch((e) => alert(e.message));
+    root.querySelectorAll('[data-use-apk-id]').forEach((element) => {
+      element.addEventListener('click', () => {
+        const id = element.getAttribute('data-use-apk-id');
+        if (id) {
+          onUseApk(id).catch((error: Error) => alert(error.message));
+        }
       });
     });
-    root.querySelectorAll('[data-del-apk-id]').forEach((el) => {
-      el.addEventListener('click', async () => {
-        const id = el.getAttribute('data-del-apk-id');
+    root.querySelectorAll('[data-del-apk-id]').forEach((element) => {
+      element.addEventListener('click', async () => {
+        const id = element.getAttribute('data-del-apk-id');
         if (!id) return;
         if (!confirm(t('apkLibrary.confirmDelete'))) return;
         await api(`/api/library/apks/${encodeURIComponent(id)}`, { method: 'DELETE' });
@@ -83,13 +105,13 @@ export function createApkLibraryDrawer({ state, api, onUseApk }) {
     });
   }
 
-  async function refreshApkLibrary() {
-    const data = await api('/api/library/apks');
+  async function refreshApkLibrary(): Promise<void> {
+    const data = (await api('/api/library/apks')) as ApkLibraryResponse;
     state.apkLibraryItems = data.items || [];
     renderApkLibrary();
   }
 
-  function bind() {
+  function bind(): void {
     const toggle = document.getElementById('apkDrawerToggle');
     if (toggle) {
       toggle.addEventListener('click', () => {
@@ -98,7 +120,9 @@ export function createApkLibraryDrawer({ state, api, onUseApk }) {
       });
     }
     const refresh = document.getElementById('refreshApkLibrary');
-    if (refresh) refresh.addEventListener('click', () => refreshApkLibrary().catch((e) => alert(e.message)));
+    if (refresh) {
+      refresh.addEventListener('click', () => refreshApkLibrary().catch((error: Error) => alert(error.message)));
+    }
   }
 
   return { applyDrawerState, refreshApkLibrary, renderApkLibrary, bind };
