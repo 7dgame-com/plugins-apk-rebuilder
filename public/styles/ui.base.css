@@ -499,20 +499,29 @@ button:not(.btn-danger):focus-visible,
   border-color: var(--border-color-hover);
 }
 
+button.btn-danger,
 .btn-danger {
   background: var(--btn-danger-bg);
   color: var(--btn-danger-text);
   border: 1px solid var(--btn-danger-bg);
+  appearance: none;
+  -webkit-appearance: none;
 }
 
-.btn-danger:hover {
+button.btn-danger:hover:not(:disabled),
+.btn-danger:hover:not(:disabled) {
   background: var(--btn-danger-hover);
   border-color: var(--btn-danger-hover);
+  outline: none;
+  box-shadow: none;
 }
 
+button.btn-danger:active:not(:disabled),
 .btn-danger:active:not(:disabled) {
   background: var(--btn-danger-active);
   border-color: var(--btn-danger-active);
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger-color) 24%, transparent);
 }
 
 .btn-ghost:focus,
@@ -524,6 +533,9 @@ button:not(.btn-danger):focus-visible,
   border-color: var(--border-color-active);
 }
 
+button.btn-danger:focus,
+button.btn-danger:focus-visible,
+button.btn-danger:active,
 .btn-danger:focus,
 .btn-danger:focus-visible,
 .btn-danger:active {
