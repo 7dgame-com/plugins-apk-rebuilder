@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 
-const backendPort = Number.parseInt(process.env.PORT || '3005', 10);
+const backendPort = Number.parseInt(process.env.PORT || '3007', 10);
 
 // 生成北京时间版本号，格式：2026.03.25-0200
 function buildVersion() {

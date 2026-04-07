@@ -12,12 +12,17 @@ import './taskQueue'; // Initialize BullMQ worker
 
 const app = express();
 
+// Trust the proxy chain (Nginx + Traefik) so express-rate-limit can read X-Forwarded-For
+// Settings this to true trusts all proxies in the chain (safe within Docker bridge network)
+app.set('trust proxy', true);
+
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 100,
   message: { success: false, error: { message: 'Too many requests, please try again later.', code: 'RATE_LIMIT_EXCEEDED' } },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { trustProxy: false, xForwardedForHeader: false },
 });
 
 app.use('/api', apiLimiter);
@@ -38,6 +43,31 @@ app.use('/plugin', createPluginRouter());
 
 // optional local UI / debugging API (for development/demo only)
 app.use('/api', createApiRouter());
+
+app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  const anyErr = err as { message?: string; code?: string; stack?: string };
+  const message = anyErr?.message || String(err);
+  const code = anyErr?.code || 'REQUEST_FAILED';
+  const isUploadStreamError =
+    message.includes('Unexpected end of form') ||
+    code === 'LIMIT_FILE_SIZE' ||
+    code === 'LIMIT_UNEXPECTED_FILE';
+  const status = isUploadStreamError ? 400 : 500;
+  console.error('[request] unhandled route error', {
+    method: req.method,
+    path: req.path,
+    code,
+    error: message,
+    stack: anyErr?.stack || '',
+  });
+  fail(
+    res,
+    status,
+    isUploadStreamError ? 'Upload request failed' : 'Request failed',
+    code,
+    { message },
+  );
+});
 
 // static fallback used by local frontend
 app.get('*', (req, res) => {

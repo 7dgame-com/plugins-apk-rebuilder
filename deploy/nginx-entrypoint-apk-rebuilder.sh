@@ -6,8 +6,8 @@ set -e
 # 为 apk-rebuilder 的 /api/ 路径动态生成 Nginx failover 反代链
 #
 # 环境变量格式：
-#   APP_API_1_URL=http://apk-rebuilder:3005
-#   APP_API_2_URL=http://apk-rebuilder-backup:3005
+#   APP_API_1_URL=http://apk-rebuilder:3007
+#   APP_API_2_URL=http://apk-rebuilder-backup:3007
 # ============================================================
 
 TEMPLATE="${NGINX_TEMPLATE:-/etc/nginx/templates/default.conf.template}"

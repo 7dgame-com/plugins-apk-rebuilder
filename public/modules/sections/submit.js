@@ -86,9 +86,15 @@ export function createSubmitSection({ host, getPayload }) {
         const artifact = Array.isArray(data.artifacts) ? data.artifacts[0] : null;
         if (artifact?.artifactId) {
           const fileName = artifact.name || t('submit.download');
-          const artifactUrlBase = `/plugin/artifacts/${artifact.artifactId}`;
-          // 直接使用 token 直链，避免 fetch 失败导致浏览器报错。若需要精细控制可以恢复 authFetch。
-          const directUrl = host.buildUrl(`${artifactUrlBase}&token=${encodeURIComponent(host.state.token || '')}`);
+          const artifactUrlBase = `/plugin/artifacts/${encodeURIComponent(artifact.artifactId)}`;
+          const params = new URLSearchParams({
+            download: '1',
+          });
+          if (host.state.token) {
+            params.set('token', host.state.token);
+          }
+          // Use a direct tokenized link so the browser download request is authenticated.
+          const directUrl = host.buildUrl(`${artifactUrlBase}?${params.toString()}`);
           setDownload(directUrl, fileName);
         }
 

@@ -64,7 +64,7 @@ function detectJavaHome(): { javaPath: string; javaHome: string; keytoolPath: st
 const detectedJava = detectJavaHome();
 const localTools = detectLocalTools();
 
-export const PORT = Number.parseInt(process.env['PORT'] || '3005', 10);
+export const PORT = Number.parseInt(process.env['PORT'] || '3007', 10);
 export const HOST = process.env['HOST'] || '127.0.0.1';
 
 export const REDIS_HOST = process.env['REDIS_HOST'] || '127.0.0.1';
@@ -84,6 +84,7 @@ export const ARTIFACTS_DIR = path.join(DATA_ROOT, 'artifacts');
 export const ARTIFACT_INDEX_PATH = path.join(DATA_ROOT, 'artifacts.json');
 export const STANDARD_PACKAGE_PATH = path.join(DATA_ROOT, 'standard-package.json');
 export const PLUGIN_MANIFEST_PATH = path.join(process.cwd(), 'src', 'plugin', 'manifest.json');
+export const BUILTIN_STANDARD_APK_DIR = path.join(process.cwd(), 'builtin-packages');
 
 export const APKTOOL_PATH = process.env['APKTOOL_PATH'] || localTools.apktoolJar || 'apktool';
 export const ZIPALIGN_PATH = process.env['ZIPALIGN_PATH'] || localTools.zipalign || detectBuildTool('zipalign');
@@ -95,17 +96,19 @@ export const JAVA_HOME = process.env['JAVA_HOME'] || detectedJava.javaHome;
 export const DEBUG_ALIAS = process.env['DEBUG_KEY_ALIAS'] || 'androiddebugkey';
 export const DEBUG_PASS = process.env['DEBUG_KEY_PASS'] || 'android';
 export const API_KEY = process.env['API_KEY'] || process.env['AUTH_TOKEN'] || '';
-export const AUTH_ENABLED = API_KEY.length > 0;
+export const AUTH_ENABLED = process.env['AUTH_ENABLED'] !== 'false';
 export const APK_REBUILDER_MODE = process.env['APK_REBUILDER_MODE'] || 'prod';
 export const FRONTEND_PUBLIC_DIR = path.join(process.cwd(), 'public');
-export const PLUGIN_MODE = process.env['PLUGIN_MODE'] === 'true';
+export const PLUGIN_MODE = process.env['PLUGIN_MODE'] === 'true' || true; // Default to true for this refactor
 const uiModeRaw = process.env['APK_REBUILDER_UI_MODE'] || (PLUGIN_MODE ? 'embed' : 'full');
 export const APK_REBUILDER_UI_MODE = uiModeRaw.toLowerCase() === 'embed' ? 'embed' : 'full';
 export const STRICT_TOOLCHAIN = process.env['STRICT_TOOLCHAIN'] === 'true' || PLUGIN_MODE;
 export const STRICT_REDIS = process.env['STRICT_REDIS'] === 'true' || PLUGIN_MODE;
 export const PLUGIN_ID = process.env['PLUGIN_ID'] || 'apk-rebuilder';
+export const PLUGIN_NAME = PLUGIN_ID;
 export const PLUGIN_TOKEN_SECRET = process.env['PLUGIN_TOKEN_SECRET'] || '';
-export const HOST_API_BASE = process.env['HOST_API_BASE'] || '';
+export const MAIN_API_URL = process.env['MAIN_API_URL'] || process.env['HOST_API_BASE'] || 'https://api.d.xrteeth.com';
+export const HOST_API_BASE = MAIN_API_URL;
 export const HOST_AUTH_TIMEOUT_MS = Number.parseInt(
   process.env['HOST_AUTH_TIMEOUT_MS'] || '5000',
   10,
@@ -126,9 +129,10 @@ export const REDIS_CONNECT_RETRY_DELAY_MS = Number.parseInt(
 export const TOOLCHAIN_FALLBACK_LOCAL = process.env['TOOLCHAIN_FALLBACK_LOCAL'] !== 'false';
 
 export const BUILTIN_STANDARD_APK_PATH =
-  process.env['BUILTIN_STANDARD_APK_PATH'] || '';
+  process.env['BUILTIN_STANDARD_APK_PATH'] || path.join(BUILTIN_STANDARD_APK_DIR, 'standard.apk');
 export const BUILTIN_STANDARD_APK_NAME =
   process.env['BUILTIN_STANDARD_APK_NAME'] || 'mrpp-apk-rebuilder.apk';
+export const BUILTIN_STANDARD_APK_PATH_FROM_ENV = Boolean(process.env['BUILTIN_STANDARD_APK_PATH']);
 
 export function validateRuntimeConfig(): void {
   if (PLUGIN_MODE && !HOST_API_BASE.trim()) {
@@ -148,6 +152,7 @@ export function ensureRuntimeDirs(): void {
     APK_LIBRARY_DIR,
     APK_LIBRARY_CACHE_ROOT,
     ARTIFACTS_DIR,
+    BUILTIN_STANDARD_APK_DIR,
   ].forEach(dir => fs.mkdirSync(dir, { recursive: true }));
 
   if (!fs.existsSync(APK_LIBRARY_INDEX_PATH)) {

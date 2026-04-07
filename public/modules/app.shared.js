@@ -1,4 +1,5 @@
 import { state, $, setText, norm, setIcon, api, fileToBase64 } from './state.js';
+import { initBridge } from './bridge.js';
 import { t } from './i18n.js';
 import { renderUploadSection, bindUploadSection, setUploadBusy } from './sections/upload.js';
 import { renderPackageInfoSection, bindPackageInfoSection } from './sections/package-info.js';
@@ -28,6 +29,9 @@ export function initApp({
   showHeaderSubtitle = true,
   headerVersion = '',
 } = {}) {
+  // Initialize platform bridge
+  initBridge();
+  
   const root = document.getElementById('app') || document.body;
 
   if (showDrawers) {

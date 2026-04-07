@@ -1,3 +1,5 @@
+import { requestHostTokenRefresh } from './bridge.js';
+
 export const state = {
   id: '',
   status: 'idle',
@@ -19,6 +21,7 @@ export const state = {
   filePathCandidates: [],
   fileTreeSearch: '',
   toolsPopoverOpen: false,
+  isReady: false, // New: tracked by INIT handshake
 };
 
 export const iconEditor = {
@@ -144,11 +147,62 @@ export function setAuthToken(raw) {
   return normalized;
 }
 
+let isRefreshing = false;
+let failedQueue = [];
+
+function processQueue(error, token) {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error || !token) {
+      reject(error || new Error('Token refresh failed'));
+    } else {
+      resolve(token);
+    }
+  });
+  failedQueue = [];
+}
+
+/**
+ * Standard API Wrapper with 401 Interceptor and Token Refresh
+ */
 export async function api(url, options = {}) {
   const headers = new Headers(options.headers || {});
   const token = getAuthToken();
   if (token) headers.set('authorization', token);
+  
   const res = await fetch(url, { ...options, headers });
+  
+  // Handle 401 Unauthorized
+  if (res.status === 401) {
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        failedQueue.push({ resolve, reject });
+      }).then(newToken => {
+        headers.set('authorization', newToken);
+        // We need to re-fetch with the new token
+        return fetch(url, { ...options, headers }).then(r => r.json());
+      });
+    }
+
+    isRefreshing = true;
+    try {
+      console.log('[API] 401 Unauthorized, requesting token refresh from host...');
+      const newToken = await requestHostTokenRefresh();
+      
+      if (newToken) {
+        processQueue(null, newToken);
+        headers.set('authorization', newToken);
+        return api(url, { ...options, headers }); // Retry
+      } else {
+        throw new Error('认证已过期，请重新登录主系统');
+      }
+    } catch (err) {
+      processQueue(err, null);
+      throw err;
+    } finally {
+      isRefreshing = false;
+    }
+  }
+
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.success === false) {
     throw new Error(data?.error?.message || data?.message || `HTTP ${res.status}`);

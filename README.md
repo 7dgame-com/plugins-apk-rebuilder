@@ -8,20 +8,27 @@
 docker compose up -d --build
 ```
 
-启动后访问：`http://localhost:3005`
+启动后访问：`http://localhost:3007`
 
 ## 运行配置（三种）
 
 **配置 1：本地开发（Vite + 热重启）**  
 适用于前后端联调与 UI 调试。后端走 `ts-node-dev`，前端走 Vite HMR。`APK_REBUILDER_MODE=dev` 时，后端会拒绝直接返回 `index.html`，提示使用 Vite 地址。  
 启动命令：`npm install && npm run dev`  
-访问方式：前端 `http://127.0.0.1:5173`，后端 `http://127.0.0.1:3005`  
-依赖：需要 Redis（`REDIS_HOST/REDIS_PORT`，默认 `127.0.0.1:6379`）；工具链来自系统 PATH 或环境变量（缺失时会进入 stub 模式）。
+访问方式：前端 `http://127.0.0.1:5173`，后端 `http://127.0.0.1:3007`  
+如果设置了 `HOST_API_BASE`，还会使用主系统的 API：
+```
+HOST_API_BASE=https://localhost:11000/v1/plugin # 前端无需配跨域，Nginx 做了代理
+```
 
-**配置 2：本地生产（编译 + 静态服务）**  
-适用于本机模拟生产环境。后端从 `dist/` 启动，并由 Express 直接托管 `public/` 静态 UI。  
-启动命令：`npm run build && npm run start:prod`（或 `npm start`）  
-访问方式：`http://HOST:PORT`（默认 `http://127.0.0.1:3005`）  
+#### Nginx Docker 运行测试
+
+本地可使用自带的 `docker-compose.yml`
+
+```bash
+docker-compose up -d --build
+```
+访问方式：`http://HOST:PORT`（默认 `http://127.0.0.1:3007`）  
 依赖：需要 Redis 与工具链（同上）。
 
 **配置 3：容器运行（Docker Compose）**  
@@ -68,6 +75,13 @@ redis-cli -h <host> -p <port> ping
 - 如果设置了 `APK_REBUILDER_IMAGE`，脚本会优先尝试拉预构建镜像。
 - 拉取失败或未设置时，自动回退本地构建。
 
+## 标准包内置保底目录
+
+- 内置保底包目录：`builtin-packages/`
+- 默认内置包路径：`builtin-packages/standard.apk`
+- 当标准包配置为空、被禁用或找不到时，会自动尝试使用内置包保底。
+- 可通过环境变量 `BUILTIN_STANDARD_APK_PATH` 覆盖默认路径。
+
 ## 项目结构
 
 - `src/`: Express + TypeScript 后端源码
@@ -112,7 +126,7 @@ redis-cli -h <host> -p <port> ping
 
 部署在独立域名时，建议采用与 `user-management` 相同的反代划分：
 - `/api/*`：反代到主后端（如 `https://api.d.xrteeth.com`），用于 `allowed-actions` / `verify-token` 等主系统接口
-- `/plugin/*`：反代到 apk-rebuilder 本地后端（如 `http://127.0.0.1:3005/plugin/`），用于执行改包任务
+- `/plugin/*`：反代到 apk-rebuilder 本地后端（如 `http://127.0.0.1:3007/plugin/`），用于执行改包任务
 
 注意：
 - 不要再将 `extraConfig.apiBase` 设为 `/api`，否则会把插件自身 `/plugin/*` 请求错误导向主后端。
@@ -200,7 +214,7 @@ npm run start:prod
 
 ## 环境变量
 
-- `PORT` 默认 `3005`
+- `PORT` 默认 `3007`
 - `HOST` 默认 `127.0.0.1`
 - `APK_REBUILDER_MODE` 默认 `prod`（`dev` 启动前端 HMR）
 - `APK_REBUILDER_UI_MODE` 默认 `full`（`embed` 仅提供 `embed.html` 与必需静态资源）
@@ -229,5 +243,7 @@ npm run start:prod
 - `HOST_AUTH_TIMEOUT_MS` 默认 `5000`
 - `HOST_PERMISSION_CACHE_TTL_MS` 默认 `30000`
 - `HOST_AUTH_DEBUG` 默认 `false`
+- `BUILTIN_STANDARD_APK_PATH` 默认 `./builtin-packages/standard.apk`
+- `BUILTIN_STANDARD_APK_NAME` 默认 `mrpp-apk-rebuilder.apk`
 
 说明：在部分架构（如 arm64 容器）若 `zipalign` 不可执行，系统会自动降级为“跳过 zipalign 后签名”，保证流程可用。

@@ -178,12 +178,17 @@ export function createStandardPackageSection({ host, canAdmin = true }) {
     }
     const form = new FormData();
     form.append('apk', file);
-    console.info('[APK-REBUILDER] call /api/upload');
+    console.info('[APK-REBUILDER] call /plugin/admin/upload-standard');
     setUploadBusy(true);
     try {
-      const res = await host.authFetch('/api/upload', { method: 'POST', body: form });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error?.message || '上传失败');
+      let res = await host.authFetch('/plugin/admin/upload-standard', { method: 'POST', body: form });
+      let json = await res.json().catch(() => ({}));
+      if (!res.ok && (res.status === 502 || res.status === 404 || res.status === 500)) {
+        console.warn('[APK-REBUILDER] fallback upload -> /api/upload', { status: res.status });
+        res = await host.authFetch('/api/upload', { method: 'POST', body: form });
+        json = await res.json().catch(() => ({}));
+      }
+      if (!res.ok) throw new Error(json?.error?.message || `上传失败(${res.status})`);
       await load();
     } finally {
       setUploadBusy(false);

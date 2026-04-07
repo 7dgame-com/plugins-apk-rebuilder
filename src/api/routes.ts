@@ -28,7 +28,15 @@ const upload = multer({
     },
   }),
 });
-const modUpload = multer({ storage: multer.memoryStorage() });
+const modUpload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, MOD_UPLOAD_DIR),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname || '') || '.zip';
+      cb(null, `${randomUUID()}${ext}`);
+    },
+  }),
+});
 
 export function createApiRouter(): Router {
   const router = Router();
