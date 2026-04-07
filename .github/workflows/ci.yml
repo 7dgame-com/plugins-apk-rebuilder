@@ -53,4 +53,4 @@ jobs:
         run: npm test
 
       - name: Docker build validation
-        run: docker build -t apk-rebuilder:ci .
+        run: docker build --progress=plain --build-arg DEBIAN_MIRROR= -t apk-rebuilder:ci .
