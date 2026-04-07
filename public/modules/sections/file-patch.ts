@@ -14,18 +14,18 @@ export function renderFilePatchSection(container: HTMLElement): void {
     `
     <div class="card" id="sectionFilePatch">
       <div class="toolbar">
-        <strong>文件信息修改</strong>
+        <strong>${t('patch.title')}</strong>
       </div>
       <div style="margin-top:12px;">
         <div class="patch-queue">
           <div class="patch-queue-head">
-            <div class="patch-queue-title">任务队列（<span id="patchQueueCount">0</span>）</div>
+            <div class="patch-queue-title">${t('patch.queueTitle', { count: '<span id="patchQueueCount">0</span>' })}</div>
             <div class="row" style="margin-top:0;">
-              <button id="createFilePatchTaskBtn" class="secondary" type="button">创建任务</button>
-              <button id="clearPatchQueueBtn" class="secondary" type="button">清空任务</button>
+              <button id="createFilePatchTaskBtn" class="secondary" type="button">${t('patch.create')}</button>
+              <button id="clearPatchQueueBtn" class="secondary" type="button">${t('patch.clear')}</button>
             </div>
           </div>
-          <div id="patchQueueList" class="patch-queue-list muted">暂无修改任务</div>
+          <div id="patchQueueList" class="patch-queue-list muted">${t('patch.empty')}</div>
           <datalist id="filePathSuggestions"></datalist>
         </div>
       </div>
@@ -212,7 +212,7 @@ export function createFilePatchSection({ state, api }: FilePatchDeps) {
         void workspace.loadTaskFile(taskId).then(renderPatchQueue).catch((error) => {
           // Keep row-level error state visible after load failure.
           renderPatchQueue();
-          alert(error instanceof Error ? error.message : '读取文件失败');
+          alert(error instanceof Error ? error.message : t('patch.loadFileFailed'));
         });
       }
     });

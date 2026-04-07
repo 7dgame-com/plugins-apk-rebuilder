@@ -5,6 +5,7 @@ let modalTitle: HTMLElement | null;
 let modalBody: HTMLElement | null;
 let okBtn: HTMLButtonElement | null;
 let cancelBtn: HTMLButtonElement | null;
+let closeBtn: HTMLButtonElement | null;
 let currentResolve: ((value: boolean) => void) | null;
 
 function ensureModal(): void {
@@ -30,7 +31,7 @@ function ensureModal(): void {
   modalBody = mask.querySelector('#apkModalBody');
   okBtn = mask.querySelector('#apkModalOk');
   cancelBtn = mask.querySelector('#apkModalCancel');
-  const closeBtn = mask.querySelector('#apkModalClose') as HTMLButtonElement | null;
+  closeBtn = mask.querySelector('#apkModalClose');
   const close = (value: boolean) => {
     mask.classList.remove('open');
     if (currentResolve) {
@@ -55,6 +56,8 @@ function openModal({
   ensureModal();
   if (modalTitle) modalTitle.textContent = title || t('notify.title');
   if (modalBody) modalBody.textContent = message || '';
+  if (closeBtn) closeBtn.textContent = t('notify.close');
+  if (cancelBtn) cancelBtn.textContent = t('notify.cancel');
   if (cancelBtn) cancelBtn.style.display = confirm ? 'inline-flex' : 'none';
   if (okBtn) okBtn.textContent = confirm ? t('notify.ok') : t('notify.gotIt');
   modalEl?.classList.add('open');

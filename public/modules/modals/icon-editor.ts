@@ -1,5 +1,6 @@
 import { iconEditor } from '../state';
 import { t } from '../i18n';
+import { showAlert } from '../embed/notify';
 import type { AppState } from '../types';
 
 type IconEditorDeps = {
@@ -120,7 +121,7 @@ export function createIconEditor({ state, onIconChanged }: IconEditorDeps) {
     if (!canvas) return;
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
     if (!blob) {
-      alert(t('icon.failed'));
+      await showAlert(t('icon.failed'));
       return;
     }
     const baseName = (iconEditor.fileName || 'icon').replace(/\.[^.]+$/, '');
@@ -189,7 +190,7 @@ export function createIconEditor({ state, onIconChanged }: IconEditorDeps) {
       });
     }
     if (applyBtn) {
-      applyBtn.addEventListener('click', () => applyIconEditor().catch(() => alert(t('icon.failed'))));
+      applyBtn.addEventListener('click', () => applyIconEditor().catch(() => void showAlert(t('icon.failed'))));
     }
     if (mask) {
       mask.addEventListener('click', (event) => {

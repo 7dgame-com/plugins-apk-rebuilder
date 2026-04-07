@@ -1,5 +1,6 @@
 import { t } from '../i18n';
 import { normalizeEmbedErrorMessage } from '../embed/errors';
+import { showAlert } from '../embed/notify';
 import type { AppState, EmbedHostApi } from '../types';
 
 type ToolsCheckDeps = {
@@ -91,7 +92,7 @@ export function createToolsCheck({ state, api, host = null }: ToolsCheckDeps) {
       }
       renderTools(await api('/api/tools'));
     } catch (error) {
-      alert(t('tools.checkFailed', { message: normalizeEmbedErrorMessage(error, t, '') }));
+      void showAlert(t('tools.checkFailed', { message: normalizeEmbedErrorMessage(error, t, '') }));
     }
   }
 
