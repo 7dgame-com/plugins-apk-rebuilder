@@ -45,12 +45,15 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Unit tests
+        run: npm test
+
       - name: Self-check
         env:
           CI: "true"
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: 6379
-        run: npm test
+        run: npm run self-check
 
       - name: Docker build validation
         run: docker build --progress=plain --build-arg DEBIAN_MIRROR= -t apk-rebuilder:ci .

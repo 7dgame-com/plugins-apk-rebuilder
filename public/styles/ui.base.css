@@ -291,8 +291,8 @@ button:disabled,
   cursor: not-allowed;
 }
 
-button:focus-visible,
-.btn:focus-visible {
+button:not(.btn-danger):focus-visible,
+.btn:not(.btn-danger):focus-visible {
   outline: none;
   box-shadow: var(--btn-focus-ring);
 }
@@ -528,7 +528,7 @@ button:focus-visible,
 .btn-danger:focus-visible,
 .btn-danger:active {
   outline: none;
-  box-shadow: var(--btn-focus-ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger-color) 24%, transparent);
   background: var(--btn-danger-active);
   border-color: var(--btn-danger-active);
 }

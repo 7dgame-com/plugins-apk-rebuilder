@@ -21,7 +21,7 @@
     "test:unit": "npm run build:server && node --test ./tests/*.test.mjs",
     "test:self-check": "npm run self-check",
     "test:docker": "docker compose run --rm --no-deps apk-rebuilder node scripts/self-check.js",
-    "test": "npm run test:unit && npm run test:self-check"
+    "test": "npm run test:unit"
   },
   "engines": {
     "node": ">=20.0.0"

@@ -1,3 +1,6 @@
+.env
+.env.local
+.env.*.local
 data/
 *.apk
 *.unity3d
@@ -5,3 +8,13 @@ data/
 node_modules/
 dist/
 frontend-dist/
+coverage/
+logs/
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+*.swo
+*.tsbuildinfo

@@ -55,10 +55,9 @@ export function useEmbedHost(): EmbedHostApi {
 
   function ensureInit(timeout = 2000): Promise<void> {
     if (initResolved) return Promise.resolve();
-    return Promise.race([
-      initReady,
-      new Promise<void>((_, reject) =>
-        setTimeout(() => {
+    return new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        if (initResolved) return;
           state.lastInitError = 'INIT_TIMEOUT';
           logAlways('INIT wait timeout (blocked)', {
             timeout,
@@ -67,9 +66,19 @@ export function useEmbedHost(): EmbedHostApi {
             hasToken: Boolean(state.token),
           });
           reject(createHostError('INIT_TIMEOUT', 'Host INIT timeout'));
-        }, timeout),
-      ),
-    ]);
+      }, timeout);
+
+      initReady.then(
+        () => {
+          clearTimeout(timer);
+          resolve();
+        },
+        (error) => {
+          clearTimeout(timer);
+          reject(error);
+        },
+      );
+    });
   }
 
   async function ensureHostEntry(timeout = 2000): Promise<void> {

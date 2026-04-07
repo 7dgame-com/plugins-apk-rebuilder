@@ -44,6 +44,8 @@ apk-rebuilder/
 
 ## 快速开始
 
+更完整的启动说明见 [README-quickstart.md](/Volumes/NewSSD/Projects/xrugc-platform/plugins/apk-rebuilder/README-quickstart.md)。
+
 ### 方式一：Docker Compose
 
 这是最推荐的启动方式，依赖最少，也最接近部署环境。
@@ -117,6 +119,8 @@ npm run test:unit     # 内建单元测试
 npm run self-check    # 自检工具链 + Redis
 npm run bootstrap-tools
 ```
+
+默认 `npm test` 只跑单元测试；环境依赖检查请单独执行 `npm run self-check`。
 
 ## 运行模型
 
@@ -258,6 +262,13 @@ npm run bootstrap-tools
 
 - `API_KEY`
 - `AUTH_TOKEN`
+
+## 更多文档
+
+- [INTEGRATION.md](/Volumes/NewSSD/Projects/xrugc-platform/plugins/apk-rebuilder/docs/INTEGRATION.md)
+- [STRUCTURE.md](/Volumes/NewSSD/Projects/xrugc-platform/plugins/apk-rebuilder/docs/STRUCTURE.md)
+- [CONTRIBUTING.md](/Volumes/NewSSD/Projects/xrugc-platform/plugins/apk-rebuilder/docs/CONTRIBUTING.md)
+- [I18N.md](/Volumes/NewSSD/Projects/xrugc-platform/plugins/apk-rebuilder/docs/I18N.md)
 - `AUTH_ENABLED`
 
 ## 环境变量
