@@ -22,8 +22,8 @@ http://<apk-rebuilder-host>/embed.html
 嵌入页启动后会：
 
 1. 等待父窗口发送 `INIT`
-2. 从 `INIT` 中读取 token、主题、语言、角色和 `hostApiBase`
-3. 使用 `hostApiBase` 请求主系统的 `/v1/plugin/*` 接口
+2. 从 `INIT` 中读取 token、主题、语言、角色、`hostApiBase` 和 `pluginApiBase`
+3. 使用 `pluginApiBase` 请求主系统的插件配置/权限接口
 4. 使用本地 `/plugin/*` 接口执行改包任务
 
 ## INIT 负载
@@ -36,6 +36,7 @@ http://<apk-rebuilder-host>/embed.html
   "roles": ["admin"],
   "config": {
     "hostApiBase": "https://example.com/api",
+    "pluginApiBase": "https://example.com/api-config/api",
     "theme": "light",
     "lang": "zh-CN"
   }
@@ -46,28 +47,30 @@ http://<apk-rebuilder-host>/embed.html
 
 - `config.mainApiBase`
 - `config.host_api_base`
+- `config.systemAdminApiBase`
+- `config.plugin_api_base`
 - `role`
 - `user.roles`
 
-如果未提供 `hostApiBase`，前端会退回到 `/api`。该行为只适合本地联调，不建议用于生产集成。
+如果未提供 `hostApiBase`，前端会退回到 `/api`。如果未提供 `pluginApiBase`，前端会优先退回到 `/api-config/api`，再退回到 `hostApiBase`。这类回退只适合本地联调，不建议用于生产集成。
 
 ## 宿主鉴权接口
 
 `apk-rebuilder` 当前依赖以下主系统接口：
 
-- `GET /v1/plugin/verify-token`
-- `GET /v1/plugin/check-permission`
-- `GET /v1/plugin/allowed-actions`
+- `GET <hostApiBase>/v1/plugin/verify-token`
+- `GET <pluginApiBase>/v1/plugin/check-permission`
+- `GET <pluginApiBase>/v1/plugin/allowed-actions`
 
 后端 `/plugin/*` 路由主要依赖：
 
-- `check-permission`
-- 必要时的 `verify-token`
+- `check-permission`（走 `pluginApiBase`）
+- 必要时的 `verify-token`（走 `hostApiBase`）
 
 前端 embed 页面主要依赖：
 
-- `allowed-actions`
-- `verify-token`
+- `allowed-actions`（走 `pluginApiBase`）
+- `verify-token`（走 `hostApiBase`）
 
 ## 权限动作
 
@@ -84,6 +87,7 @@ http://<apk-rebuilder-host>/embed.html
 推荐统一同域代理，至少区分两类路径：
 
 - `/api/*` 指向主系统 API
+- `/api-config/*` 指向主系统插件配置/权限 API
 - `/plugin/*` 指向 apk-rebuilder 服务
 
 如果 iframe 页面和主系统不在同域，至少要保证：
@@ -99,7 +103,8 @@ http://<apk-rebuilder-host>/embed.html
 ```bash
 PLUGIN_MODE=true
 APK_REBUILDER_UI_MODE=embed
-HOST_API_BASE=https://your-main-api.example.com
+HOST_API_BASE=https://your-main-api.example.com/api
+HOST_PLUGIN_API_BASE=https://your-main-api.example.com/api-config/api
 PLUGIN_TOKEN_SECRET=<optional-if-you-use-plugin-hs256-token>
 STRICT_REDIS=true
 STRICT_TOOLCHAIN=true
@@ -108,6 +113,7 @@ STRICT_TOOLCHAIN=true
 说明：
 
 - `PLUGIN_MODE=true` 时会强制要求配置 `HOST_API_BASE`
+- `HOST_PLUGIN_API_BASE` 建议显式配置，避免把插件权限请求误打到普通业务 API
 - `HOST_AUTH_ROLE_FALLBACK` 默认关闭，避免宿主权限失败时由插件自行放权
 
 ## 主系统注册示例
@@ -115,10 +121,13 @@ STRICT_TOOLCHAIN=true
 可直接参考：
 
 - `plugins.json.example`
+- `deploy/system-admin-plugin-config.example.json`
 
 推荐入口：
 
 - `url`: `https://your-plugin.example.com/embed.html`
 - `allowedOrigin`: `https://your-plugin.example.com`
-- `extraConfig.hostApiBase`: `https://your-main-api.example.com`
+- `allowedHostOrigins`: `["https://your-host.example.com"]`
+- `extraConfig.hostApiBase`: `https://your-main-api.example.com/api`
+- `extraConfig.pluginApiBase`: `https://your-main-api.example.com/api-config/api`
 - `extraConfig.apiBaseUrl`: `https://your-plugin.example.com/plugin`

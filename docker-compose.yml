@@ -27,7 +27,8 @@ services:
       - REDIS_PORT=6379
       - DEBUG_KEY_ALIAS=androiddebugkey
       - DEBUG_KEY_PASS=android
-      - HOST_API_BASE=http://host.docker.internal:8081
+      - HOST_API_BASE=http://host.docker.internal:8081/api
+      - HOST_PLUGIN_API_BASE=http://host.docker.internal:8081/api-config/api
       - HOST_AUTH_DEBUG=${HOST_AUTH_DEBUG:-false}
     # command: ["npm", "run", "dev"] # 开发模式可改回
     healthcheck:

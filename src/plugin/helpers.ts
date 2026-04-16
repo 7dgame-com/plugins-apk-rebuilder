@@ -20,7 +20,11 @@ export function mapPluginError(err: unknown): { status: number; code: string; me
   if (message.includes('Host permission denied')) {
     return { status: 403, code: 'HOST_FORBIDDEN', message };
   }
-  if (message.includes('Host auth base not configured') || message.includes('Host auth unavailable')) {
+  if (
+    message.includes('Host auth base not configured') ||
+    message.includes('Host plugin auth base not configured') ||
+    message.includes('Host auth unavailable')
+  ) {
     return { status: 503, code: 'HOST_AUTH_UNAVAILABLE', message };
   }
   if (message.includes('Missing bearer token') || message.includes('Invalid token') || message.includes('Token expired')) {

@@ -151,6 +151,7 @@ async function main(): Promise<void> {
       error: String(error),
       hostState: {
         hostApiBase: host.state?.hostApiBase || '',
+        pluginApiBase: host.state?.pluginApiBase || '',
         hasToken: Boolean(host.state?.token),
         roles: host.state?.roles || [],
       },
@@ -161,6 +162,7 @@ async function main(): Promise<void> {
 
   console.info('[APK-REBUILDER] host entry ready', {
     hostApiBase: host.state?.hostApiBase || '',
+    pluginApiBase: host.state?.pluginApiBase || '',
     hasToken: Boolean(host.state?.token),
     roles: host.state?.roles || [],
   });

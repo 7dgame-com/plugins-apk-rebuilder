@@ -7,6 +7,11 @@
 1. 作为宿主平台插件运行，暴露 `/plugin/*` 接口，供主系统发起改包任务、查询运行状态、拉取产物。
 2. 作为独立服务运行，使用 `/api/*` 和内置页面做本地调试、验证工具链和演练整个改包流程。
 
+当前宿主集成已经按主站普通 API 与插件配置/权限 API 分流设计：
+
+- `hostApiBase`：主站普通 API 根路径，例如 `/api`
+- `pluginApiBase`：插件配置/权限 API 根路径，例如 `/api-config/api`
+
 ## 核心能力
 
 - 上传 APK 或复用 APK 库中的历史文件
@@ -247,7 +252,8 @@ npm run bootstrap-tools
 ### `/plugin/*`
 
 - 需要 Bearer Token
-- 服务端会调用 `HOST_API_BASE` 对应的宿主接口做权限验证
+- 服务端会调用 `HOST_PLUGIN_API_BASE` 对应的宿主插件权限接口做权限验证
+- 必要时会调用 `HOST_API_BASE` 对应的宿主普通接口做 `verify-token`
 - 如果配置了 `PLUGIN_TOKEN_SECRET`，会额外校验 HS256 插件 token
 
 ### `/api/*`
@@ -311,7 +317,8 @@ npm run bootstrap-tools
 
 ### 插件集成
 
-- `HOST_API_BASE`：宿主 API 根地址
+- `HOST_API_BASE`：宿主普通 API 根地址，例如 `/api`
+- `HOST_PLUGIN_API_BASE`：宿主插件配置/权限 API 根地址，例如 `/api-config/api`
 - `MAIN_API_URL`：会作为 `HOST_API_BASE` 的别名来源
 - `PLUGIN_TOKEN_SECRET`：插件 Bearer Token 的 HS256 密钥
 - `HOST_AUTH_ROLE_FALLBACK`：是否在宿主权限接口异常时回退到本地角色推断，默认关闭

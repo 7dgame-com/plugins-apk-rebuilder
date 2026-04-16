@@ -1,6 +1,7 @@
 import { Request } from 'express';
 import {
   HOST_API_BASE,
+  HOST_PLUGIN_API_BASE,
   HOST_PERMISSION_CACHE_TTL_MS,
   HOST_AUTH_ROLE_FALLBACK,
   PLUGIN_ID,
@@ -45,6 +46,14 @@ function getHostBase(): string {
   const base = HOST_API_BASE.trim();
   if (!base) {
     throw new Error('Host auth base not configured');
+  }
+  return base.endsWith('/') ? base.slice(0, -1) : base;
+}
+
+function getHostPluginBase(): string {
+  const base = HOST_PLUGIN_API_BASE.trim();
+  if (!base) {
+    throw new Error('Host plugin auth base not configured');
   }
   return base.endsWith('/') ? base.slice(0, -1) : base;
 }
@@ -169,7 +178,7 @@ export async function checkHostPermission(req: Request, action: string): Promise
     return cached.allowed;
   }
 
-  const base = getHostBase();
+  const base = getHostPluginBase();
   const url = new URL(`${base}/v1/plugin/check-permission`);
   url.searchParams.set('plugin_name', PLUGIN_ID);
   url.searchParams.set('action', action);

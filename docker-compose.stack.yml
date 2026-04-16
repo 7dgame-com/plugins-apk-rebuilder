@@ -13,7 +13,8 @@ services:
       - HOST=0.0.0.0
       - PLUGIN_MODE=true
       - APK_REBUILDER_UI_MODE=embed
-      - HOST_API_BASE=https://api.d.xrteeth.com
+      - HOST_API_BASE=https://api.d.xrteeth.com/api
+      - HOST_PLUGIN_API_BASE=https://api.d.xrteeth.com/api-config/api
       - REDIS_HOST=redis-apk-rebuilder
       - REDIS_PORT=6379
     labels:

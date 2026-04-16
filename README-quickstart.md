@@ -58,8 +58,9 @@ REDIS_PORT=6379
 ```dotenv
 PLUGIN_MODE=true
 APK_REBUILDER_UI_MODE=embed
-HOST_API_BASE=http://127.0.0.1:8091
-MAIN_API_URL=http://127.0.0.1:8091
+HOST_API_BASE=http://127.0.0.1:8091/api
+HOST_PLUGIN_API_BASE=http://127.0.0.1:8091/api-config/api
+MAIN_API_URL=http://127.0.0.1:8091/api
 ```
 
 测试环境如果宿主还没配置好 `allowed-actions` / `check-permission`，可以临时打开：
@@ -110,7 +111,7 @@ npm run dev
 
 ## 第四步：注册到主系统
 
-将 [plugins.json.example](/Volumes/NewSSD/Projects/xrugc-platform/plugins/apk-rebuilder/plugins.json.example) 中的条目复制到主系统 `web/public/config/plugins.json` 的 `plugins` 数组。
+优先推荐通过 system-admin 注册插件配置。如果是本地静态联调，再将 [plugins.json.example](/Volumes/NewSSD/Projects/xrugc-platform/plugins/apk-rebuilder/plugins.json.example) 中的 `menuGroups` 和 `plugins` 一并合并到主系统 `web/public/config/plugins.json`。
 
 本地开发示例：
 
@@ -125,15 +126,18 @@ npm run dev
   "enabled": true,
   "order": 10,
   "allowedOrigin": "http://127.0.0.1:5173",
+  "allowedHostOrigins": ["http://127.0.0.1:8090"],
   "version": "2.0.0",
   "extraConfig": {
-    "hostApiBase": "http://127.0.0.1:8091",
+    "hostApiBase": "http://127.0.0.1:8091/api",
+    "pluginApiBase": "http://127.0.0.1:8091/api-config/api",
     "apiBaseUrl": "http://127.0.0.1:3007/plugin"
   }
 }
 ```
 
 更多宿主接入细节见 [INTEGRATION.md](/Volumes/NewSSD/Projects/xrugc-platform/plugins/apk-rebuilder/docs/INTEGRATION.md)。
+如果要走 system-admin 注册，可直接参考 [deploy/system-admin-plugin-config.example.json](/Volumes/NewSSD/Projects/xrugc-platform/plugins/apk-rebuilder/deploy/system-admin-plugin-config.example.json)。
 
 ## 第五步：验证关键链路
 
@@ -144,8 +148,9 @@ npm run dev
 3. `npm test` 通过
 4. `npm run self-check` 通过
 5. iframe 模式能收到宿主 `INIT`
-6. `/v1/plugin/verify-token` 能返回用户角色
-7. `/plugin/execute`、`/plugin/runs/:runId`、`/plugin/artifacts/:artifactId` 三条主链路可用
+6. `<hostApiBase>/v1/plugin/verify-token` 能返回用户角色
+7. `<pluginApiBase>/v1/plugin/allowed-actions` 能返回动作列表
+8. `/plugin/execute`、`/plugin/runs/:runId`、`/plugin/artifacts/:artifactId` 三条主链路可用
 
 ## 常见问题
 

@@ -18,11 +18,14 @@ export function usePermissions(host: EmbedHostApi) {
   };
 
   async function getAllowedActions(): Promise<string[]> {
-    console.info('[APK-REBUILDER] call /v1/plugin/allowed-actions', {
+    const path = '/v1/plugin/allowed-actions?plugin_name=apk-rebuilder';
+    console.info('[APK-REBUILDER] call plugin allowed-actions', {
       plugin: 'apk-rebuilder',
+      pluginApiBase: host.state?.pluginApiBase || '',
+      url: host.buildPluginUrl(path),
     });
     try {
-      const res = await host.hostFetch('/v1/plugin/allowed-actions?plugin_name=apk-rebuilder');
+      const res = await host.pluginFetch(path);
       const json = await res.json().catch(() => ({}));
       const data = json?.data || json;
       const actions = Array.isArray(data?.actions) ? data.actions : [];

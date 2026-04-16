@@ -64,6 +64,9 @@ export interface EmbedHostConfig {
   hostApiBase?: string;
   mainApiBase?: string;
   host_api_base?: string;
+  pluginApiBase?: string;
+  systemAdminApiBase?: string;
+  plugin_api_base?: string;
   roles?: string[] | string;
   role?: string[] | string;
   theme?: string;
@@ -77,6 +80,7 @@ export interface EmbedHostState {
   token: string;
   config: EmbedHostConfig;
   hostApiBase: string;
+  pluginApiBase: string;
   roles: string[];
   lastInitError: string;
 }
@@ -85,6 +89,7 @@ export interface EmbedHostPayload {
   token?: string;
   config?: EmbedHostConfig;
   hostApiBase?: string;
+  pluginApiBase?: string;
   roles?: string[] | string;
   role?: string[] | string;
   user?: { roles?: string[] | string };
@@ -97,8 +102,10 @@ export interface EmbedHostApi {
   isInIframe(): boolean;
   buildUrl(path: string): string;
   buildHostUrl(path: string): string;
+  buildPluginUrl(path: string): string;
   authFetch(path: string, options?: RequestInit): Promise<Response>;
   hostFetch(path: string, options?: RequestInit): Promise<Response>;
+  pluginFetch(path: string, options?: RequestInit): Promise<Response>;
 }
 
 export interface SubmitArtifact {

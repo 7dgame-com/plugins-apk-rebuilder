@@ -17,6 +17,7 @@ export function useEmbedHost(): EmbedHostApi {
     token: '',
     config: {},
     hostApiBase: '',
+    pluginApiBase: '',
     roles: [],
     lastInitError: '',
   };
@@ -63,6 +64,7 @@ export function useEmbedHost(): EmbedHostApi {
             timeout,
             parentOrigin,
             hostApiBase: state.hostApiBase || '',
+            pluginApiBase: state.pluginApiBase || '',
             hasToken: Boolean(state.token),
           });
           reject(createHostError('INIT_TIMEOUT', 'Host INIT timeout'));
@@ -91,6 +93,7 @@ export function useEmbedHost(): EmbedHostApi {
       logAlways('INIT completed without host token', {
         parentOrigin,
         hostApiBase: state.hostApiBase || '',
+        pluginApiBase: state.pluginApiBase || '',
         roles: state.roles,
       });
       throw createHostError('MISSING_HOST_TOKEN', 'Host token missing after INIT');
@@ -105,10 +108,20 @@ export function useEmbedHost(): EmbedHostApi {
     }
     const cfg = state.config || {};
     const hostApiBase = cfg.hostApiBase || cfg.mainApiBase || cfg.host_api_base || payload.hostApiBase;
+    const pluginApiBase =
+      cfg.pluginApiBase ||
+      cfg.systemAdminApiBase ||
+      cfg.plugin_api_base ||
+      payload.pluginApiBase;
     const rawRoles = payload.roles ?? payload.role ?? payload.user?.roles ?? cfg.roles ?? cfg.role;
 
     if (hostApiBase) state.hostApiBase = String(hostApiBase).trim();
     if (!state.hostApiBase) state.hostApiBase = '/api';
+    if (pluginApiBase) state.pluginApiBase = String(pluginApiBase).trim();
+    if (!state.pluginApiBase) {
+      state.pluginApiBase =
+        state.hostApiBase === '/api' ? '/api-config/api' : state.hostApiBase;
+    }
 
     if (rawRoles) {
       if (Array.isArray(rawRoles)) {
@@ -122,6 +135,7 @@ export function useEmbedHost(): EmbedHostApi {
 
     logAlways('INIT received', {
       hostApiBase: state.hostApiBase,
+      pluginApiBase: state.pluginApiBase,
       token: state.token ? `${state.token.slice(0, 6)}...` : '',
       roles: state.roles,
     });
@@ -149,6 +163,14 @@ export function useEmbedHost(): EmbedHostApi {
     if (!path) return state.hostApiBase || '';
     if (path.startsWith('http')) return path;
     const base = state.hostApiBase || '';
+    if (!base) return path;
+    return `${base}${path.startsWith('/') ? path : `/${path}`}`;
+  }
+
+  function buildPluginUrl(path: string): string {
+    if (!path) return state.pluginApiBase || '';
+    if (path.startsWith('http')) return path;
+    const base = state.pluginApiBase || '';
     if (!base) return path;
     return `${base}${path.startsWith('/') ? path : `/${path}`}`;
   }
@@ -201,6 +223,7 @@ export function useEmbedHost(): EmbedHostApi {
           timeout,
           parentOrigin,
           hostApiBase: state.hostApiBase || '',
+          pluginApiBase: state.pluginApiBase || '',
         });
         resolve(null);
       }, timeout);
@@ -259,6 +282,7 @@ export function useEmbedHost(): EmbedHostApi {
       path: String(path),
       token: !!state.token,
       hostApiBase: state.hostApiBase || '',
+      pluginApiBase: state.pluginApiBase || '',
     });
 
     let res: Response;
@@ -286,6 +310,46 @@ export function useEmbedHost(): EmbedHostApi {
       return retryRes;
     } catch (err) {
       logAlways('hostFetch retry error', { path: String(path), error: String(err) });
+      throw err;
+    }
+  }
+
+  async function pluginFetch(path: string, options: RequestInit = {}): Promise<Response> {
+    await ensureInit();
+    const headers = new Headers(options.headers || {});
+    if (state.token) headers.set('authorization', `Bearer ${state.token}`);
+    logAlways('pluginFetch', {
+      method: String(options.method || 'GET').toUpperCase(),
+      path: String(path),
+      token: !!state.token,
+      pluginApiBase: state.pluginApiBase || '',
+    });
+
+    let res: Response;
+    try {
+      res = await fetch(buildPluginUrl(path), { ...options, headers });
+      await logResponse('pluginFetch', res);
+    } catch (err) {
+      logAlways('pluginFetch error', { path: String(path), error: String(err) });
+      throw err;
+    }
+    if (res.status !== 401) return res;
+
+    const refreshed = await requestParentTokenRefresh();
+    if (!refreshed || !refreshed.token) {
+      postToParent('TOKEN_EXPIRED');
+      return res;
+    }
+
+    state.token = String(refreshed.token).trim();
+    const retryHeaders = new Headers(options.headers || {});
+    retryHeaders.set('authorization', `Bearer ${state.token}`);
+    try {
+      const retryRes = await fetch(buildPluginUrl(path), { ...options, headers: retryHeaders });
+      await logResponse('pluginFetch retry', retryRes);
+      return retryRes;
+    } catch (err) {
+      logAlways('pluginFetch retry error', { path: String(path), error: String(err) });
       throw err;
     }
   }
@@ -332,7 +396,9 @@ export function useEmbedHost(): EmbedHostApi {
     ensureHostEntry,
     buildUrl,
     buildHostUrl,
+    buildPluginUrl,
     authFetch,
     hostFetch,
+    pluginFetch,
   };
 }
