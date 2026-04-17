@@ -3,11 +3,9 @@
   "_注意事项": [
     "1. url 应指向 apk-rebuilder 的嵌入入口页面，而不是主系统页面",
     "2. allowedOrigin 必须和 url 的 origin 一致，用于 iframe postMessage 安全校验",
-    "3. extraConfig.hostApiBase 应指向主系统普通 API 根路径，例如 /api",
-    "4. extraConfig.pluginApiBase 应指向主系统插件配置/权限 API 根路径，例如 /api-config/api",
-    "5. extraConfig.apiBaseUrl 应指向 apk-rebuilder 自身的 /plugin 根路径，供宿主读取或调试",
-    "6. allowedHostOrigins 建议显式声明允许嵌入当前插件的主站 origin",
-    "7. 生产环境建议通过反向代理统一域名，并将 /plugin/* 转发到 apk-rebuilder 服务"
+    "3. 前端 embed 页面固定走 /api 与 /api-config/api，不再依赖 extraConfig 传宿主 API 根路径",
+    "4. allowedHostOrigins 建议显式声明允许嵌入当前插件的主站 origin",
+    "5. 生产环境建议通过反向代理统一域名，并将 /plugin/* 转发到 apk-rebuilder 服务"
   ],
   "menuGroups": [
     {
@@ -41,12 +39,7 @@
         "http://127.0.0.1:3000",
         "http://localhost:3000"
       ],
-      "version": "2.0.0",
-      "extraConfig": {
-        "hostApiBase": "http://localhost:8091/api",
-        "pluginApiBase": "http://localhost:8091/api-config/api",
-        "apiBaseUrl": "http://localhost:3007/plugin"
-      }
+      "version": "2.0.0"
     }
   ]
 }

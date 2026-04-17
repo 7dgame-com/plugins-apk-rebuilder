@@ -127,12 +127,7 @@ npm run dev
   "order": 10,
   "allowedOrigin": "http://127.0.0.1:5173",
   "allowedHostOrigins": ["http://127.0.0.1:8090"],
-  "version": "2.0.0",
-  "extraConfig": {
-    "hostApiBase": "http://127.0.0.1:8091/api",
-    "pluginApiBase": "http://127.0.0.1:8091/api-config/api",
-    "apiBaseUrl": "http://127.0.0.1:3007/plugin"
-  }
+  "version": "2.0.0"
 }
 ```
 
@@ -148,8 +143,8 @@ npm run dev
 3. `npm test` 通过
 4. `npm run self-check` 通过
 5. iframe 模式能收到宿主 `INIT`
-6. `<hostApiBase>/v1/plugin/verify-token` 能返回用户角色
-7. `<pluginApiBase>/v1/plugin/allowed-actions` 能返回动作列表
+6. `/api/v1/plugin/verify-token` 能返回用户角色
+7. `/api-config/api/v1/plugin/allowed-actions` 能返回动作列表
 8. `/plugin/execute`、`/plugin/runs/:runId`、`/plugin/artifacts/:artifactId` 三条主链路可用
 
 ## 常见问题

@@ -21,7 +21,7 @@ export function usePermissions(host: EmbedHostApi) {
     const path = '/v1/plugin/allowed-actions?plugin_name=apk-rebuilder';
     console.info('[APK-REBUILDER] call plugin allowed-actions', {
       plugin: 'apk-rebuilder',
-      pluginApiBase: host.state?.pluginApiBase || '',
+      pluginApiBase: '/api-config/api',
       url: host.buildPluginUrl(path),
     });
     try {

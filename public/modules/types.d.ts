@@ -61,12 +61,6 @@ export interface AppState {
 }
 
 export interface EmbedHostConfig {
-  hostApiBase?: string;
-  mainApiBase?: string;
-  host_api_base?: string;
-  pluginApiBase?: string;
-  systemAdminApiBase?: string;
-  plugin_api_base?: string;
   roles?: string[] | string;
   role?: string[] | string;
   theme?: string;
@@ -79,8 +73,6 @@ export interface EmbedHostConfig {
 export interface EmbedHostState {
   token: string;
   config: EmbedHostConfig;
-  hostApiBase: string;
-  pluginApiBase: string;
   roles: string[];
   lastInitError: string;
 }
@@ -88,8 +80,6 @@ export interface EmbedHostState {
 export interface EmbedHostPayload {
   token?: string;
   config?: EmbedHostConfig;
-  hostApiBase?: string;
-  pluginApiBase?: string;
   roles?: string[] | string;
   role?: string[] | string;
   user?: { roles?: string[] | string };

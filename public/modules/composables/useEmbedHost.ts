@@ -3,6 +3,9 @@ import type { EmbedHostApi, EmbedHostPayload, EmbedHostState } from '../types';
 
 type HostError = Error & { code?: string };
 
+const HOST_API_BASE = '/api';
+const PLUGIN_API_BASE = '/api-config/api';
+
 export function useEmbedHost(): EmbedHostApi {
   const debug =
     new URLSearchParams(window.location.search).get('debug') === '1' ||
@@ -16,8 +19,6 @@ export function useEmbedHost(): EmbedHostApi {
   const state: EmbedHostState = {
     token: '',
     config: {},
-    hostApiBase: '',
-    pluginApiBase: '',
     roles: [],
     lastInitError: '',
   };
@@ -63,8 +64,6 @@ export function useEmbedHost(): EmbedHostApi {
           logAlways('INIT wait timeout (blocked)', {
             timeout,
             parentOrigin,
-            hostApiBase: state.hostApiBase || '',
-            pluginApiBase: state.pluginApiBase || '',
             hasToken: Boolean(state.token),
           });
           reject(createHostError('INIT_TIMEOUT', 'Host INIT timeout'));
@@ -92,8 +91,6 @@ export function useEmbedHost(): EmbedHostApi {
       state.lastInitError = 'MISSING_HOST_TOKEN';
       logAlways('INIT completed without host token', {
         parentOrigin,
-        hostApiBase: state.hostApiBase || '',
-        pluginApiBase: state.pluginApiBase || '',
         roles: state.roles,
       });
       throw createHostError('MISSING_HOST_TOKEN', 'Host token missing after INIT');
@@ -107,21 +104,7 @@ export function useEmbedHost(): EmbedHostApi {
       state.config = payload.config || {};
     }
     const cfg = state.config || {};
-    const hostApiBase = cfg.hostApiBase || cfg.mainApiBase || cfg.host_api_base || payload.hostApiBase;
-    const pluginApiBase =
-      cfg.pluginApiBase ||
-      cfg.systemAdminApiBase ||
-      cfg.plugin_api_base ||
-      payload.pluginApiBase;
     const rawRoles = payload.roles ?? payload.role ?? payload.user?.roles ?? cfg.roles ?? cfg.role;
-
-    if (hostApiBase) state.hostApiBase = String(hostApiBase).trim();
-    if (!state.hostApiBase) state.hostApiBase = '/api';
-    if (pluginApiBase) state.pluginApiBase = String(pluginApiBase).trim();
-    if (!state.pluginApiBase) {
-      state.pluginApiBase =
-        state.hostApiBase === '/api' ? '/api-config/api' : state.hostApiBase;
-    }
 
     if (rawRoles) {
       if (Array.isArray(rawRoles)) {
@@ -134,10 +117,10 @@ export function useEmbedHost(): EmbedHostApi {
     }
 
     logAlways('INIT received', {
-      hostApiBase: state.hostApiBase,
-      pluginApiBase: state.pluginApiBase,
       token: state.token ? `${state.token.slice(0, 6)}...` : '',
       roles: state.roles,
+      hostApiBase: HOST_API_BASE,
+      pluginApiBase: PLUGIN_API_BASE,
     });
     if (!state.token) {
       logAlways('WARN: INIT token is empty');
@@ -160,19 +143,15 @@ export function useEmbedHost(): EmbedHostApi {
   }
 
   function buildHostUrl(path: string): string {
-    if (!path) return state.hostApiBase || '';
+    if (!path) return HOST_API_BASE;
     if (path.startsWith('http')) return path;
-    const base = state.hostApiBase || '';
-    if (!base) return path;
-    return `${base}${path.startsWith('/') ? path : `/${path}`}`;
+    return `${HOST_API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
   }
 
   function buildPluginUrl(path: string): string {
-    if (!path) return state.pluginApiBase || '';
+    if (!path) return PLUGIN_API_BASE;
     if (path.startsWith('http')) return path;
-    const base = state.pluginApiBase || '';
-    if (!base) return path;
-    return `${base}${path.startsWith('/') ? path : `/${path}`}`;
+    return `${PLUGIN_API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
   }
 
   async function logResponse(label: string, res: Response | null | undefined): Promise<void> {
@@ -222,8 +201,6 @@ export function useEmbedHost(): EmbedHostApi {
         logAlways('TOKEN_REFRESH_REQUEST timeout', {
           timeout,
           parentOrigin,
-          hostApiBase: state.hostApiBase || '',
-          pluginApiBase: state.pluginApiBase || '',
         });
         resolve(null);
       }, timeout);
@@ -281,8 +258,8 @@ export function useEmbedHost(): EmbedHostApi {
       method: String(options.method || 'GET').toUpperCase(),
       path: String(path),
       token: !!state.token,
-      hostApiBase: state.hostApiBase || '',
-      pluginApiBase: state.pluginApiBase || '',
+      hostApiBase: HOST_API_BASE,
+      pluginApiBase: PLUGIN_API_BASE,
     });
 
     let res: Response;
@@ -322,7 +299,7 @@ export function useEmbedHost(): EmbedHostApi {
       method: String(options.method || 'GET').toUpperCase(),
       path: String(path),
       token: !!state.token,
-      pluginApiBase: state.pluginApiBase || '',
+      pluginApiBase: PLUGIN_API_BASE,
     });
 
     let res: Response;

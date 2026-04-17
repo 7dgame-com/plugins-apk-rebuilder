@@ -1,7 +1,7 @@
 {
   "_说明": [
     "这是一份供 system-admin / 插件配置中心录入的示例。",
-    "宿主普通 API 与插件配置/权限 API 已拆分，请同时配置 hostApiBase 和 pluginApiBase。",
+    "前端 embed 页面固定走 /api 与 /api-config/api，新接入无需再录 extraConfig。",
     "如 system-admin 已单独维护 menu group，可省略 group 对应定义，只保留插件记录。"
   ],
   "version": "1.0.0",
@@ -34,12 +34,7 @@
       "allowedHostOrigins": [
         "https://host.example.com"
       ],
-      "version": "2.0.0",
-      "extraConfig": {
-        "hostApiBase": "https://host.example.com/api",
-        "pluginApiBase": "https://host.example.com/api-config/api",
-        "apiBaseUrl": "https://apk-rebuilder.example.com/plugin"
-      }
+      "version": "2.0.0"
     }
   ]
 }

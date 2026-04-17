@@ -12,27 +12,26 @@ function readSource(relativePath) {
   return fs.readFileSync(path.join(projectRoot, relativePath), 'utf8');
 }
 
-test('embed host falls back pluginApiBase to /api-config/api when hostApiBase is /api', () => {
+test('embed host uses fixed host and plugin api base paths', () => {
   const source = readSource('public/modules/composables/useEmbedHost.ts');
 
-  assert.match(
-    source,
-    /state\.hostApiBase === '\/api' \? '\/api-config\/api' : state\.hostApiBase/
-  );
+  assert.match(source, /const HOST_API_BASE = '\/api';/);
+  assert.match(source, /const PLUGIN_API_BASE = '\/api-config\/api';/);
 });
 
-test('embed host accepts pluginApiBase aliases from INIT payload', () => {
+test('embed host no longer reads api base overrides from INIT payload', () => {
   const source = readSource('public/modules/composables/useEmbedHost.ts');
 
-  assert.match(source, /cfg\.pluginApiBase/);
-  assert.match(source, /cfg\.systemAdminApiBase/);
-  assert.match(source, /cfg\.plugin_api_base/);
+  assert.doesNotMatch(source, /cfg\.hostApiBase/);
+  assert.doesNotMatch(source, /cfg\.pluginApiBase/);
+  assert.doesNotMatch(source, /cfg\.systemAdminApiBase/);
 });
 
 test('embed host api types expose pluginApiBase and pluginFetch', () => {
   const source = readSource('public/modules/types.d.ts');
 
-  assert.match(source, /pluginApiBase\?: string;/);
   assert.match(source, /buildPluginUrl\(path: string\): string;/);
   assert.match(source, /pluginFetch\(path: string, options\?: RequestInit\): Promise<Response>;/);
+  assert.doesNotMatch(source, /hostApiBase\?: string;/);
+  assert.doesNotMatch(source, /pluginApiBase\?: string;/);
 });

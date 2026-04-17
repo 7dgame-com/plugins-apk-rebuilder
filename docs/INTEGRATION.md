@@ -22,8 +22,8 @@ http://<apk-rebuilder-host>/embed.html
 嵌入页启动后会：
 
 1. 等待父窗口发送 `INIT`
-2. 从 `INIT` 中读取 token、主题、语言、角色、`hostApiBase` 和 `pluginApiBase`
-3. 使用 `pluginApiBase` 请求主系统的插件配置/权限接口
+2. 从 `INIT` 中读取 token、主题、语言和角色
+3. 固定使用 `/api-config/api` 请求主系统的插件配置/权限接口
 4. 使用本地 `/plugin/*` 接口执行改包任务
 
 ## INIT 负载
@@ -35,8 +35,6 @@ http://<apk-rebuilder-host>/embed.html
   "token": "<bearer token>",
   "roles": ["admin"],
   "config": {
-    "hostApiBase": "https://example.com/api",
-    "pluginApiBase": "https://example.com/api-config/api",
     "theme": "light",
     "lang": "zh-CN"
   }
@@ -45,32 +43,33 @@ http://<apk-rebuilder-host>/embed.html
 
 兼容字段：
 
-- `config.mainApiBase`
-- `config.host_api_base`
-- `config.systemAdminApiBase`
-- `config.plugin_api_base`
 - `role`
 - `user.roles`
 
-如果未提供 `hostApiBase`，前端会退回到 `/api`。如果未提供 `pluginApiBase`，前端会优先退回到 `/api-config/api`，再退回到 `hostApiBase`。这类回退只适合本地联调，不建议用于生产集成。
+前端 embed 页面当前固定请求：
+
+- `GET /api/v1/plugin/verify-token`
+- `GET /api-config/api/v1/plugin/allowed-actions`
+
+因此宿主需要保证这两条同域路径可用。
 
 ## 宿主鉴权接口
 
 `apk-rebuilder` 当前依赖以下主系统接口：
 
-- `GET <hostApiBase>/v1/plugin/verify-token`
-- `GET <pluginApiBase>/v1/plugin/check-permission`
-- `GET <pluginApiBase>/v1/plugin/allowed-actions`
+- `GET /api/v1/plugin/verify-token`
+- `GET /api-config/api/v1/plugin/check-permission`
+- `GET /api-config/api/v1/plugin/allowed-actions`
 
 后端 `/plugin/*` 路由主要依赖：
 
-- `check-permission`（走 `pluginApiBase`）
-- 必要时的 `verify-token`（走 `hostApiBase`）
+- `check-permission`（走 `HOST_PLUGIN_API_BASE`）
+- 必要时的 `verify-token`（走 `HOST_API_BASE`）
 
 前端 embed 页面主要依赖：
 
-- `allowed-actions`（走 `pluginApiBase`）
-- `verify-token`（走 `hostApiBase`）
+- `allowed-actions`（固定走 `/api-config/api`）
+- `verify-token`（固定走 `/api`）
 
 ## 权限动作
 
@@ -128,6 +127,6 @@ STRICT_TOOLCHAIN=true
 - `url`: `https://your-plugin.example.com/embed.html`
 - `allowedOrigin`: `https://your-plugin.example.com`
 - `allowedHostOrigins`: `["https://your-host.example.com"]`
-- `extraConfig.hostApiBase`: `https://your-main-api.example.com/api`
-- `extraConfig.pluginApiBase`: `https://your-main-api.example.com/api-config/api`
-- `extraConfig.apiBaseUrl`: `https://your-plugin.example.com/plugin`
+- 前端无需再配置 `extraConfig.hostApiBase`
+- 前端无需再配置 `extraConfig.pluginApiBase`
+- 前端无需再配置 `extraConfig.apiBaseUrl`
