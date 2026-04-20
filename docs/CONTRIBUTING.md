@@ -8,13 +8,12 @@
 
 - 使用 TypeScript
 - `/plugin/*` 视为正式宿主协议，改动前先确认是否需要同步更新 [INTEGRATION.md](./INTEGRATION.md)
-- `/api/*` 主要服务于本地调试，不要让宿主正式能力依赖它
 - 权限校验优先依赖宿主接口，不新增隐式本地放权逻辑
 
 ### 前端
 
 - 前端源码位于 `public/`，通过 Vite 构建
-- 宿主桥接逻辑收敛在 `public/modules/composables/useEmbedHost.ts`
+- 宿主桥接逻辑收敛在 `public/modules/composables/useHostBridge.ts`
 - 权限逻辑收敛在 `public/modules/composables/usePermissions.ts`
 - 页面区块优先放在 `public/modules/sections/*`
 - 所有用户可见文案都应走 `public/modules/i18n.ts`
@@ -35,7 +34,7 @@ test(apk-rebuilder): ...
 开始改动前至少确认：
 
 - 是否改到了宿主契约
-- 是否涉及 `PLUGIN_MODE` / `HOST_API_BASE` / `HOST_AUTH_ROLE_FALLBACK`
+- 是否涉及 `HOST_API_BASE` / `verify-token` / 角色判权
 - 是否需要同步更新 README、快速开始或接入文档
 
 ## 提交前检查
@@ -72,7 +71,7 @@ PR 描述里建议写清楚：
 - `src/middleware/auth.ts`
 - `src/buildService.ts`
 - `src/toolchain.ts`
-- `public/modules/composables/useEmbedHost.ts`
+- `public/modules/composables/useHostBridge.ts`
 - `public/modules/composables/usePermissions.ts`
 
 这些模块一旦改错，最常见的后果是：

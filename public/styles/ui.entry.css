@@ -1,14 +1,14 @@
-body.apk-embed {
+body.apk-entry {
   background: var(--bg-page);
 }
 
-.apk-embed .wrap {
+.apk-entry .wrap {
   max-width: 760px;
   margin: 0 auto;
   padding: var(--spacing-md);
 }
 
-.apk-embed .apk-header {
+.apk-entry .apk-header {
   padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--radius-md);
   background: var(--bg-secondary);
@@ -16,18 +16,18 @@ body.apk-embed {
   margin-bottom: var(--spacing-md);
 }
 
-.apk-embed .apk-header-title {
+.apk-entry .apk-header-title {
   font-size: 18px;
   font-weight: 700;
   color: var(--text-primary);
 }
 
-.apk-embed .apk-header-subtitle {
+.apk-entry .apk-header-subtitle {
   margin-top: 4px;
   font-size: var(--font-size-sm);
   color: var(--text-secondary);
 }
 
-.apk-embed .card {
+.apk-entry .card {
   box-shadow: var(--shadow-sm);
 }

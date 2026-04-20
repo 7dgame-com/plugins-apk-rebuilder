@@ -9,16 +9,10 @@ services:
     environment:
       - APP_API_1_URL=https://api.d.xrteeth.com
       - APP_API_2_URL=https://api.d.tmrpp.com
-      - APP_CONFIG_API_1_URL=https://admin.d.xrteeth.com/api
-      - APP_CONFIG_API_2_URL=https://admin.d.tmrpp.com/api
       - PORT=3007
       - HOST=0.0.0.0
-      - PLUGIN_MODE=true
-      - APK_REBUILDER_UI_MODE=embed
       - MAIN_API_URL=https://api.d.xrteeth.com/api
       - HOST_API_BASE=https://api.d.xrteeth.com/api
-      - HOST_PLUGIN_API_BASE=https://admin.d.xrteeth.com/api/v1/plugin
-      - HOST_AUTH_ROLE_FALLBACK=false
       - STRICT_TOOLCHAIN=true
       - STRICT_REDIS=true
       - PLUGIN_TOKEN_SECRET=change-me

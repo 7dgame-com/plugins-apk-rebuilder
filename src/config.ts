@@ -111,22 +111,14 @@ export const FRONTEND_SOURCE_DIR = path.join(process.cwd(), 'public');
 export const FRONTEND_DIST_DIR = path.join(process.cwd(), 'frontend-dist');
 export const FRONTEND_DIST_READY = fs.existsSync(FRONTEND_DIST_DIR) && fs.statSync(FRONTEND_DIST_DIR).isDirectory();
 export const FRONTEND_PUBLIC_DIR = FRONTEND_DIST_READY ? FRONTEND_DIST_DIR : FRONTEND_SOURCE_DIR;
-export const PLUGIN_MODE = readBooleanEnv('PLUGIN_MODE', false);
-const uiModeRaw = process.env['APK_REBUILDER_UI_MODE'] || (PLUGIN_MODE ? 'embed' : 'full');
-export const APK_REBUILDER_UI_MODE = uiModeRaw.toLowerCase() === 'embed' ? 'embed' : 'full';
-export const STRICT_TOOLCHAIN = readBooleanEnv('STRICT_TOOLCHAIN', PLUGIN_MODE);
-export const STRICT_REDIS = readBooleanEnv('STRICT_REDIS', PLUGIN_MODE);
+export const PLUGIN_MODE = true;
+export const STRICT_TOOLCHAIN = readBooleanEnv('STRICT_TOOLCHAIN', true);
+export const STRICT_REDIS = readBooleanEnv('STRICT_REDIS', true);
 export const PLUGIN_ID = process.env['PLUGIN_ID'] || 'apk-rebuilder';
 export const PLUGIN_NAME = PLUGIN_ID;
 export const PLUGIN_TOKEN_SECRET = process.env['PLUGIN_TOKEN_SECRET'] || '';
 export const MAIN_API_URL = process.env['MAIN_API_URL'] || process.env['HOST_API_BASE'] || '';
 export const HOST_API_BASE = MAIN_API_URL;
-export const HOST_PLUGIN_API_BASE =
-  process.env['HOST_PLUGIN_API_BASE'] ||
-  process.env['SYSTEM_ADMIN_API_BASE'] ||
-  process.env['PLUGIN_API_BASE'] ||
-  HOST_API_BASE;
-export const HOST_AUTH_ROLE_FALLBACK = readBooleanEnv('HOST_AUTH_ROLE_FALLBACK', false);
 export const HOST_AUTH_TIMEOUT_MS = Number.parseInt(
   process.env['HOST_AUTH_TIMEOUT_MS'] || '5000',
   10,
@@ -153,13 +145,10 @@ export const BUILTIN_STANDARD_APK_NAME =
 export const BUILTIN_STANDARD_APK_PATH_FROM_ENV = Boolean(process.env['BUILTIN_STANDARD_APK_PATH']);
 
 export function validateRuntimeConfig(): void {
-  if (PLUGIN_MODE && !HOST_API_BASE.trim()) {
-    throw new Error('HOST_API_BASE is required when PLUGIN_MODE=true');
+  if (!HOST_API_BASE.trim()) {
+    throw new Error('HOST_API_BASE is required for plugin runtime');
   }
-  if (PLUGIN_MODE && !HOST_PLUGIN_API_BASE.trim()) {
-    throw new Error('HOST_PLUGIN_API_BASE is required when PLUGIN_MODE=true');
-  }
-  if (PLUGIN_MODE && !PLUGIN_TOKEN_SECRET.trim()) {
+  if (!PLUGIN_TOKEN_SECRET.trim()) {
     console.warn('[config] PLUGIN_TOKEN_SECRET is empty; HS256 plugin token verification is disabled.');
   }
 }

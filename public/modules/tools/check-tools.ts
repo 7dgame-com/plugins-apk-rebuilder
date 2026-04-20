@@ -1,12 +1,11 @@
 import { t } from '../i18n';
-import { normalizeEmbedErrorMessage } from '../embed/errors';
-import { showAlert } from '../embed/notify';
-import type { AppState, EmbedHostApi } from '../types';
+import { normalizeHostErrorMessage } from '../host/errors';
+import { showAlert } from '../host/notify';
+import type { AppState, HostBridgeApi } from '../types';
 
 type ToolsCheckDeps = {
   state: AppState;
-  api: (url: string, options?: RequestInit) => Promise<any>;
-  host?: EmbedHostApi | null;
+  host: HostBridgeApi;
 };
 
 type ToolStatus = {
@@ -34,7 +33,7 @@ export function renderToolsCheck(container: HTMLElement): void {
   );
 }
 
-export function createToolsCheck({ state, api, host = null }: ToolsCheckDeps) {
+export function createToolsCheck({ state, host }: ToolsCheckDeps) {
   function renderTools(data: ToolsResponse | Record<string, any>): void {
     const tools = data?.tools || {};
     const names = Object.keys(tools);
@@ -81,18 +80,14 @@ export function createToolsCheck({ state, api, host = null }: ToolsCheckDeps) {
 
   async function refreshTools(): Promise<void> {
     try {
-      if (host) {
-        const res = await host.authFetch('/plugin/admin/tools');
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(json?.error?.message || json?.message || `HTTP ${res.status}`);
-        }
-        renderTools(json?.data ?? json);
-        return;
+      const res = await host.authFetch('/plugin/admin/tools');
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(json?.error?.message || json?.message || `HTTP ${res.status}`);
       }
-      renderTools(await api('/api/tools'));
+      renderTools(json?.data ?? json);
     } catch (error) {
-      void showAlert(t('tools.checkFailed', { message: normalizeEmbedErrorMessage(error, t, '') }));
+      void showAlert(t('tools.checkFailed', { message: normalizeHostErrorMessage(error, t, '') }));
     }
   }
 

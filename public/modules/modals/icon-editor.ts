@@ -1,6 +1,6 @@
 import { iconEditor } from '../state';
 import { t } from '../i18n';
-import { showAlert } from '../embed/notify';
+import { showAlert } from '../host/notify';
 import type { AppState } from '../types';
 
 type IconEditorDeps = {

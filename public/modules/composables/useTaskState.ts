@@ -2,7 +2,7 @@ import type { AppState, RuntimeModeValue, TaskStageValue } from '../types';
 
 type TaskStateDeps = {
   state: AppState;
-  runtimeMode: { STANDALONE: RuntimeModeValue; FULL: RuntimeModeValue; EMBED: RuntimeModeValue };
+  runtimeMode: { HOST: RuntimeModeValue };
   taskStatus: { IDLE: AppState['status'] };
   taskStage: { IDLE: TaskStageValue; PARSE: TaskStageValue };
   modProgress: { IDLE: AppState['modProgress'] };
@@ -10,7 +10,7 @@ type TaskStateDeps = {
 
 export function useTaskState({ state, runtimeMode, taskStatus, taskStage, modProgress }: TaskStateDeps) {
   function setRuntimeMode(mode: RuntimeModeValue | '' | null | undefined): void {
-    state.runtimeMode = mode || runtimeMode.STANDALONE;
+    state.runtimeMode = mode || runtimeMode.HOST;
   }
 
   function resetTaskExecutionState(taskId = '', sourceName = ''): void {

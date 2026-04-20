@@ -9,9 +9,7 @@ type FailedQueueItem = {
 };
 
 export const RUNTIME_MODE = Object.freeze({
-  STANDALONE: 'standalone',
-  FULL: 'full',
-  EMBED: 'embed',
+  HOST: 'host',
 } as const);
 
 export const TASK_STATUS = Object.freeze({
@@ -38,7 +36,7 @@ export const MOD_PROGRESS = Object.freeze({
 } as const);
 
 export const state: AppState = {
-  runtimeMode: RUNTIME_MODE.STANDALONE,
+  runtimeMode: RUNTIME_MODE.HOST,
   isReady: false,
   id: '',
   status: TASK_STATUS.IDLE,
@@ -184,8 +182,8 @@ function processQueue(error: Error | null, token: string | null): void {
 }
 
 export async function api(url: string, options: RequestInit = {}): Promise<any> {
-  if (state.runtimeMode === RUNTIME_MODE.EMBED) {
-    throw new Error('EMBED_MODE_API_DISABLED');
+  if (state.runtimeMode === RUNTIME_MODE.HOST) {
+    throw new Error('HOST_MODE_API_DISABLED');
   }
   const headers = new Headers(options.headers || {});
   const token = getAuthToken();

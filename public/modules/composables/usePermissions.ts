@@ -1,48 +1,19 @@
 import { t } from '../i18n';
-import { normalizeEmbedErrorMessage } from '../embed/errors';
-import type { EmbedHostApi } from '../types';
+import { normalizeHostErrorMessage } from '../host/errors';
+import type { HostBridgeApi } from '../types';
+import { getPermissionSnapshot, type PermissionSnapshot } from '../../../src/shared/permissions';
 
-type PermissionState = {
-  canAdmin: boolean;
-  assumeUser: boolean;
-  roles: string[];
-  actions: string[];
-};
-
-export function usePermissions(host: EmbedHostApi) {
-  const state: PermissionState = {
-    canAdmin: false,
-    assumeUser: true,
+export function usePermissions(host: HostBridgeApi) {
+  const state: PermissionSnapshot = {
     roles: [],
-    actions: [],
+    canRead: false,
+    canRun: false,
+    canAdmin: false,
+    canManageStandardPackage: false,
+    canCheckTools: false,
   };
 
-  async function getAllowedActions(): Promise<string[]> {
-    const path = '/v1/plugin/allowed-actions?plugin_name=apk-rebuilder';
-    console.info('[APK-REBUILDER] call plugin allowed-actions', {
-      plugin: 'apk-rebuilder',
-      pluginApiBase: '/api-config/api',
-      url: host.buildPluginUrl(path),
-    });
-    try {
-      const res = await host.pluginFetch(path);
-      const json = await res.json().catch(() => ({}));
-      const data = json?.data || json;
-      const actions = Array.isArray(data?.actions) ? data.actions : [];
-      console.info('[APK-REBUILDER] allowed-actions', {
-        status: res.status,
-        ok: res.ok,
-        count: actions.length,
-        actions,
-      });
-      return actions;
-    } catch (error) {
-      console.info('[APK-REBUILDER] allowed-actions failed', String(error));
-      return [];
-    }
-  }
-
-  async function loadPermissions(): Promise<PermissionState> {
+  async function loadPermissions(): Promise<PermissionSnapshot> {
     let roles = Array.isArray(host.state?.roles) ? host.state.roles : [];
     console.info('[APK-REBUILDER] init payload', {
       token: host.state?.token ? `${String(host.state.token).slice(0, 6)}...` : '',
@@ -68,21 +39,12 @@ export function usePermissions(host: EmbedHostApi) {
       console.info('[APK-REBUILDER] verify-token failed', String(error));
     }
 
-    const actions = await getAllowedActions();
-    const hasActions = Array.isArray(actions) && actions.length > 0;
-    const isAdminByActions = hasActions && (actions.includes('*') || actions.includes('apk.rebuilder.admin'));
-    const isAdminByRoles = !hasActions && roles.some((role) => role === 'admin' || role === 'root');
-    state.canAdmin = isAdminByActions || isAdminByRoles;
-    state.assumeUser = !state.canAdmin;
-    state.roles = roles;
-    state.actions = actions;
+    Object.assign(state, getPermissionSnapshot(roles));
 
     console.info('[APK-REBUILDER] permission snapshot', {
-      actions,
-      hasActions,
-      isAdminByActions,
-      roles,
-      isAdminByRoles,
+      roles: state.roles,
+      canRead: state.canRead,
+      canRun: state.canRun,
       canAdmin: state.canAdmin,
     });
 
@@ -90,14 +52,18 @@ export function usePermissions(host: EmbedHostApi) {
   }
 
   function getBlockedMessageForError(error: unknown): string {
-    return normalizeEmbedErrorMessage(error, t, 'embed.authNotReady');
+    return normalizeHostErrorMessage(error, t, 'host.authNotReady');
   }
 
   return {
     state,
     loadPermissions,
+    hasAccess: () => state.canRead || state.canRun || state.canAdmin,
+    canRead: () => state.canRead,
+    canRun: () => state.canRun,
     canAdmin: () => state.canAdmin,
-    assumeUser: () => state.assumeUser,
+    canManageStandardPackage: () => state.canManageStandardPackage,
+    canCheckTools: () => state.canCheckTools,
     getBlockedMessageForError,
   };
 }

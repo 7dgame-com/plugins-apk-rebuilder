@@ -1,6 +1,6 @@
 import { t } from '../i18n';
 import { useSceneConfig } from '../composables/useSceneConfig';
-import type { EmbedHostApi, SceneListItem } from '../types';
+import type { HostBridgeApi, SceneListItem } from '../types';
 
 export function renderSceneConfigSection(container: HTMLElement): void {
   container.insertAdjacentHTML(
@@ -27,7 +27,7 @@ export function renderSceneConfigSection(container: HTMLElement): void {
 }
 
 export function createSceneConfigSection(
-  { host, perPage = 10 }: { host?: EmbedHostApi; perPage?: number } = {}
+  { host, perPage = 10 }: { host?: HostBridgeApi; perPage?: number } = {}
 ) {
   const sceneConfig = useSceneConfig({ host, perPage });
   const { viewState } = sceneConfig;

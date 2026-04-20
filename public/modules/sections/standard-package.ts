@@ -1,8 +1,8 @@
 import { formatBytes, fmtTime } from '../state';
 import { t } from '../i18n';
-import { showAlert, showConfirm } from '../embed/notify';
-import { normalizeEmbedErrorMessage } from '../embed/errors';
-import type { EmbedHostApi } from '../types';
+import { showAlert, showConfirm } from '../host/notify';
+import { normalizeHostErrorMessage } from '../host/errors';
+import type { HostBridgeApi } from '../types';
 
 type StandardPackageItem = {
   id: string;
@@ -17,7 +17,7 @@ type StandardPackageState = {
   activeStandardId: string | null;
   previousStandardId: string | null;
   disabledIds: string[];
-  canAdmin: boolean;
+  canManage: boolean;
   uploading: boolean;
 };
 
@@ -32,7 +32,7 @@ type StandardPackageListData = {
 
 export function renderStandardPackageSection(
   container: HTMLElement,
-  { canAdmin = true }: { canAdmin?: boolean } = {}
+  { canManage = true }: { canManage?: boolean } = {}
 ): void {
   container.insertAdjacentHTML(
     'beforeend',
@@ -56,19 +56,19 @@ export function renderStandardPackageSection(
     `
   );
 
-  if (!canAdmin) {
+  if (!canManage) {
     const uploadRow = document.getElementById('standardPackageUploadRow');
     if (uploadRow) uploadRow.style.display = 'none';
   }
 }
 
-export function createStandardPackageSection({ host, canAdmin = true }: { host: EmbedHostApi; canAdmin?: boolean }) {
+export function createStandardPackageSection({ host, canManage = true }: { host: HostBridgeApi; canManage?: boolean }) {
   const state: StandardPackageState = {
     items: [],
     activeStandardId: null,
     previousStandardId: null,
     disabledIds: [],
-    canAdmin: Boolean(canAdmin),
+    canManage: Boolean(canManage),
     uploading: false,
   };
 
@@ -104,7 +104,7 @@ export function createStandardPackageSection({ host, canAdmin = true }: { host: 
   function render(): void {
     const list = document.getElementById('standardPackageList');
     if (!list) return;
-    if (!state.canAdmin) {
+    if (!state.canManage) {
       list.innerHTML = '';
       return;
     }
@@ -152,12 +152,12 @@ export function createStandardPackageSection({ host, canAdmin = true }: { host: 
   }
 
   async function load(): Promise<void> {
-    if (!state.canAdmin) {
+    if (!state.canManage) {
       console.info('[APK-REBUILDER] call /plugin/standard-package (readonly)');
       const res = await host.authFetch('/plugin/standard-package');
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(normalizeEmbedErrorMessage(json?.error?.message || json?.message, t, 'standard.fetchFailed'));
+        throw new Error(normalizeHostErrorMessage(json?.error?.message || json?.message, t, 'standard.fetchFailed'));
       }
       renderReadonly(json?.data || json);
       return;
@@ -167,7 +167,7 @@ export function createStandardPackageSection({ host, canAdmin = true }: { host: 
     const res = await host.authFetch('/plugin/admin/apk-library');
     const json = await res.json();
     if (!res.ok) {
-      throw new Error(normalizeEmbedErrorMessage(json?.error?.message || json?.message, t, 'standard.listFailed'));
+      throw new Error(normalizeHostErrorMessage(json?.error?.message || json?.message, t, 'standard.listFailed'));
     }
     const data = (json?.data || json) as StandardPackageListData;
     state.items = data.items || [];
@@ -186,7 +186,7 @@ export function createStandardPackageSection({ host, canAdmin = true }: { host: 
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error(normalizeEmbedErrorMessage(json?.error?.message || json?.message, t, 'standard.setFailed'));
+      throw new Error(normalizeHostErrorMessage(json?.error?.message || json?.message, t, 'standard.setFailed'));
     }
     await load();
   }
@@ -198,7 +198,7 @@ export function createStandardPackageSection({ host, canAdmin = true }: { host: 
     const res = await host.authFetch(`/plugin/admin/apk-library/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error(normalizeEmbedErrorMessage(json?.error?.message || json?.message, t, 'standard.deleteFailed'));
+      throw new Error(normalizeHostErrorMessage(json?.error?.message || json?.message, t, 'standard.deleteFailed'));
     }
     await load();
   }
@@ -215,16 +215,11 @@ export function createStandardPackageSection({ host, canAdmin = true }: { host: 
     console.info('[APK-REBUILDER] call /plugin/admin/upload-standard');
     setUploadBusy(true);
     try {
-      let res = await host.authFetch('/plugin/admin/upload-standard', { method: 'POST', body: form });
-      let json = await res.json().catch(() => ({}));
-      if (!res.ok && (res.status === 502 || res.status === 404 || res.status === 500)) {
-        console.warn('[APK-REBUILDER] fallback upload -> /api/upload', { status: res.status });
-        res = await host.authFetch('/api/upload', { method: 'POST', body: form });
-        json = await res.json().catch(() => ({}));
-      }
+      const res = await host.authFetch('/plugin/admin/upload-standard', { method: 'POST', body: form });
+      const json = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(
-          normalizeEmbedErrorMessage(json?.error?.message || json?.message || `上传失败(${res.status})`, t, 'standard.uploadFailed')
+          normalizeHostErrorMessage(json?.error?.message || json?.message || `上传失败(${res.status})`, t, 'standard.uploadFailed')
         );
       }
       await load();
@@ -234,7 +229,7 @@ export function createStandardPackageSection({ host, canAdmin = true }: { host: 
   }
 
   function bind(): void {
-    if (!state.canAdmin) return;
+    if (!state.canManage) return;
     const uploadBtn = document.getElementById('standardUploadBtn') as HTMLButtonElement | null;
     const uploadInput = document.getElementById('standardApkFile') as HTMLInputElement | null;
     const uploadName = document.getElementById('standardUploadName');
@@ -245,7 +240,7 @@ export function createStandardPackageSection({ host, canAdmin = true }: { host: 
         const file = uploadInput.files?.[0];
         if (uploadName) uploadName.textContent = file?.name || t('standard.noFile');
         if (file) {
-          void uploadStandard(file).catch((error) => showAlert(normalizeEmbedErrorMessage(error, t, 'standard.uploadFailed')));
+          void uploadStandard(file).catch((error) => showAlert(normalizeHostErrorMessage(error, t, 'standard.uploadFailed')));
         }
       });
     }
@@ -259,9 +254,9 @@ export function createStandardPackageSection({ host, canAdmin = true }: { host: 
         const id = target.getAttribute('data-id');
         if (!action || !id) return;
         if (action === 'set-standard') {
-          void setStandard(id).catch((error) => showAlert(normalizeEmbedErrorMessage(error, t, 'standard.setFailed')));
+          void setStandard(id).catch((error) => showAlert(normalizeHostErrorMessage(error, t, 'standard.setFailed')));
         } else if (action === 'delete') {
-          void deleteItem(id).catch((error) => showAlert(normalizeEmbedErrorMessage(error, t, 'standard.deleteFailed')));
+          void deleteItem(id).catch((error) => showAlert(normalizeHostErrorMessage(error, t, 'standard.deleteFailed')));
         }
       });
     }

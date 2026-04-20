@@ -1,8 +1,8 @@
 import { t } from '../i18n';
-import { normalizeEmbedErrorMessage } from '../embed/errors';
-import type { EmbedHostApi, SceneListItem, SceneListResult, SceneQueryState, SceneViewState } from '../types';
+import { normalizeHostErrorMessage } from '../host/errors';
+import type { HostBridgeApi, SceneListItem, SceneListResult, SceneQueryState, SceneViewState } from '../types';
 
-export function useSceneConfig({ host, perPage = 10 }: { host?: EmbedHostApi; perPage?: number } = {}) {
+export function useSceneConfig({ host, perPage = 10 }: { host?: HostBridgeApi; perPage?: number } = {}) {
   const viewState: SceneViewState = {
     currentPage: 1,
     totalPages: 1,
@@ -38,7 +38,7 @@ export function useSceneConfig({ host, perPage = 10 }: { host?: EmbedHostApi; pe
       const res = await host.hostFetch(`/v1/verses?${params.toString()}`);
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(normalizeEmbedErrorMessage(json?.error?.message || json?.message, t, 'scene.fetchFailed'));
+        throw new Error(normalizeHostErrorMessage(json?.error?.message || json?.message, t, 'scene.fetchFailed'));
       }
       const data = json?.data ?? json ?? [];
       const items = Array.isArray(data) ? (data as SceneListItem[]) : [];

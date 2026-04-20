@@ -3,19 +3,16 @@
 `apk-rebuilder` 是一个用于 APK 改包的插件服务，当前代码形态是：
 
 - 后端：`Node.js + Express + TypeScript`
-- 前端：内置静态页面 + Vite 开发态 embed 页面
-- 运行模式：
-  - 宿主插件模式：`/plugin/*`
-  - 本地调试模式：`/api/*`
+- 前端：内置静态页面 + Vite 开发态 index 页面
+- 运行方式：作为主框架内的 iframe 插件运行
 
-当前推荐把它当作“独立插件域名 + iframe 嵌入”的服务来理解，而不是主站内联页面。
+当前推荐把它当作“独立插件域名 + iframe host 页面”的服务来理解，而不是主站内联页面。
 
 ## 当前结论
 
-- 宿主正式集成应使用 `embed.html`
+- 宿主正式集成应使用根路径 `/`
 - 宿主前端固定通过同域路径访问：
   - `/api/*` -> 主业务 API
-  - `/api-config/api/*` -> 插件配置 / 权限 API
   - `/plugin/*` -> `apk-rebuilder` 自身后端
 - 动态注册推荐通过 `system-admin` 完成
 - 本地静态 `plugins.json` 仅作为联调兜底
@@ -34,7 +31,7 @@
 - [README-quickstart.md](./README-quickstart.md)
   最短启动路径，本地开发 / 联调优先看这里。
 - [docs/INTEGRATION.md](./docs/INTEGRATION.md)
-  宿主接入协议、权限依赖、iframe 约定。
+  宿主接入协议、角色权限模型、iframe 约定。
 - [deploy/README-domain.md](./deploy/README-domain.md)
   独立域名部署与反代说明。
 - [docs/STRUCTURE.md](./docs/STRUCTURE.md)
@@ -47,7 +44,6 @@
 ```text
 apk-rebuilder/
 ├── src/                     # 后端源码
-│   ├── api/                 # 本地调试 / 独立服务接口
 │   ├── plugin/              # 宿主插件接口、宿主鉴权、标准包管理
 │   ├── common/              # 公共响应、任务辅助逻辑
 │   ├── middleware/          # 鉴权与限流
@@ -81,42 +77,29 @@ npm run self-check    # Redis / 工具链自检
 npm run bootstrap-tools
 ```
 
-## 两种运行方式
+## 运行方式
 
-### 1. 宿主插件模式
+这是唯一支持的运行方式。
 
-这是正式接入模式。
-
-- 页面入口：`/embed.html`
+- 页面入口：`/`
 - 宿主发 `INIT`
 - 页面自身通过：
   - `/api/v1/plugin/verify-token`
-  - `/api-config/api/v1/plugin/allowed-actions`
-  初始化权限
+  初始化角色
 - 真正执行改包通过 `/plugin/*`
 
-### 2. 本地调试模式
+## 当前权限模型
 
-这是开发和排错模式。
+插件当前只依赖 `verify-token` 返回的角色，不再额外请求宿主的插件权限接口。
 
-- 可直接通过 `/api/*` 做工具链检查、上传 APK、查看任务
-- 不建议宿主长期依赖这组接口
-
-## 当前权限动作
-
-插件后端当前使用的动作有：
-
-- `apk.rebuilder.run`
-- `apk.rebuilder.read`
-- `apk.rebuilder.admin`
-
-建议在宿主侧显式配置，而不是长期依赖 `HOST_AUTH_ROLE_FALLBACK=true`。
+- `root`：拥有全部能力
+- `admin`：拥有读取、执行与管理能力
+- `user`：拥有读取与执行能力
 
 ## 生产部署提示
 
 - 生产环境不依赖 Vite 开发服务器
 - 生产环境真正关键的是镜像内 nginx 反代链是否正确覆盖：
   - `/api/*`
-  - `/api-config/api/*`
   - `/plugin/*`
 - 如果更新了 `deploy/` 下的模板文件，必须重建镜像后再上线

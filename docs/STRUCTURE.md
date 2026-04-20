@@ -28,13 +28,13 @@ apk-rebuilder/
 
 ### 1. 页面层
 
-- `embed.html`
+- `index.html`
 - `public/modules/*`
 
 职责：
 
 - 和宿主 iframe 通信
-- 请求宿主 `/api/*`、`/api-config/api/*`
+- 请求宿主 `/api/*`
 - 组织表单、权限展示、任务提交
 
 ### 2. 插件后端层
@@ -85,7 +85,7 @@ apk-rebuilder/
   - 定义 `/plugin/*` 路由
   - 负责任务执行、标准包管理、artifact 下载
 - `hostAuth.ts`
-  - 调用宿主 `verify-token` / `check-permission`
+  - 调用宿主 `verify-token` 并基于角色做动作判定
 - `auth.ts`
   - 插件 token 与 loose principal 相关逻辑
 - `standardPackage.ts`
@@ -139,19 +139,17 @@ apk-rebuilder/
 
 ### 页面入口
 
-- `modules/app.embed.ts`
-  iframe 嵌入入口
 - `modules/app.index.ts`
+  iframe 嵌入入口
   独立调试页入口
-- `modules/app.shared.ts`
   共享页面逻辑
 
 ### 关键模块
 
-- `modules/composables/useEmbedHost.ts`
-  父窗口握手、token 刷新、host fetch、plugin fetch
+- `modules/composables/useHostBridge.ts`
+  父窗口握手、token 刷新、host fetch
 - `modules/composables/usePermissions.ts`
-  读取宿主 `allowed-actions` 与用户角色
+  读取宿主角色并映射前端权限
 - `modules/composables/useSubmitFlow.ts`
   提交流程编排
 - `modules/composables/useSceneConfig.ts`
@@ -176,14 +174,13 @@ apk-rebuilder/
 - `nginx-apk-rebuilder.conf`
   443 示例
 - `nginx-entrypoint-apk-rebuilder.sh`
-  动态生成 `/api/*` 和 `/api-config/api/*` failover 链
+  动态生成 `/api/*` failover 链
 - `apk-rebuilder.env.template`
   生产环境变量模板
 
 当前约定：
 
 - `APP_API_*` -> `/api/*`
-- `APP_CONFIG_API_*` -> `/api-config/api/*`
 - `/plugin/*` -> 本地 Node 后端
 
 ## 六、`tools/`
@@ -220,7 +217,7 @@ apk-rebuilder/
 ## 九、建议的维护边界
 
 - 宿主协议变化：
-  优先修改 `src/plugin/`、`public/modules/composables/useEmbedHost.ts`、`docs/INTEGRATION.md`
+  优先修改 `src/plugin/`、`public/modules/composables/useHostBridge.ts`、`docs/INTEGRATION.md`
 - 独立域名 / 反代变化：
   优先修改 `deploy/` 和 `deploy/README-domain.md`
 - 本地调试流程变化：

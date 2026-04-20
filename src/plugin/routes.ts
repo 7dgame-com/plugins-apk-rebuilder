@@ -205,7 +205,7 @@ export function createPluginRouter(): Router {
     }
   });
 
-  // Public read-only standard package config (used by embed form)
+  // Public read-only standard package config (used by host page)
   router.get('/standard-package', async (req: Request, res: Response) => {
     try {
       const principal = getLoosePrincipal(req);

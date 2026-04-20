@@ -6,54 +6,38 @@
 
 插件以前后端同域的方式独立部署，例如：
 
-- `https://apk-rebuilder.d.plugins.xrugc.com/embed.html`
+- `https://apk-rebuilder.d.plugins.xrugc.com/`
 
 同时在该域名下保证：
 
 - `/api/*` -> 宿主普通 API
-- `/api-config/api/*` -> 宿主插件配置 / 权限 API
 - `/plugin/*` -> `apk-rebuilder` 本地后端
 
 ## 当前模板支持的环境变量
 
-当前 `deploy/nginx-entrypoint-apk-rebuilder.sh` 会根据环境变量动态生成两组 failover 反代链：
+当前 `deploy/nginx-entrypoint-apk-rebuilder.sh` 会根据环境变量动态生成一组 failover 反代链：
 
 - `APP_API_N_URL`：用于 `/api/*`
-- `APP_CONFIG_API_N_URL`：用于 `/api-config/api/*`
 
 最小示例：
 
 ```bash
 export APP_API_1_URL=https://api.d.xrteeth.com
 export APP_API_2_URL=https://api.d.tmrpp.com
-
-export APP_CONFIG_API_1_URL=https://admin.d.xrteeth.com/api
-export APP_CONFIG_API_2_URL=https://admin.d.tmrpp.com/api
 ```
 
 说明：
 
 - `APP_API_*` 建议填宿主根域名，不带 `/api`
-- `APP_CONFIG_API_*` 建议填宿主管理域名下的 `/api`
-- 模板会把 `/api-config/api/v1/...` 拼成上游 `/api/v1/...`
 
 ## 当前模板固定本地转发
 
 这些路径固定指向插件本地 Node 服务 `127.0.0.1:3007`：
 
 - `/plugin/*`
-- `POST /api/upload`
-- `GET /api/tools`
-
-这部分用于：
-
-- 改包执行
-- 标准包上传
-- 工具链探测
 
 ## 生产环境建议
 
-- `HOST_AUTH_ROLE_FALLBACK=false`
 - `STRICT_TOOLCHAIN=true`
 - `STRICT_REDIS=true`
 - `PLUGIN_TOKEN_SECRET` 使用真实密钥
@@ -65,24 +49,17 @@ export APP_CONFIG_API_2_URL=https://admin.d.tmrpp.com/api
 ```json
 {
   "id": "apk-rebuilder",
-  "url": "https://apk-rebuilder.example.com/embed.html",
+  "url": "https://apk-rebuilder.example.com/",
   "allowedOrigin": "https://apk-rebuilder.example.com"
 }
 ```
 
 ## 常见误区
 
-### 1. 只配了 `/api/*`，没配 `/api-config/api/*`
+### 1. 只配了 `/api/*`，没配 `/plugin/*`
 
-这样会导致 embed 页面初始化权限失败。
+这样会导致页面能打开但任务接口不可用。
 
-### 2. 把 `HOST_PLUGIN_API_BASE` 和 `APP_CONFIG_API_*` 写成一样
-
-它们用途不同：
-
-- `APP_CONFIG_API_*` 给 nginx 用
-- `HOST_PLUGIN_API_BASE` 给 Node 后端自己调用
-
-### 3. 改了 `deploy/` 模板但没重建镜像
+### 2. 改了 `deploy/` 模板但没重建镜像
 
 这类改动不会自动作用于已发布镜像，必须重新构建并发布镜像。

@@ -15,11 +15,8 @@ services:
       - apk_rebuilder_data:/app/data
     environment:
       - APP_API_1_URL=http://host.docker.internal:8081
-      - APP_CONFIG_API_1_URL=http://host.docker.internal:8088/api
       - PORT=3007
       - HOST=0.0.0.0
-      - PLUGIN_MODE=true
-      - APK_REBUILDER_UI_MODE=embed
       - APKTOOL_PATH=/usr/local/bin/apktool
       - ZIPALIGN_PATH=/usr/local/bin/zipalign
       - APKSIGNER_PATH=/usr/local/bin/apksigner
@@ -30,8 +27,6 @@ services:
       - DEBUG_KEY_PASS=android
       - MAIN_API_URL=http://host.docker.internal:8081/api
       - HOST_API_BASE=http://host.docker.internal:8081/api
-      - HOST_PLUGIN_API_BASE=http://host.docker.internal:8088/api/v1/plugin
-      - HOST_AUTH_ROLE_FALLBACK=false
       - HOST_AUTH_DEBUG=${HOST_AUTH_DEBUG:-false}
     # command: ["npm", "run", "dev"] # 开发模式可改回
     healthcheck:

@@ -1,5 +1,5 @@
 import { t } from '../i18n';
-import { normalizeEmbedErrorMessage } from '../embed/errors';
+import { normalizeHostErrorMessage } from '../host/errors';
 import type { SubmitSectionDeps } from '../types';
 
 export function renderSubmitSection(container: HTMLElement): void {
@@ -60,7 +60,7 @@ export function createSubmitSection({ onSubmit }: SubmitSectionDeps) {
     if (btn) {
       btn.addEventListener('click', () => {
         onSubmit({ setStatus, setSubmitting, setDownload })
-          .catch((error) => setStatus(normalizeEmbedErrorMessage(error, t, 'submit.submitFailed')));
+          .catch((error) => setStatus(normalizeHostErrorMessage(error, t, 'submit.submitFailed')));
       });
     }
     const link = document.getElementById('downloadLink');

@@ -95,8 +95,8 @@ function handleMessage(event: MessageEvent): void {
 }
 
 export function initBridge(): void {
-  if (state.runtimeMode === RUNTIME_MODE.EMBED) {
-    console.warn('[Bridge] initBridge skipped in embed mode; use embed/host.js instead.');
+  if (state.runtimeMode === RUNTIME_MODE.HOST) {
+    console.warn('[Bridge] initBridge skipped in host mode; use host bridge instead.');
     return;
   }
   window.addEventListener('message', handleMessage);
@@ -115,8 +115,8 @@ export function initBridge(): void {
 }
 
 export function requestHostTokenRefresh(timeout = 3000): Promise<string | null> {
-  if (state.runtimeMode === RUNTIME_MODE.EMBED) {
-    console.warn('[Bridge] requestHostTokenRefresh called in embed mode; use embed host refresh instead.');
+  if (state.runtimeMode === RUNTIME_MODE.HOST) {
+    console.warn('[Bridge] requestHostTokenRefresh called in host mode; use host bridge refresh instead.');
     return Promise.resolve(null);
   }
   return new Promise((resolve) => {

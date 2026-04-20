@@ -5,7 +5,6 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import {
   APK_REBUILDER_MODE,
-  APK_REBUILDER_UI_MODE,
   HOST,
   PORT,
   FRONTEND_DIST_READY,
@@ -13,7 +12,6 @@ import {
   ensureRuntimeDirs,
 } from './config';
 import { createPluginRouter } from './plugin/routes';
-import { createApiRouter } from './api/routes';
 import { ok, fail } from './common/response';
 
 import './taskQueue'; // Initialize BullMQ worker
@@ -33,7 +31,6 @@ const apiLimiter = rateLimit({
   validate: { trustProxy: false, xForwardedForHeader: false },
 });
 
-app.use('/api', apiLimiter);
 app.use('/plugin', apiLimiter);
 
 ensureRuntimeDirs();
@@ -48,9 +45,6 @@ app.use((req, _res, next) => {
 
 // plugin interface
 app.use('/plugin', createPluginRouter());
-
-// optional local UI / debugging API (for development/demo only)
-app.use('/api', createApiRouter());
 
 app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
   const anyErr = err as { message?: string; code?: string; stack?: string };
@@ -83,7 +77,7 @@ function failUiBuildMissing(res: express.Response): void {
 
 // static fallback used by local frontend
 app.get('*', (req, res) => {
-  if (req.path.startsWith('/api')) {
+  if (req.path.startsWith('/api') || req.path.startsWith('/api-config')) {
     fail(res, 404, `Route not found: GET ${req.path}`, 'NOT_FOUND');
     return;
   }
@@ -95,43 +89,14 @@ app.get('*', (req, res) => {
     failUiBuildMissing(res);
     return;
   }
-  const requested = req.path === '/' ? 'embed.html' : req.path.replace(/^\/+/, '');
+  const requested = req.path === '/' ? 'index.html' : req.path.replace(/^\/+/, '');
   const target = path.resolve(FRONTEND_PUBLIC_DIR, requested);
   const isIndex = requested === 'index.html';
-  const isEmbed = requested === 'embed.html';
   const fileExists = target.startsWith(path.resolve(FRONTEND_PUBLIC_DIR)) && fs.existsSync(target) && fs.statSync(target).isFile();
 
   if (APK_REBUILDER_MODE === 'dev' && isIndex) {
     fail(res, 404, 'Dev mode enabled. Please use the Vite dev server for UI.', 'DEV_MODE_UI');
     return;
-  }
-  if (APK_REBUILDER_MODE === 'dev' && isEmbed) {
-    fail(res, 404, 'Dev mode enabled. Please use the Vite dev server for UI.', 'DEV_MODE_UI');
-    return;
-  }
-  
-  if (APK_REBUILDER_UI_MODE === 'embed') {
-    const normalized = requested.replace(/^\/+/, '');
-    const allowPrefixes = ['styles/', 'modules/', 'assets/'];
-    const allowRootFiles = new Set([
-      'embed.html',
-      'index.html',
-      'logs.html',
-      'plugin-manifest.json',
-    ]);
-    const isAllowed =
-      allowRootFiles.has(normalized) ||
-      allowPrefixes.some(prefix => normalized.startsWith(prefix));
-
-    if (!isAllowed) {
-      // map root/index requests to embed entry for plugin usage
-      if (req.path === '/' || isIndex) {
-        res.sendFile(path.join(FRONTEND_PUBLIC_DIR, 'embed.html'));
-        return;
-      }
-      fail(res, 404, 'UI resource not available in embed-only mode.', 'NOT_FOUND');
-      return;
-    }
   }
 
   if (fileExists) {
@@ -142,10 +107,6 @@ app.get('*', (req, res) => {
   if (APK_REBUILDER_MODE === 'dev') {
      fail(res, 404, 'Dev mode enabled. Please use the Vite dev server for UI.', 'DEV_MODE_UI');
      return;
-  }
-  if (APK_REBUILDER_UI_MODE === 'embed') {
-    fail(res, 404, 'UI resource not found.', 'NOT_FOUND');
-    return;
   }
   res.sendFile(path.join(FRONTEND_PUBLIC_DIR, 'index.html'));
 });

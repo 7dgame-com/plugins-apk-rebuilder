@@ -1,15 +1,16 @@
 import { t } from '../i18n';
-import { normalizeEmbedErrorMessage } from '../embed/errors';
+import { normalizeHostErrorMessage } from '../host/errors';
 import { TASK_STATUS } from '../state';
-import type { EmbedHostApi, SubmitRunData } from '../types';
+import type { HostBridgeApi, SubmitRunData } from '../types';
 
 type SubmitFlowDeps = {
-  host: EmbedHostApi;
+  host: HostBridgeApi;
   getAppName(): string;
   getSceneId(): string;
   getIconFile(): File | null;
   showAlert(message: string): Promise<unknown>;
-  assumeUser(): boolean;
+  canRead(): boolean;
+  canManageStandardPackage(): boolean;
 };
 
 type SubmitUiBridge = {
@@ -24,7 +25,8 @@ export function useSubmitFlow({
   getSceneId,
   getIconFile,
   showAlert,
-  assumeUser,
+  canRead,
+  canManageStandardPackage,
 }: SubmitFlowDeps) {
   let pollingTimer: ReturnType<typeof setTimeout> | null = null;
   let isSubmitting = false;
@@ -34,7 +36,7 @@ export function useSubmitFlow({
   const pollIntervalMaxMs = 8000;
 
   async function getStandardPackageId(): Promise<string> {
-    if (assumeUser()) return '';
+    if (!canRead()) return '';
     console.info('[APK-REBUILDER] call /plugin/standard-package');
     const res = await host.authFetch('/plugin/standard-package');
     const json = await res.json().catch(() => ({}));
@@ -60,16 +62,16 @@ export function useSubmitFlow({
     const appName = getAppName();
     const sceneId = getSceneId();
     if (!appName) {
-      await showAlert(t('embed.appNameRequired'));
+      await showAlert(t('host.appNameRequired'));
       return null;
     }
     if (!sceneId) {
-      await showAlert(t('embed.sceneIdRequired'));
+      await showAlert(t('host.sceneIdRequired'));
       return null;
     }
     const standardLibraryItemId = await getStandardPackageId();
-    if (!standardLibraryItemId && !assumeUser()) {
-      await showAlert(t('embed.needStandard'));
+    if (!standardLibraryItemId && canRead()) {
+      await showAlert(t('host.needStandard'));
       return null;
     }
     const iconArtifactId = await uploadIconIfNeeded();
@@ -85,7 +87,7 @@ export function useSubmitFlow({
         options: {
           async: true,
           reuseDecodedCache: true,
-          useStandardPackage: true,
+          useStandardPackage: !canManageStandardPackage(),
         },
       },
     };
@@ -99,7 +101,7 @@ export function useSubmitFlow({
       const res = await host.authFetch(`/plugin/runs/${encodeURIComponent(runId)}`);
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(normalizeEmbedErrorMessage(json?.error?.message || json?.message, t, 'submit.fetchStatusFailed'));
+        throw new Error(normalizeHostErrorMessage(json?.error?.message || json?.message, t, 'submit.fetchStatusFailed'));
       }
       pollIntervalMs = 1200;
       const data: SubmitRunData = json?.data || json;
@@ -146,7 +148,7 @@ export function useSubmitFlow({
       return false;
     } catch (error) {
       pollIntervalMs = Math.min(Math.round(pollIntervalMs * 1.5), pollIntervalMaxMs);
-      ui.setStatus(t('submit.statusFailed', { error: normalizeEmbedErrorMessage(error, t, 'submit.fetchStatusFailed') }));
+      ui.setStatus(t('submit.statusFailed', { error: normalizeHostErrorMessage(error, t, 'submit.fetchStatusFailed') }));
       return false;
     } finally {
       pollInFlight = false;
@@ -187,7 +189,7 @@ export function useSubmitFlow({
     if (!res.ok) {
       ui.setSubmitting(false);
       isSubmitting = false;
-      throw new Error(normalizeEmbedErrorMessage(text.slice(0, 200), t, 'submit.submitFailed'));
+      throw new Error(normalizeHostErrorMessage(text.slice(0, 200), t, 'submit.submitFailed'));
     }
 
     let runId = '';

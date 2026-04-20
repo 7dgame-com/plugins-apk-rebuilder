@@ -1,7 +1,7 @@
 {
   "_说明": [
     "这是一份供 system-admin / 插件配置中心录入的示例。",
-    "前端 embed 页面固定走 /api 与 /api-config/api，新接入无需再录 extraConfig。",
+    "前端 host 页面固定走 /api，新接入无需再录 extraConfig。",
     "如 system-admin 已单独维护 menu group，可省略 group 对应定义，只保留插件记录。"
   ],
   "version": "1.0.0",
@@ -25,7 +25,7 @@
       "id": "apk-rebuilder",
       "name": "APK Rebuilder",
       "description": "APK 改包插件，支持标准包、图标替换、包名与版本信息修改、Unity 与文件补丁。",
-      "url": "https://apk-rebuilder.example.com/embed.html",
+      "url": "https://apk-rebuilder.example.com/",
       "icon": "Box",
       "group": "tools",
       "enabled": true,

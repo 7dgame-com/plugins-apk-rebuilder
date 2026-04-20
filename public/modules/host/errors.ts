@@ -10,14 +10,14 @@ function getErrorMessage(error: unknown): string {
   return String(error || '').trim();
 }
 
-export function normalizeEmbedErrorMessage(error: unknown, t: TranslateFn, fallbackKey: string): string {
+export function normalizeHostErrorMessage(error: unknown, t: TranslateFn, fallbackKey: string): string {
   const code = getErrorCode(error);
   const message = getErrorMessage(error);
   const normalized = `${code} ${message}`.toLowerCase();
 
-  if (code === 'REQUIRE_IFRAME_ENTRY') return t('embed.requireMainSystem');
+  if (code === 'REQUIRE_IFRAME_ENTRY') return t('host.requireMainSystem');
   if (code === 'MISSING_HOST_TOKEN' || code === 'INIT_TIMEOUT') {
-    return t('embed.authNotReady');
+    return t('host.authNotReady');
   }
   if (
     normalized.includes('host permission denied') ||
@@ -25,7 +25,7 @@ export function normalizeEmbedErrorMessage(error: unknown, t: TranslateFn, fallb
     normalized.includes('insufficient permissions') ||
     normalized.includes('forbidden')
   ) {
-    return t('embed.roleNotAllowed');
+    return t('host.roleNotAllowed');
   }
   if (
     normalized.includes('token expired') ||
@@ -36,7 +36,7 @@ export function normalizeEmbedErrorMessage(error: unknown, t: TranslateFn, fallb
     normalized.includes('认证已过期') ||
     normalized.includes('未登录')
   ) {
-    return t('embed.sessionExpired');
+    return t('host.sessionExpired');
   }
   return message || (fallbackKey ? t(fallbackKey) : '');
 }

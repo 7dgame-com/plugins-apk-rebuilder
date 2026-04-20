@@ -35,32 +35,23 @@ test('host auth network failures are denied when role fallback is disabled', () 
     checkHostPermission(req, 'apk.rebuilder.run')
       .then((value) => console.log(JSON.stringify({ ok: true, value })))
       .catch((error) => console.log(JSON.stringify({ ok: false, message: error.message })));
-  `, {
-    HOST_AUTH_ROLE_FALLBACK: 'false',
-  });
+  `);
 
   assert.equal(output.ok, false);
   assert.equal(output.message, 'Host auth unavailable');
 });
 
-test('optional role fallback can still authorize admin actions', () => {
+test('roles from verify-token can authorize admin actions', () => {
   const output = runHostAuthScenario(`
-    let callCount = 0;
     global.fetch = async (url) => {
-      callCount += 1;
-      if (String(url).includes('/v1/plugin/check-permission')) {
-        return { status: 500, ok: false, headers: { get: () => 'application/json' }, clone() { return this; }, async text() { return '{"message":"fail"}'; }, async json() { return {}; } };
-      }
       return { status: 200, ok: true, headers: { get: () => 'application/json' }, clone() { return this; }, async text() { return '{"data":{"roles":["admin"]}}'; }, async json() { return { data: { roles: ['admin'] } }; } };
     };
     const { checkHostPermission } = require('./dist/plugin/hostAuth.js');
     const req = { header: (name) => name === 'authorization' ? 'Bearer token' : '' };
     checkHostPermission(req, 'apk.rebuilder.admin')
-      .then((value) => console.log(JSON.stringify({ ok: true, value, callCount })))
-      .catch((error) => console.log(JSON.stringify({ ok: false, message: error.message, callCount })));
-  `, {
-    HOST_AUTH_ROLE_FALLBACK: 'true',
-  });
+      .then((value) => console.log(JSON.stringify({ ok: true, value })))
+      .catch((error) => console.log(JSON.stringify({ ok: false, message: error.message })));
+  `);
 
   assert.equal(output.ok, true);
   assert.equal(output.value, true);

@@ -11,13 +11,10 @@ const projectRoot = path.resolve(__dirname, '..');
 function readConfig(overrides = {}) {
   const env = { ...process.env };
   for (const key of [
-    'PLUGIN_MODE',
     'STRICT_TOOLCHAIN',
     'STRICT_REDIS',
     'HOST_API_BASE',
-    'HOST_PLUGIN_API_BASE',
     'MAIN_API_URL',
-    'APK_REBUILDER_UI_MODE',
   ]) {
     delete env[key];
   }
@@ -27,7 +24,7 @@ function readConfig(overrides = {}) {
     process.execPath,
     [
       '-e',
-      `const mod=require('./dist/config.js'); console.log(JSON.stringify({PLUGIN_MODE:mod.PLUGIN_MODE,STRICT_TOOLCHAIN:mod.STRICT_TOOLCHAIN,STRICT_REDIS:mod.STRICT_REDIS,HOST_API_BASE:mod.HOST_API_BASE,HOST_PLUGIN_API_BASE:mod.HOST_PLUGIN_API_BASE,APK_REBUILDER_UI_MODE:mod.APK_REBUILDER_UI_MODE}));`,
+      `const mod=require('./dist/config.js'); console.log(JSON.stringify({PLUGIN_MODE:mod.PLUGIN_MODE,STRICT_TOOLCHAIN:mod.STRICT_TOOLCHAIN,STRICT_REDIS:mod.STRICT_REDIS,HOST_API_BASE:mod.HOST_API_BASE}));`,
     ],
     {
       cwd: projectRoot,
@@ -40,51 +37,20 @@ function readConfig(overrides = {}) {
   return JSON.parse(result.stdout.trim());
 }
 
-test('config defaults to standalone-safe values', () => {
+test('config defaults to plugin-only values', () => {
   const config = readConfig();
-  assert.equal(config.PLUGIN_MODE, false);
-  assert.equal(config.STRICT_TOOLCHAIN, false);
-  assert.equal(config.STRICT_REDIS, false);
-  assert.equal(config.HOST_API_BASE, '');
-  assert.equal(config.HOST_PLUGIN_API_BASE, '');
-  assert.equal(config.APK_REBUILDER_UI_MODE, 'full');
-});
-
-test('plugin mode enables strict dependencies and embed ui by default', () => {
-  const config = readConfig({ PLUGIN_MODE: 'true' });
   assert.equal(config.PLUGIN_MODE, true);
   assert.equal(config.STRICT_TOOLCHAIN, true);
   assert.equal(config.STRICT_REDIS, true);
-  assert.equal(config.HOST_PLUGIN_API_BASE, '');
-  assert.equal(config.APK_REBUILDER_UI_MODE, 'embed');
+  assert.equal(config.HOST_API_BASE, '');
 });
 
 test('explicit strict overrides still win', () => {
   const config = readConfig({
-    PLUGIN_MODE: 'true',
     STRICT_TOOLCHAIN: 'false',
     STRICT_REDIS: 'false',
-    APK_REBUILDER_UI_MODE: 'full',
   });
   assert.equal(config.PLUGIN_MODE, true);
   assert.equal(config.STRICT_TOOLCHAIN, false);
   assert.equal(config.STRICT_REDIS, false);
-  assert.equal(config.APK_REBUILDER_UI_MODE, 'full');
-});
-
-test('host plugin api base falls back to host api base when not provided', () => {
-  const config = readConfig({
-    HOST_API_BASE: 'https://host.example.com/api',
-  });
-  assert.equal(config.HOST_API_BASE, 'https://host.example.com/api');
-  assert.equal(config.HOST_PLUGIN_API_BASE, 'https://host.example.com/api');
-});
-
-test('explicit host plugin api base overrides the fallback', () => {
-  const config = readConfig({
-    HOST_API_BASE: 'https://host.example.com/api',
-    HOST_PLUGIN_API_BASE: 'https://admin.example.com/api/v1/plugin',
-  });
-  assert.equal(config.HOST_API_BASE, 'https://host.example.com/api');
-  assert.equal(config.HOST_PLUGIN_API_BASE, 'https://admin.example.com/api/v1/plugin');
 });

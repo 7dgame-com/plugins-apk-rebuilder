@@ -86,9 +86,7 @@ async function run() {
 
   const host = process.env.REDIS_HOST || '127.0.0.1';
   const port = Number(process.env.REDIS_PORT || 6379);
-  const pluginMode = String(process.env.PLUGIN_MODE || 'false');
-  const uiMode = String(process.env.APK_REBUILDER_UI_MODE || 'full');
-  console.log(`[self-check] Config pluginMode=${pluginMode} uiMode=${uiMode} redisHost=${host} redisPort=${port}`);
+  console.log(`[self-check] Config pluginMode=true redisHost=${host} redisPort=${port}`);
   console.log('[self-check] Redis');
   try {
     const redis = new Redis({ host, port, lazyConnect: true });

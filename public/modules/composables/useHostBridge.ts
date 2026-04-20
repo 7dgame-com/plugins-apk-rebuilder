@@ -1,12 +1,11 @@
 import { applyThemeSettings } from '../theme';
-import type { EmbedHostApi, EmbedHostPayload, EmbedHostState } from '../types';
+import type { HostBridgeApi, HostBridgePayload, HostBridgeState } from '../types';
 
 type HostError = Error & { code?: string };
 
 const HOST_API_BASE = '/api';
-const PLUGIN_API_BASE = '/api-config/api';
 
-export function useEmbedHost(): EmbedHostApi {
+export function useHostBridge(): HostBridgeApi {
   const debug =
     new URLSearchParams(window.location.search).get('debug') === '1' ||
     localStorage.getItem('apk-rebuilder-debug') === '1';
@@ -16,7 +15,7 @@ export function useEmbedHost(): EmbedHostApi {
   };
   const logAlways = (...args: unknown[]) => console.info('[APK-REBUILDER]', ...args);
 
-  const state: EmbedHostState = {
+  const state: HostBridgeState = {
     token: '',
     config: {},
     roles: [],
@@ -98,7 +97,7 @@ export function useEmbedHost(): EmbedHostApi {
     state.lastInitError = '';
   }
 
-  function applyInit(payload: EmbedHostPayload = {}): void {
+  function applyInit(payload: HostBridgePayload = {}): void {
     if (payload.token) state.token = String(payload.token).trim();
     if (payload.config && typeof payload.config === 'object') {
       state.config = payload.config || {};
@@ -120,7 +119,6 @@ export function useEmbedHost(): EmbedHostApi {
       token: state.token ? `${state.token.slice(0, 6)}...` : '',
       roles: state.roles,
       hostApiBase: HOST_API_BASE,
-      pluginApiBase: PLUGIN_API_BASE,
     });
     if (!state.token) {
       logAlways('WARN: INIT token is empty');
@@ -146,12 +144,6 @@ export function useEmbedHost(): EmbedHostApi {
     if (!path) return HOST_API_BASE;
     if (path.startsWith('http')) return path;
     return `${HOST_API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
-  }
-
-  function buildPluginUrl(path: string): string {
-    if (!path) return PLUGIN_API_BASE;
-    if (path.startsWith('http')) return path;
-    return `${PLUGIN_API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
   }
 
   async function logResponse(label: string, res: Response | null | undefined): Promise<void> {
@@ -259,7 +251,6 @@ export function useEmbedHost(): EmbedHostApi {
       path: String(path),
       token: !!state.token,
       hostApiBase: HOST_API_BASE,
-      pluginApiBase: PLUGIN_API_BASE,
     });
 
     let res: Response;
@@ -291,51 +282,11 @@ export function useEmbedHost(): EmbedHostApi {
     }
   }
 
-  async function pluginFetch(path: string, options: RequestInit = {}): Promise<Response> {
-    await ensureInit();
-    const headers = new Headers(options.headers || {});
-    if (state.token) headers.set('authorization', `Bearer ${state.token}`);
-    logAlways('pluginFetch', {
-      method: String(options.method || 'GET').toUpperCase(),
-      path: String(path),
-      token: !!state.token,
-      pluginApiBase: PLUGIN_API_BASE,
-    });
-
-    let res: Response;
-    try {
-      res = await fetch(buildPluginUrl(path), { ...options, headers });
-      await logResponse('pluginFetch', res);
-    } catch (err) {
-      logAlways('pluginFetch error', { path: String(path), error: String(err) });
-      throw err;
-    }
-    if (res.status !== 401) return res;
-
-    const refreshed = await requestParentTokenRefresh();
-    if (!refreshed || !refreshed.token) {
-      postToParent('TOKEN_EXPIRED');
-      return res;
-    }
-
-    state.token = String(refreshed.token).trim();
-    const retryHeaders = new Headers(options.headers || {});
-    retryHeaders.set('authorization', `Bearer ${state.token}`);
-    try {
-      const retryRes = await fetch(buildPluginUrl(path), { ...options, headers: retryHeaders });
-      await logResponse('pluginFetch retry', retryRes);
-      return retryRes;
-    } catch (err) {
-      logAlways('pluginFetch retry error', { path: String(path), error: String(err) });
-      throw err;
-    }
-  }
-
   window.addEventListener('message', (event: MessageEvent) => {
     if (event.source !== window.parent) return;
     const msg = (event.data || {}) as {
       type?: string;
-      payload?: EmbedHostPayload & { token?: string; lang?: string; language?: string; theme?: string };
+      payload?: HostBridgePayload & { token?: string; lang?: string; language?: string; theme?: string };
     };
     if (event.origin) parentOrigin = event.origin;
 
@@ -373,9 +324,7 @@ export function useEmbedHost(): EmbedHostApi {
     ensureHostEntry,
     buildUrl,
     buildHostUrl,
-    buildPluginUrl,
     authFetch,
     hostFetch,
-    pluginFetch,
   };
 }

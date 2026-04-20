@@ -1,4 +1,4 @@
-export type RuntimeModeValue = 'standalone' | 'full' | 'embed';
+export type RuntimeModeValue = 'host';
 export type TaskStatusValue = 'idle' | 'processing' | 'success' | 'failed';
 export type TaskStageValue = 'idle' | 'upload' | 'parse' | 'modify' | 'build';
 export type ModProgressValue = 'idle' | 'modify' | 'build' | 'success' | 'failed';
@@ -60,7 +60,7 @@ export interface AppState {
   toolsPopoverOpen: boolean;
 }
 
-export interface EmbedHostConfig {
+export interface HostBridgeConfig {
   roles?: string[] | string;
   role?: string[] | string;
   theme?: string;
@@ -70,32 +70,30 @@ export interface EmbedHostConfig {
   isDark?: boolean;
 }
 
-export interface EmbedHostState {
+export interface HostBridgeState {
   token: string;
-  config: EmbedHostConfig;
+  config: HostBridgeConfig;
   roles: string[];
   lastInitError: string;
 }
 
-export interface EmbedHostPayload {
+export interface HostBridgePayload {
   token?: string;
-  config?: EmbedHostConfig;
+  config?: HostBridgeConfig;
   roles?: string[] | string;
   role?: string[] | string;
   user?: { roles?: string[] | string };
 }
 
-export interface EmbedHostApi {
-  state: EmbedHostState;
+export interface HostBridgeApi {
+  state: HostBridgeState;
   ensureInit(timeout?: number): Promise<void>;
   ensureHostEntry(timeout?: number): Promise<void>;
   isInIframe(): boolean;
   buildUrl(path: string): string;
   buildHostUrl(path: string): string;
-  buildPluginUrl(path: string): string;
   authFetch(path: string, options?: RequestInit): Promise<Response>;
   hostFetch(path: string, options?: RequestInit): Promise<Response>;
-  pluginFetch(path: string, options?: RequestInit): Promise<Response>;
 }
 
 export interface SubmitArtifact {
