@@ -1,16 +1,18 @@
 ARG NODE_IMAGE=node:20-bookworm-slim
-ARG DEBIAN_MIRROR=mirrors.tuna.tsinghua.edu.cn
+ARG DEBIAN_MIRROR=
 
 FROM ${NODE_IMAGE} AS build
 ARG DEBIAN_MIRROR
 WORKDIR /app
 
-# Use configurable Debian mirror to avoid unstable deb.debian.org connection.
+# Optionally replace Debian upstreams when an explicit mirror is provided.
 RUN set -eux; \
-  DEBIAN_MIRROR=${DEBIAN_MIRROR:-mirrors.tuna.tsinghua.edu.cn}; \
+  DEBIAN_MIRROR=${DEBIAN_MIRROR:-}; \
   if [ -n "$DEBIAN_MIRROR" ]; then \
     sed -i "s|http://deb.debian.org/debian|http://$DEBIAN_MIRROR/debian|g" /etc/apt/sources.list.d/debian.sources; \
     sed -i "s|http://deb.debian.org/debian-security|http://$DEBIAN_MIRROR/debian-security|g" /etc/apt/sources.list.d/debian.sources || true; \
+    sed -i "s|https://deb.debian.org/debian|https://$DEBIAN_MIRROR/debian|g" /etc/apt/sources.list.d/debian.sources; \
+    sed -i "s|https://deb.debian.org/debian-security|https://$DEBIAN_MIRROR/debian-security|g" /etc/apt/sources.list.d/debian.sources || true; \
   fi; \
   apt-get update; \
   apt-get install -y --no-install-recommends ca-certificates curl unzip openjdk-17-jdk-headless --fix-missing; \
@@ -38,12 +40,14 @@ FROM ${NODE_IMAGE} AS runtime
 ARG DEBIAN_MIRROR
 WORKDIR /app
 
-# 安装运行时依赖（二次回退仍使用同一镜像源并加 --fix-missing）
+# 安装运行时依赖；仅在显式传入镜像源时替换 Debian upstream。
 RUN set -eux; \
-  DEBIAN_MIRROR=${DEBIAN_MIRROR:-mirrors.tuna.tsinghua.edu.cn}; \
+  DEBIAN_MIRROR=${DEBIAN_MIRROR:-}; \
   if [ -n "$DEBIAN_MIRROR" ]; then \
     sed -i "s|http://deb.debian.org/debian|http://$DEBIAN_MIRROR/debian|g" /etc/apt/sources.list.d/debian.sources; \
     sed -i "s|http://deb.debian.org/debian-security|http://$DEBIAN_MIRROR/debian-security|g" /etc/apt/sources.list.d/debian.sources || true; \
+    sed -i "s|https://deb.debian.org/debian|https://$DEBIAN_MIRROR/debian|g" /etc/apt/sources.list.d/debian.sources; \
+    sed -i "s|https://deb.debian.org/debian-security|https://$DEBIAN_MIRROR/debian-security|g" /etc/apt/sources.list.d/debian.sources || true; \
   fi; \
   apt-get update; \
   apt-get install -y --no-install-recommends \
