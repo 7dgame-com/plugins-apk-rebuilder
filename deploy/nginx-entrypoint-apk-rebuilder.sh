@@ -88,12 +88,31 @@ CHAIN_RESULT=""
 generate_failover_chain "APP_API" "/api/" "api_backup"
 API_LOCATIONS="$CHAIN_RESULT"
 
+CHAIN_RESULT=""
+generate_failover_chain "APP_CONFIG_API" "/api-config/api/" "config_api_backup"
+CONFIG_API_LOCATIONS="$CHAIN_RESULT"
+
 cp "$TEMPLATE" "$OUTPUT"
 
 if [ -n "$API_LOCATIONS" ]; then
   LOC_FILE=$(mktemp)
   printf '%s' "$API_LOCATIONS" > "$LOC_FILE"
   awk -v file="$LOC_FILE" -v marker="# __API_LOCATIONS__" '
+    $0 ~ marker {
+      while ((getline line < file) > 0) print line
+      close(file)
+      next
+    }
+    { print }
+  ' "$OUTPUT" > "${OUTPUT}.tmp"
+  mv "${OUTPUT}.tmp" "$OUTPUT"
+  rm -f "$LOC_FILE"
+fi
+
+if [ -n "$CONFIG_API_LOCATIONS" ]; then
+  LOC_FILE=$(mktemp)
+  printf '%s' "$CONFIG_API_LOCATIONS" > "$LOC_FILE"
+  awk -v file="$LOC_FILE" -v marker="# __CONFIG_API_LOCATIONS__" '
     $0 ~ marker {
       while ((getline line < file) > 0) print line
       close(file)
@@ -115,10 +134,20 @@ while true; do
   i=$((i + 1))
 done
 
+CONFIG_API_LIST=""
+i=1
+while true; do
+  eval "url=\${APP_CONFIG_API_${i}_URL}"
+  [ -z "$url" ] && break
+  [ -n "$CONFIG_API_LIST" ] && CONFIG_API_LIST="${CONFIG_API_LIST}, "
+  CONFIG_API_LIST="${CONFIG_API_LIST}\"APP_CONFIG_API_${i}_URL\": \"${url}\""
+  i=$((i + 1))
+done
+
 mkdir -p "$(dirname "$DEBUG_ENV_FILE")"
 cat > "$DEBUG_ENV_FILE" <<EOF
 {
-  ${API_LIST},
+  ${API_LIST}${API_LIST:+,}${CONFIG_API_LIST},
   "buildTime": "$(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S')",
   "hostname": "$(hostname)"
 }

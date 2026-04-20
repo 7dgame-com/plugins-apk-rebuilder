@@ -83,8 +83,8 @@ test('host plugin api base falls back to host api base when not provided', () =>
 test('explicit host plugin api base overrides the fallback', () => {
   const config = readConfig({
     HOST_API_BASE: 'https://host.example.com/api',
-    HOST_PLUGIN_API_BASE: 'https://host.example.com/api-config/api',
+    HOST_PLUGIN_API_BASE: 'https://admin.example.com/api/v1/plugin',
   });
   assert.equal(config.HOST_API_BASE, 'https://host.example.com/api');
-  assert.equal(config.HOST_PLUGIN_API_BASE, 'https://host.example.com/api-config/api');
+  assert.equal(config.HOST_PLUGIN_API_BASE, 'https://admin.example.com/api/v1/plugin');
 });

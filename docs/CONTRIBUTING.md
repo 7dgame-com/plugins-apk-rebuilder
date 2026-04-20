@@ -7,7 +7,7 @@
 ### 后端
 
 - 使用 TypeScript
-- `/plugin/*` 视为正式宿主协议，改动前先确认是否需要同步更新 [INTEGRATION.md](/Volumes/NewSSD/Projects/xrugc-platform/plugins/apk-rebuilder/docs/INTEGRATION.md)
+- `/plugin/*` 视为正式宿主协议，改动前先确认是否需要同步更新 [INTEGRATION.md](./INTEGRATION.md)
 - `/api/*` 主要服务于本地调试，不要让宿主正式能力依赖它
 - 权限校验优先依赖宿主接口，不新增隐式本地放权逻辑
 

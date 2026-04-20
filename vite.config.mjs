@@ -1,7 +1,13 @@
+import 'dotenv/config';
 import { defineConfig } from 'vite';
 import path from 'path';
 
 const backendPort = Number.parseInt(process.env.PORT || '3007', 10);
+const uiMode = String(process.env.APK_REBUILDER_UI_MODE || 'standalone').trim().toLowerCase();
+const hostOrigin = process.env.APK_REBUILDER_HOST_ORIGIN || 'http://127.0.0.1:3001';
+const apiProxyTarget = uiMode === 'embed'
+  ? hostOrigin
+  : `http://127.0.0.1:${backendPort}`;
 
 // 生成北京时间版本号，格式：2026.03.25-0200
 function buildVersion() {
@@ -35,8 +41,12 @@ export default defineConfig({
     strictPort: false,
     host: '127.0.0.1',
     proxy: {
+      '/api-config/api': {
+        target: hostOrigin,
+        changeOrigin: true,
+      },
       '/api': {
-        target: `http://127.0.0.1:${backendPort}`,
+        target: apiProxyTarget,
         changeOrigin: true,
       },
       '/plugin': {
