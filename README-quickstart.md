@@ -9,7 +9,7 @@
 
 开始前请确认：
 
-- Node.js 20+
+- Node.js 24+
 - npm 10+
 - Docker / Docker Compose
 - Redis 可用
