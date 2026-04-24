@@ -5,7 +5,7 @@
  */
 
 import axios, { AxiosError } from 'axios';
-import { MAIN_API_URL, PLUGIN_NAME } from '../config';
+import { MAIN_API_URL } from '../config';
 
 // 默认重试配置
 const DEFAULT_RETRY_COUNT = 2;
@@ -40,6 +40,10 @@ async function withRetry<T>(requestFn: () => Promise<T>, retries: number = DEFAU
  * @param authHeader - Authorization 请求头（Bearer xxx）
  */
 export async function verifyToken(authHeader: string): Promise<any> {
+  if (!MAIN_API_URL.trim()) {
+    throw new Error('Host auth base not configured');
+  }
+
   const response = await withRetry(() =>
     axios.get(`${MAIN_API_URL}/v1/plugin/verify-token`, {
       headers: { Authorization: authHeader },

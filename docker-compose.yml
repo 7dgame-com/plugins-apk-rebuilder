@@ -17,8 +17,6 @@ services:
       - APP_API_1_URL=http://host.docker.internal:8081
       - PORT=3007
       - HOST=0.0.0.0
-      - PLUGIN_MODE=true
-      - APK_REBUILDER_UI_MODE=embed
       - APKTOOL_PATH=/usr/local/bin/apktool
       - ZIPALIGN_PATH=/usr/local/bin/zipalign
       - APKSIGNER_PATH=/usr/local/bin/apksigner
@@ -27,7 +25,8 @@ services:
       - REDIS_PORT=6379
       - DEBUG_KEY_ALIAS=androiddebugkey
       - DEBUG_KEY_PASS=android
-      - HOST_API_BASE=http://host.docker.internal:8081
+      - MAIN_API_URL=http://host.docker.internal:8081/api
+      - HOST_API_BASE=http://host.docker.internal:8081/api
       - HOST_AUTH_DEBUG=${HOST_AUTH_DEBUG:-false}
     # command: ["npm", "run", "dev"] # 开发模式可改回
     healthcheck:

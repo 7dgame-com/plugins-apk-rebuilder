@@ -36,8 +36,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       next();
       return;
     } catch (err: any) {
-      console.warn('[Auth] JWT 验证失败，尝试 API_KEY 回退:', err.message);
-      // 如果 JWT 格式正确但验证失败，不再回退，直接报错
+      console.warn('[Auth] JWT 验证失败:', err.message);
       fail(res, 401, err.message || '认证失败', 'UNAUTHORIZED');
       return;
     }

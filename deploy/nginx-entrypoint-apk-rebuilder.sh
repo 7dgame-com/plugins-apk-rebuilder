@@ -39,13 +39,22 @@ generate_failover_chain() {
   while [ "$i" -le "$TOTAL" ]; do
     eval "url=\${${ENV_PREFIX}_${i}_URL}"
     eval "host=\${${ENV_PREFIX}_${i}_HOST}"
-    [ -z "$host" ] && host=$(echo "$url" | sed 's|https\?://||;s|/.*||;s|:.*||')
+    [ -z "$host" ] && host=$(printf '%s' "$url" | sed -E 's#^https?://([^/]+).*$#\1#')
+    origin=$(printf '%s' "$url" | sed -E 's#^(https?://[^/]+).*$#\1#')
+    base_path=$(printf '%s' "$url" | sed -E 's#^https?://[^/]+(/.*)?$#\1#')
+    [ "$base_path" = "$url" ] && base_path=""
+    if [ -n "$base_path" ]; then
+      rewrite_target="${base_path%/}/\$1"
+    else
+      rewrite_target="/\$1"
+    fi
     NEXT_IDX=$((i + 1))
 
     if [ "$i" -eq 1 ]; then
       BLOCK="
     location ${LOC_PATH} {
-        proxy_pass ${url}/;
+        rewrite ^${LOC_PATH}(.*)\$ ${rewrite_target} break;
+        proxy_pass ${origin};
         proxy_ssl_server_name on;
         proxy_set_header Host ${host};
         proxy_set_header X-Real-IP \$remote_addr;
@@ -62,8 +71,8 @@ generate_failover_chain() {
     else
       BLOCK="
     location @${BACKUP_NAME}_${i} {
-        rewrite ^${LOC_PATH}(.*)\$ /\$1 break;
-        proxy_pass ${url};
+        rewrite ^${LOC_PATH}(.*)\$ ${rewrite_target} break;
+        proxy_pass ${origin};
         proxy_ssl_server_name on;
         proxy_set_header Host ${host};
         proxy_set_header X-Real-IP \$remote_addr;

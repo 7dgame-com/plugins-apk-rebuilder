@@ -1,0 +1,45 @@
+{
+  "_说明": "本地静态注册时，请将下方 menuGroups 和 plugins 一并合并到主系统的 web/public/config/plugins.json。生产环境更推荐通过 system-admin 注册插件配置。",
+  "_注意事项": [
+    "1. url 应指向 apk-rebuilder 的宿主入口页面，而不是主系统页面",
+    "2. allowedOrigin 必须和 url 的 origin 一致，用于 iframe postMessage 安全校验",
+    "3. 前端 host 页面固定走 /api，不再依赖 extraConfig 传宿主 API 根路径",
+    "4. allowedHostOrigins 建议显式声明允许嵌入当前插件的主站 origin",
+    "5. 生产环境建议通过反向代理统一域名，并将 /plugin/* 转发到 apk-rebuilder 服务"
+  ],
+  "menuGroups": [
+    {
+      "id": "tools",
+      "name": "实用工具",
+      "nameI18n": {
+        "zh-CN": "实用工具",
+        "zh-TW": "實用工具",
+        "en-US": "Utilities",
+        "ja-JP": "ユーティリティ",
+        "th-TH": "เครื่องมือ"
+      },
+      "icon": "Tools",
+      "order": 100
+    }
+  ],
+  "plugins": [
+    {
+      "id": "apk-rebuilder",
+      "name": "APK Rebuilder",
+      "description": "APK 改包插件，支持标准包、图标替换、包名与版本信息修改、Unity 与文件补丁。",
+      "url": "http://localhost:3007/",
+      "icon": "Box",
+      "group": "tools",
+      "enabled": true,
+      "order": 10,
+      "allowedOrigin": "http://localhost:3007",
+      "allowedHostOrigins": [
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://localhost:3000"
+      ],
+      "version": "2.0.0"
+    }
+  ]
+}

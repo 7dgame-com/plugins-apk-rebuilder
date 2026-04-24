@@ -1,50 +1,65 @@
-# APK Rebuilder 独立域名部署（不依赖宿主域名）
+# APK Rebuilder 独立域名部署
+
+本文档只保留当前镜像内 nginx 模板仍然有效的部署约定。
 
 ## 目标
-插件前端/后端使用独立域名，不要求提前知道宿主域名列表。
 
-## Nginx（与 web / user-management 对齐）
-`apk-rebuilder` 的独立域名反代已对齐为相同模式：
-- 使用 `APP_API_N_URL`（`APP_API_1_URL`、`APP_API_2_URL`...）定义主备后端
-- 使用 `# __API_LOCATIONS__` 占位符注入动态 location
-- 使用 `resolver 127.0.0.11` 延迟 DNS 解析，避免容器启动时 upstream 未就绪崩溃
+插件以前后端同域的方式独立部署，例如：
 
-文件：
-- `deploy/nginx-apk-rebuilder.conf`（443 示例）
-- `deploy/nginx-apk-rebuilder.template.conf`（80 模板）
-- `deploy/nginx-entrypoint-apk-rebuilder.sh`（动态注入脚本）
+- `https://apk-rebuilder.d.plugins.xrugc.com/`
 
-最小运行示例（容器内）：
+同时在该域名下保证：
+
+- `/api/*` -> 宿主普通 API
+- `/plugin/*` -> `apk-rebuilder` 本地后端
+
+## 当前模板支持的环境变量
+
+当前 `deploy/nginx-entrypoint-apk-rebuilder.sh` 会根据环境变量动态生成一组 failover 反代链：
+
+- `APP_API_N_URL`：用于 `/api/*`
+
+最小示例：
+
 ```bash
-# /api/* → 主后端（与 user-management 一致）
 export APP_API_1_URL=https://api.d.xrteeth.com
-export APP_API_2_URL=https://api-backup.d.xrteeth.com
-
-export NGINX_TEMPLATE=/etc/nginx/templates/default.conf.template
-export NGINX_OUTPUT=/etc/nginx/conf.d/default.conf
-export DEBUG_ENV_FILE=/var/www/apk-rebuilder/debug-env.json
-
-sh /etc/nginx/nginx-entrypoint-apk-rebuilder.sh
+export APP_API_2_URL=https://api.d.tmrpp.com
 ```
 
-## 前端配置
-在宿主 `plugins.json` 中将 URL 改为插件域名：
+说明：
+
+- `APP_API_*` 建议填宿主根域名，不带 `/api`
+
+## 当前模板固定本地转发
+
+这些路径固定指向插件本地 Node 服务 `127.0.0.1:3007`：
+
+- `/plugin/*`
+
+## 生产环境建议
+
+- `STRICT_TOOLCHAIN=true`
+- `STRICT_REDIS=true`
+- `PLUGIN_TOKEN_SECRET` 使用真实密钥
+
+## 宿主注册
+
+宿主侧插件配置应指向：
 
 ```json
 {
   "id": "apk-rebuilder",
-  "url": "https://apk-rebuilder.example.com/embed.html",
+  "url": "https://apk-rebuilder.example.com/",
   "allowedOrigin": "https://apk-rebuilder.example.com"
 }
 ```
 
-## 说明
-- 本方案不设置 `frame-ancestors`，以避免宿主域名未知时阻塞 iframe。
-- 后端 CORS 需允许 `Authorization` 头。
-- 后续如需收敛宿主域名，可在 Nginx 加 `Content-Security-Policy: frame-ancestors ...`。
-- `/api/` 反代用于访问主后端插件 API（`/v1/plugin/*`、`/v1/plugin-user/*`），与 user-management 一致。
-- `/api/upload`、`/api/tools` 走插件本地后端（`127.0.0.1:3007`）以支持标准包上传与工具链检测，其余 `/api/*` 继续走主后端。
-- `/plugin/` 反代到 apk-rebuilder 本地后端（`127.0.0.1:3007/plugin/`），供嵌入页执行改包任务。
-- `POST /plugin/admin/upload-standard` 使用独立 location，关闭 `proxy_request_buffering` 并放宽超时，降低大文件上传时 `502` 风险。
-- `POST /api/upload` 同步使用上传专用反代参数，并作为前端兜底重试路径。
-- 已在 server 级别设置 `client_max_body_size 500m`，避免标准包上传触发 `413 Content Too Large`。
+## 常见误区
+
+### 1. 只配了 `/api/*`，没配 `/plugin/*`
+
+这样会导致页面能打开但任务接口不可用。
+
+### 2. 改了 `deploy/` 模板但没重建镜像
+
+这类改动不会自动作用于已发布镜像，必须重新构建并发布镜像。
