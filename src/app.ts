@@ -77,7 +77,7 @@ function failUiBuildMissing(res: express.Response): void {
 
 // static fallback used by local frontend
 app.get('*', (req, res) => {
-  if (req.path.startsWith('/api') || req.path.startsWith('/api-config')) {
+  if (req.path.startsWith('/api')) {
     fail(res, 404, `Route not found: GET ${req.path}`, 'NOT_FOUND');
     return;
   }
