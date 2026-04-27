@@ -11,8 +11,8 @@ services:
       - APP_API_2_URL=https://api.d.tmrpp.com
       - PORT=3007
       - HOST=0.0.0.0
-      - MAIN_API_URL=https://api.d.xrteeth.com/api
-      - HOST_API_BASE=https://api.d.xrteeth.com/api
+      - MAIN_API_URL=https://api.d.xrteeth.com
+      - HOST_API_BASE=https://api.d.xrteeth.com
       - STRICT_TOOLCHAIN=true
       - STRICT_REDIS=true
       - PLUGIN_TOKEN_SECRET=change-me
