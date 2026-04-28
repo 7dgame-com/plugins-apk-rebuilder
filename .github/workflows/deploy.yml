@@ -34,6 +34,19 @@ jobs:
             type=raw,value=publish,enable=${{ github.ref == 'refs/heads/publish' }}
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/publish' }}
 
+      - name: Download Android tooling
+        run: |
+          set -eux
+          mkdir -p tooling-cache
+          curl -fsSL --connect-timeout 20 --max-time 300 --retry 5 --retry-delay 2 --retry-all-errors \
+            "https://github.com/iBotPeaches/Apktool/releases/download/v2.11.1/apktool_2.11.1.jar" \
+            -o tooling-cache/apktool.jar
+          curl -fsSL --connect-timeout 20 --max-time 600 --retry 5 --retry-delay 2 --retry-all-errors \
+            "https://dl.google.com/android/repository/build-tools_r34-linux.zip" \
+            -o tooling-cache/build-tools.zip
+          test -s tooling-cache/apktool.jar
+          test -s tooling-cache/build-tools.zip
+
       - uses: docker/build-push-action@v6
         with:
           context: .
