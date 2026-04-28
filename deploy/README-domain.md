@@ -6,7 +6,7 @@
 
 插件以前后端同域的方式独立部署，例如：
 
-- `https://apk-rebuilder.d.plugins.xrugc.com/`
+- `https://apk-rebuilder.plugins.xrugc.com/`
 
 同时在该域名下保证：
 
@@ -22,8 +22,8 @@
 最小示例：
 
 ```bash
-export APP_API_1_URL=https://api.d.xrteeth.com
-export APP_API_2_URL=https://api.d.tmrpp.com
+export APP_API_1_URL=https://api.xrteeth.com
+export APP_API_2_URL=https://api.tmrpp.com
 ```
 
 说明：

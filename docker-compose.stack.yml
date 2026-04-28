@@ -1,18 +1,18 @@
 services:
   apk-rebuilder-d:
-    image: ${APK_REBUILDER_IMAGE:-hkccr.ccs.tencentyun.com/plugins/apk-rebuilder:latest}
+    image: ${APK_REBUILDER_IMAGE:-hkccr.ccs.tencentyun.com/plugins/apk-rebuilder:publish}
     networks:
       - proxy
       - internal
     volumes:
       - apk_rebuilder_data:/app/data
     environment:
-      - APP_API_1_URL=https://api.d.xrteeth.com
-      - APP_API_2_URL=https://api.d.tmrpp.com
+      - APP_API_1_URL=https://api.xrteeth.com
+      - APP_API_2_URL=https://api.tmrpp.com
       - PORT=3007
       - HOST=0.0.0.0
-      - MAIN_API_URL=https://api.d.xrteeth.com
-      - HOST_API_BASE=https://api.d.xrteeth.com
+      - MAIN_API_URL=https://api.xrteeth.com
+      - HOST_API_BASE=https://api.xrteeth.com
       - STRICT_TOOLCHAIN=true
       - STRICT_REDIS=true
       - PLUGIN_TOKEN_SECRET=change-me
@@ -20,10 +20,10 @@ services:
       - REDIS_PORT=6379
     labels:
       - traefik.enable=true
-      - "traefik.http.routers.apk-rebuilder_d.rule=Host(`apk-rebuilder.d.plugins.xrugc.com`)"
-      - traefik.http.routers.apk-rebuilder_d.entrypoints=websecure
-      - traefik.http.routers.apk-rebuilder_d.tls.certresolver=letsencrypt
-      - traefik.http.services.apk-rebuilder_d.loadbalancer.server.port=80
+      - "traefik.http.routers.apk-rebuilder.rule=Host(`apk-rebuilder.plugins.xrugc.com`)"
+      - traefik.http.routers.apk-rebuilder.entrypoints=websecure
+      - traefik.http.routers.apk-rebuilder.tls.certresolver=letsencrypt
+      - traefik.http.services.apk-rebuilder.loadbalancer.server.port=80
       - traefik.docker.network=proxy
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1/health"]

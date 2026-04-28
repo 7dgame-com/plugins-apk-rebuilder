@@ -39,14 +39,14 @@ CI 会执行：
 - `main`
 - `develop`
 - `publish`
-- `latest`（publish 分支）
+- `latest`（publish 分支兼容标签）
 
 ## 服务器部署
 
 推荐用环境变量覆盖镜像地址，再使用 stack compose：
 
 ```bash
-export APK_REBUILDER_IMAGE=hkccr.ccs.tencentyun.com/plugins/apk-rebuilder:latest
+export APK_REBUILDER_IMAGE=hkccr.ccs.tencentyun.com/plugins/apk-rebuilder:publish
 docker compose -f docker-compose.stack.yml pull
 docker compose -f docker-compose.stack.yml up -d
 ```
