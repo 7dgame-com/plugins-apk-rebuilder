@@ -6,6 +6,9 @@ import type { HostBridgeApi, SubmitRunData } from '../types';
 type SubmitFlowDeps = {
   host: HostBridgeApi;
   getAppName(): string;
+  getPackageName(): string;
+  getVersionName(): string;
+  getVersionCode(): string;
   getSceneId(): string;
   getIconFile(): File | null;
   showAlert(message: string): Promise<unknown>;
@@ -22,6 +25,9 @@ type SubmitUiBridge = {
 export function useSubmitFlow({
   host,
   getAppName,
+  getPackageName,
+  getVersionName,
+  getVersionCode,
   getSceneId,
   getIconFile,
   showAlert,
@@ -60,6 +66,9 @@ export function useSubmitFlow({
 
   async function buildSubmitPayload(): Promise<unknown | null> {
     const appName = getAppName();
+    const packageName = getPackageName();
+    const versionName = getVersionName();
+    const versionCode = getVersionCode();
     const sceneId = getSceneId();
     if (!appName) {
       await showAlert(t('host.appNameRequired'));
@@ -80,8 +89,14 @@ export function useSubmitFlow({
         source: { libraryItemId: standardLibraryItemId },
         modifications: {
           appName,
-          unityPatches: [{ path: 'sceneId', value: /^\d+$/.test(sceneId) ? Number(sceneId) : sceneId }],
-          unityConfigPath: null,
+          packageName: packageName || undefined,
+          versionName: versionName || undefined,
+          versionCode: versionCode || undefined,
+          unityConfigPath: 'Assets/StreamingAssets/WhiteLabel/white-label.json',
+          unityPatches: [
+            { path: 'profiles.0.extensions.1.text', value: sceneId },
+            { path: 'profiles.0.extensions.0.enabled', value: true },
+          ],
           iconArtifactId,
         },
         options: {

@@ -4,7 +4,7 @@ import { logTask } from './taskStore';
 import { ModPayload, Task, UnityPatch } from './types';
 
 function normalizeUnityConfigPath(value?: string | null): string {
-  const raw = (value || 'Assets/StreamingAssets/scene-config.json').replace(/\\/g, '/').trim();
+  const raw = (value || 'Assets/StreamingAssets/WhiteLabel/white-label.json').replace(/\\/g, '/').trim();
   if (!raw || raw.startsWith('/') || raw.includes('..')) {
     throw new Error('Invalid unityConfigPath');
   }

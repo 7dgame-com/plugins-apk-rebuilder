@@ -51,6 +51,18 @@ function getAppNameInput(): HTMLInputElement | null {
   return document.getElementById('appName') as HTMLInputElement | null;
 }
 
+function getPackageNameInput(): HTMLInputElement | null {
+  return document.getElementById('packageName') as HTMLInputElement | null;
+}
+
+function getVersionNameInput(): HTMLInputElement | null {
+  return document.getElementById('versionName') as HTMLInputElement | null;
+}
+
+function getVersionCodeInput(): HTMLInputElement | null {
+  return document.getElementById('versionCode') as HTMLInputElement | null;
+}
+
 function getSceneIdInput(): HTMLInputElement | null {
   return document.getElementById('sceneId') as HTMLInputElement | null;
 }
@@ -93,7 +105,7 @@ function buildUi(): void {
   if (canRun) {
     renderPackageInfoSection(wrap, {
       showOriginal: false,
-      fields: ['appName'],
+      fields: ['appName', 'packageName', 'versionName', 'versionCode'],
       showIcon: true,
       showChangeCount: false,
       title: t('pkg.title'),
@@ -110,6 +122,9 @@ function buildUi(): void {
   const submitFlow = useSubmitFlow({
     host,
     getAppName: () => getAppNameInput()?.value.trim() || '',
+    getPackageName: () => getPackageNameInput()?.value.trim() || '',
+    getVersionName: () => getVersionNameInput()?.value.trim() || '',
+    getVersionCode: () => getVersionCodeInput()?.value.trim() || '',
     getSceneId: () => getSceneIdInput()?.value.trim() || '',
     getIconFile: () => state.iconFile,
     showAlert,
