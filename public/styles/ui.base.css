@@ -173,7 +173,7 @@ textarea[readonly] {
   color: var(--text-secondary);
 }
 
-button,
+button:not(.shell-control),
 .btn {
   background: var(--btn-primary-bg);
   color: var(--btn-primary-text);
@@ -191,12 +191,12 @@ button,
   transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-button:hover:not(:disabled),
+button:not(.shell-control):hover:not(:disabled),
 .btn:hover:not(:disabled) {
   background: var(--btn-primary-hover);
 }
 
-button:active:not(:disabled),
+button:not(.shell-control):active:not(:disabled),
 .btn:active:not(:disabled) {
   transform: translateY(1px);
 }
@@ -215,7 +215,7 @@ button:active:not(:disabled),
   background: var(--btn-submit-active);
 }
 
-button:not(.secondary):not(.btn-secondary):not(.ghost):not(.btn-ghost):not(.success):not(.btn-success):not(.btn-danger):active:not(:disabled),
+button:not(.shell-control):not(.secondary):not(.btn-secondary):not(.ghost):not(.btn-ghost):not(.success):not(.btn-success):not(.btn-danger):active:not(:disabled),
 .btn.primary:active:not(:disabled),
 .btn-primary:active:not(:disabled),
 .btn:not(.secondary):not(.ghost):not(.success):not(.btn-danger):active:not(:disabled) {
@@ -299,13 +299,13 @@ button.btn-success:hover:not(:disabled),
   background: var(--btn-success-hover);
 }
 
-button:disabled,
+button:not(.shell-control):disabled,
 .btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
-button:not(.btn-danger):focus-visible,
+button:not(.shell-control):not(.btn-danger):focus-visible,
 .btn:not(.btn-danger):focus-visible {
   outline: none;
   box-shadow: var(--btn-focus-ring);

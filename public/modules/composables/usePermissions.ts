@@ -3,6 +3,51 @@ import { normalizeHostErrorMessage } from '../host/errors';
 import type { HostBridgeApi } from '../types';
 import { getPermissionSnapshot, type PermissionSnapshot } from '../../../src/shared/permissions';
 
+type HostSessionUser = {
+  id?: unknown;
+  userId?: unknown;
+  user_id?: unknown;
+  username?: unknown;
+  nickname?: unknown;
+  roles?: unknown;
+};
+
+type HostSessionPayload = HostSessionUser & {
+  user?: HostSessionUser;
+};
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' ? value as Record<string, unknown> : null;
+}
+
+function unwrapPayload(json: unknown): HostSessionPayload {
+  const root = asRecord(json);
+  const data = asRecord(root?.data);
+  return (data || root || {}) as HostSessionPayload;
+}
+
+function readText(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const text = value.trim();
+  return text ? text : undefined;
+}
+
+function readId(value: unknown): string | number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  return readText(value);
+}
+
+function readRoles(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const roles = value.map((role) => readText(role)).filter((role): role is string => Boolean(role));
+  return roles.length ? roles : undefined;
+}
+
+function getUserPayload(payload: HostSessionPayload): HostSessionUser {
+  const nestedUser = asRecord(payload.user);
+  return (nestedUser || payload) as HostSessionUser;
+}
+
 export function usePermissions(host: HostBridgeApi) {
   const state: PermissionSnapshot = {
     roles: [],
@@ -24,20 +69,19 @@ export function usePermissions(host: HostBridgeApi) {
     try {
       const res = await host.hostFetch('/v1/plugin/verify-token');
       const json = await res.json().catch(() => ({}));
-      const payload = json?.data || json;
-      const fetchedRoles = payload?.roles;
+      const payload = unwrapPayload(json);
+      const userPayload = getUserPayload(payload);
+      const fetchedRoles = readRoles(userPayload.roles ?? payload.roles);
       if (Array.isArray(fetchedRoles)) {
-        roles = fetchedRoles.map((role: unknown) => String(role).trim()).filter(Boolean);
+        roles = fetchedRoles;
       }
-      if (payload && typeof payload === 'object') {
-        host.state.user = {
-          ...host.state.user,
-          id: payload.id ?? host.state.user.id,
-          username: payload.username ?? host.state.user.username,
-          nickname: payload.nickname ?? host.state.user.nickname,
-          roles: fetchedRoles ?? host.state.user.roles,
-        };
-      }
+      host.state.user = {
+        ...host.state.user,
+        id: readId(userPayload.id ?? userPayload.userId ?? userPayload.user_id) ?? host.state.user.id,
+        username: readText(userPayload.username) ?? host.state.user.username,
+        nickname: readText(userPayload.nickname) ?? host.state.user.nickname,
+        roles: fetchedRoles ?? host.state.user.roles,
+      };
       console.info('[APK-REBUILDER] verify-token', {
         status: res.status,
         ok: res.ok,

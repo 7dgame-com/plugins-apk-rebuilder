@@ -76,6 +76,8 @@ export interface HostBridgeState {
   roles: string[];
   user: {
     id?: number | string;
+    userId?: number | string;
+    user_id?: number | string;
     username?: string;
     nickname?: string;
     roles?: string[] | string;
@@ -90,6 +92,8 @@ export interface HostBridgePayload {
   role?: string[] | string;
   user?: {
     id?: number | string;
+    userId?: number | string;
+    user_id?: number | string;
     username?: string;
     nickname?: string;
     roles?: string[] | string;

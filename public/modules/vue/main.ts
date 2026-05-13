@@ -26,6 +26,10 @@ function routePath(route: RouteKey): string {
   return route === 'standard-packages' ? '/standard-packages' : '/workbench';
 }
 
+function cleanText(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
 initThemeSync();
 document.title = t('app.titleHost');
 setRuntimeMode(RUNTIME_MODE.HOST);
@@ -47,13 +51,13 @@ const App = defineComponent({
       <aside v-if="ready && hasAccess" class="sidebar" :class="{ open: sidebarOpen }">
         <div class="sidebar-header">
           <span class="sidebar-title">{{ t('app.title') }}</span>
-          <button class="sidebar-close ghost" type="button" @click="sidebarOpen = false">
+          <button class="shell-control sidebar-close" type="button" @click="sidebarOpen = false">
             <el-icon><Close /></el-icon>
           </button>
         </div>
         <nav class="sidebar-nav">
           <button
-            class="sidebar-item ghost"
+            class="shell-control sidebar-item"
             :class="{ active: currentRoute === 'workbench' }"
             type="button"
             @click="go('workbench')"
@@ -63,7 +67,7 @@ const App = defineComponent({
           </button>
           <button
             v-if="canManage"
-            class="sidebar-item ghost"
+            class="shell-control sidebar-item"
             :class="{ active: currentRoute === 'standard-packages' }"
             type="button"
             @click="go('standard-packages')"
@@ -76,7 +80,7 @@ const App = defineComponent({
 
       <div class="main-area">
         <header class="navbar">
-          <button v-if="ready && hasAccess" class="menu-btn ghost" type="button" @click="sidebarOpen = true">
+          <button v-if="ready && hasAccess" class="shell-control menu-btn" type="button" @click="sidebarOpen = true">
             <el-icon :size="20"><Fold /></el-icon>
           </button>
           <h1 class="navbar-title">{{ pageTitle }}</h1>
@@ -166,7 +170,12 @@ const App = defineComponent({
     const roles = computed(() => permissions.state.roles);
     const canManage = computed(() => permissions.canManageStandardPackage());
     const hasAccess = computed(() => permissions.hasAccess());
-    const userName = computed(() => host.state.user.nickname || host.state.user.username || t('user.unknown'));
+    const userName = computed(() => {
+      const nickname = cleanText(host.state.user.nickname);
+      const username = cleanText(host.state.user.username);
+      const userId = host.state.user.id ?? host.state.user.userId ?? host.state.user.user_id;
+      return nickname || username || (userId ? `#${userId}` : t('user.unknown'));
+    });
     const pageTitle = computed(() => {
       state.langTick;
       return state.currentRoute === 'standard-packages' ? t('standard.title') : t('nav.workbench');

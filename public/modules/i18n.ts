@@ -3,7 +3,7 @@ const DICTIONARY = {
     'app.title': 'APK Rebuilder',
     'app.titleHost': 'APK Rebuilder - 宿主版',
     'app.titleLogs': 'APK Rebuilder 日志',
-    'nav.workbench': '工作台',
+    'nav.workbench': 'APK 改包',
     'nav.standardPackages': '标准包管理',
     'user.unknown': '未知用户',
 
@@ -217,7 +217,7 @@ const DICTIONARY = {
     'app.title': 'APK Rebuilder',
     'app.titleHost': 'APK Rebuilder - Host Mode',
     'app.titleLogs': 'APK Rebuilder Logs',
-    'nav.workbench': 'Workbench',
+    'nav.workbench': 'APK Rebuild',
     'nav.standardPackages': 'Standard Packages',
     'user.unknown': 'Unknown user',
 
@@ -431,7 +431,7 @@ const DICTIONARY = {
     'app.title': 'APK 重構工具',
     'app.titleHost': 'APK 重構工具 - 宿主版',
     'app.titleLogs': 'APK 重構工具 日誌',
-    'nav.workbench': '工作台',
+    'nav.workbench': 'APK 改包',
     'nav.standardPackages': '標準包管理',
     'user.unknown': '未知使用者',
 
@@ -637,7 +637,7 @@ const DICTIONARY = {
     'app.title': 'APK リビルドツール',
     'app.titleHost': 'APK リビルドツール - ホスト版',
     'app.titleLogs': 'APK リビルドツール ログ',
-    'nav.workbench': 'ワークベンチ',
+    'nav.workbench': 'APK 改造',
     'nav.standardPackages': '標準パッケージ',
     'user.unknown': '不明なユーザー',
 
@@ -843,7 +843,7 @@ const DICTIONARY = {
     'app.title': 'เครื่องมือสร้าง APK',
     'app.titleHost': 'เครื่องมือสร้าง APK - โฮสต์',
     'app.titleLogs': 'บันทึกเครื่องมือสร้าง APK',
-    'nav.workbench': 'เวิร์กเบนช์',
+    'nav.workbench': 'ปรับแต่ง APK',
     'nav.standardPackages': 'แพ็กเกจมาตรฐาน',
     'user.unknown': 'ผู้ใช้ไม่ทราบชื่อ',
 

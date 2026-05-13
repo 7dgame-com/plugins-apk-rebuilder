@@ -37,3 +37,14 @@ test('host bridge api types only expose host api helpers', () => {
   assert.doesNotMatch(source, /hostApiBase\?: string;/);
   assert.doesNotMatch(source, /pluginApiBase\?: string;/);
 });
+
+test('frontend session reads verify-token through the host api and preserves user identity fields', () => {
+  const source = readSource('public/modules/composables/usePermissions.ts');
+  const shellSource = readSource('public/modules/vue/main.ts');
+
+  assert.match(source, /host\.hostFetch\('\/v1\/plugin\/verify-token'\)/);
+  assert.match(source, /userPayload\.id \?\? userPayload\.userId \?\? userPayload\.user_id/);
+  assert.match(source, /readText\(userPayload\.username\) \?\? host\.state\.user\.username/);
+  assert.match(source, /readText\(userPayload\.nickname\) \?\? host\.state\.user\.nickname/);
+  assert.match(shellSource, /host\.state\.user\.id \?\? host\.state\.user\.userId \?\? host\.state\.user\.user_id/);
+});
