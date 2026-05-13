@@ -822,9 +822,13 @@ body.apk-entry .standard-package-actions button.btn-danger-soft:focus-visible {
 }
 
 .apk-workflow {
+  --flow-gap: var(--spacing-md);
+  --flow-width: calc(100% - (2 * var(--flow-gap)));
+  --flow-line-inset: 82px;
+  --flow-line-color: color-mix(in srgb, var(--primary-color) 48%, var(--border-color));
   display: grid;
   grid-template-columns: minmax(360px, 1.05fr) minmax(360px, 1fr) minmax(300px, 0.85fr);
-  gap: var(--spacing-md);
+  gap: var(--flow-gap);
   align-items: start;
   margin-top: var(--spacing-lg);
   position: relative;
@@ -835,19 +839,20 @@ body.apk-entry .standard-package-actions button.btn-danger-soft:focus-visible {
   content: '';
   position: absolute;
   top: 12px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--primary-color) 26%, var(--border-color)) 12%, color-mix(in srgb, var(--primary-color) 26%, var(--border-color)) 88%, transparent);
+  height: 2px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, transparent 0%, var(--flow-line-color) 38%, var(--flow-line-color) 62%, transparent 100%);
   pointer-events: none;
 }
 
 .apk-workflow::before {
-  left: calc((100% - (2 * var(--spacing-md))) * 0.16);
-  width: calc((100% - (2 * var(--spacing-md))) * 0.28);
+  left: calc((var(--flow-width) * 0.181034) + var(--flow-line-inset));
+  width: calc((var(--flow-width) * 0.353448) + var(--flow-gap) - (2 * var(--flow-line-inset)));
 }
 
 .apk-workflow::after {
-  left: calc((100% - (2 * var(--spacing-md))) * 0.5 + var(--spacing-md));
-  width: calc((100% - (2 * var(--spacing-md))) * 0.27);
+  left: calc((var(--flow-width) * 0.534483) + var(--flow-gap) + var(--flow-line-inset));
+  width: calc((var(--flow-width) * 0.318966) + var(--flow-gap) - (2 * var(--flow-line-inset)));
 }
 
 .apk-workflow-lane {
@@ -966,6 +971,36 @@ body.apk-entry .standard-package-actions button.btn-danger-soft:focus-visible {
   align-items: center;
   gap: var(--spacing-sm);
   margin-top: var(--spacing-sm);
+}
+
+.submit-summary {
+  display: grid;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.submit-summary-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.submit-summary-item strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-weight: var(--font-weight-medium);
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tools-check-wrap {

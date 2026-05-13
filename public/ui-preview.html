@@ -14,9 +14,13 @@
     }
 
     .preview-flow {
+      --flow-gap: var(--spacing-md);
+      --flow-width: calc(100% - (2 * var(--flow-gap)));
+      --flow-line-inset: 82px;
+      --flow-line-color: color-mix(in srgb, var(--primary-color) 48%, var(--border-color));
       display: grid;
       grid-template-columns: minmax(360px, 1.05fr) minmax(360px, 1fr) minmax(300px, 0.85fr);
-      gap: var(--spacing-md);
+      gap: var(--flow-gap);
       align-items: start;
       min-width: 1080px;
       margin-top: var(--spacing-lg);
@@ -28,19 +32,20 @@
       content: '';
       position: absolute;
       top: 12px;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--primary-color) 26%, var(--border-color)) 12%, color-mix(in srgb, var(--primary-color) 26%, var(--border-color)) 88%, transparent);
+      height: 2px;
+      border-radius: var(--radius-full);
+      background: linear-gradient(90deg, transparent 0%, var(--flow-line-color) 38%, var(--flow-line-color) 62%, transparent 100%);
       pointer-events: none;
     }
 
     .preview-flow::before {
-      left: calc((100% - (2 * var(--spacing-md))) * 0.16);
-      width: calc((100% - (2 * var(--spacing-md))) * 0.28);
+      left: calc((var(--flow-width) * 0.181034) + var(--flow-line-inset));
+      width: calc((var(--flow-width) * 0.353448) + var(--flow-gap) - (2 * var(--flow-line-inset)));
     }
 
     .preview-flow::after {
-      left: calc((100% - (2 * var(--spacing-md))) * 0.5 + var(--spacing-md));
-      width: calc((100% - (2 * var(--spacing-md))) * 0.27);
+      left: calc((var(--flow-width) * 0.534483) + var(--flow-gap) + var(--flow-line-inset));
+      width: calc((var(--flow-width) * 0.318966) + var(--flow-gap) - (2 * var(--flow-line-inset)));
     }
 
     .preview-lane {

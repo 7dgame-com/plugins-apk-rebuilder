@@ -55,7 +55,7 @@ export default defineComponent({
 
       renderPackageInfoSection(infoLane, {
         showOriginal: false,
-        fields: ['appName'],
+        fields: ['appName', 'packageName', 'versionName', 'versionCode'],
         showIcon: true,
         showChangeCount: false,
         title: t('pkg.title'),

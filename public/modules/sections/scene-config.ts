@@ -15,6 +15,7 @@ export function renderSceneConfigSection(container: HTMLElement): void {
         </div>
       </div>
       <input id="sceneId" type="hidden" />
+      <input id="sceneName" type="hidden" />
       <div id="sceneList" class="scene-list"></div>
       <div class="scene-pagination">
         <button id="scenePrev" class="btn ghost">${t('scene.prev')}</button>
@@ -35,6 +36,8 @@ export function createSceneConfigSection(
   const listEl = (): HTMLElement | null => document.getElementById('sceneList');
   const pageInfoEl = (): HTMLElement | null => document.getElementById('scenePageInfo');
   const sceneInput = (): HTMLInputElement | null => document.getElementById('sceneId') as HTMLInputElement | null;
+  const sceneNameInput = (): HTMLInputElement | null =>
+    document.getElementById('sceneName') as HTMLInputElement | null;
   const searchInputEl = (): HTMLInputElement | null =>
     document.getElementById('sceneSearch') as HTMLInputElement | null;
   const prevButtonEl = (): HTMLButtonElement | null =>
@@ -110,7 +113,16 @@ export function createSceneConfigSection(
         if (action !== 'select') return;
         const id = row.getAttribute('data-id') || '';
         const input = sceneInput();
-        if (input) input.value = id;
+        const nameInput = sceneNameInput();
+        const item = viewState.lastItems.find((scene) => String(scene?.id ?? '') === String(id));
+        if (input) {
+          input.value = id;
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        if (nameInput) {
+          nameInput.value = item?.name || t('scene.unnamed', { id });
+          nameInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
         renderList(viewState.lastItems);
       });
     }

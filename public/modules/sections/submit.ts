@@ -7,6 +7,16 @@ export function renderSubmitSection(container: HTMLElement): void {
     'beforeend',
     `
     <div class="card" id="sectionSubmit">
+      <div class="submit-summary">
+        <div class="submit-summary-item">
+          <span>${t('pkg.appName')}</span>
+          <strong id="submitAppName">${t('submit.notSet')}</strong>
+        </div>
+        <div class="submit-summary-item">
+          <span>${t('submit.scene')}</span>
+          <strong id="submitScene">${t('submit.notSet')}</strong>
+        </div>
+      </div>
       <div class="row">
         <button id="submitBtn" class="btn submit-btn">${t('submit.title')}</button>
         <a id="downloadLink" class="btn success" style="display:none" href="#" target="_blank" rel="noopener">${t('submit.download')}</a>
@@ -21,6 +31,29 @@ export function renderSubmitSection(container: HTMLElement): void {
 }
 
 export function createSubmitSection({ onSubmit }: SubmitSectionDeps) {
+  function getInputValue(id: string): string {
+    return (document.getElementById(id) as HTMLInputElement | null)?.value.trim() || '';
+  }
+
+  function setSummaryText(id: string, text: string): void {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text || t('submit.notSet');
+  }
+
+  function getSceneSummary(): string {
+    const id = getInputValue('sceneId');
+    const name = getInputValue('sceneName');
+    if (!id && !name) return '';
+    if (!id) return name;
+    if (!name) return `#${id}`;
+    return `#${id} ${name}`;
+  }
+
+  function refreshSummary(): void {
+    setSummaryText('submitAppName', getInputValue('appName'));
+    setSummaryText('submitScene', getSceneSummary());
+  }
+
   function setStatus(text: string): void {
     const el = document.getElementById('submitStatus');
     if (el) el.textContent = text;
@@ -56,6 +89,14 @@ export function createSubmitSection({ onSubmit }: SubmitSectionDeps) {
   }
 
   function bind(): void {
+    refreshSummary();
+    ['appName', 'sceneId', 'sceneName'].forEach((id) => {
+      const input = document.getElementById(id);
+      if (!input) return;
+      input.addEventListener('input', refreshSummary);
+      input.addEventListener('change', refreshSummary);
+    });
+
     const btn = document.getElementById('submitBtn');
     if (btn) {
       btn.addEventListener('click', () => {
@@ -74,5 +115,5 @@ export function createSubmitSection({ onSubmit }: SubmitSectionDeps) {
     }
   }
 
-  return { bind, setStatus, setSubmitting };
+  return { bind, setStatus, setSubmitting, refreshSummary };
 }
