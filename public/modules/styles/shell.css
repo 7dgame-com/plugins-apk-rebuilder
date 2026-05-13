@@ -149,8 +149,9 @@
 }
 
 .legacy-view {
-  max-width: var(--container-max-width);
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
 }
 
 .standard-tools-row {
