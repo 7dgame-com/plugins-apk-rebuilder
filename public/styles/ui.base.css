@@ -830,6 +830,7 @@ body.apk-entry .standard-package-actions button.btn-danger-soft:focus-visible {
   grid-template-columns: minmax(360px, 1.05fr) minmax(360px, 1fr) minmax(300px, 0.85fr);
   gap: var(--flow-gap);
   align-items: start;
+  min-width: 1080px;
   margin-top: var(--spacing-lg);
   position: relative;
 }
