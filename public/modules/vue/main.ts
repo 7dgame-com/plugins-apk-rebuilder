@@ -1,4 +1,7 @@
 import { createApp, computed, defineComponent, onMounted, reactive, toRefs } from 'vue';
+import ElementPlus from 'element-plus';
+import 'element-plus/dist/index.css';
+import 'element-plus/theme-chalk/dark/css-vars.css';
 import '../styles/shell.css';
 import { createHostBridge } from '../host/bridge';
 import { initThemeSync } from '../theme';
@@ -6,6 +9,7 @@ import { t, onLanguageChange } from '../i18n';
 import { RUNTIME_MODE, setRuntimeMode } from '../state';
 import { usePermissions } from '../composables/usePermissions';
 import { notifyHostPluginUrlChanged } from './hostEvents';
+import { Close, Fold, Location, Loading, Setting, User } from '@element-plus/icons-vue';
 import WorkbenchView from './views/WorkbenchView';
 import StandardPackagesView from './views/StandardPackagesView';
 
@@ -31,53 +35,63 @@ const permissions = usePermissions(host);
 
 const App = defineComponent({
   name: 'ApkRebuilderShell',
-  components: { WorkbenchView, StandardPackagesView },
+  components: { Close, Fold, Location, Loading, Setting, User, WorkbenchView, StandardPackagesView },
   template: `
-    <div class="plugin-shell">
-      <aside v-if="ready && hasAccess" class="plugin-sidebar" :class="{ open: sidebarOpen }">
-        <div class="plugin-sidebar-header">
-          <span class="plugin-title">APK Rebuilder</span>
-          <button class="plugin-icon-btn" type="button" @click="sidebarOpen = false">×</button>
+    <div class="app-layout">
+      <div
+        v-if="sidebarOpen && hasAccess"
+        class="sidebar-overlay"
+        @click="sidebarOpen = false"
+      />
+
+      <aside v-if="ready && hasAccess" class="sidebar" :class="{ open: sidebarOpen }">
+        <div class="sidebar-header">
+          <span class="sidebar-title">{{ t('app.title') }}</span>
+          <button class="sidebar-close" type="button" @click="sidebarOpen = false">
+            <el-icon><Close /></el-icon>
+          </button>
         </div>
-        <nav class="plugin-nav">
+        <nav class="sidebar-nav">
           <button
-            class="plugin-nav-item"
+            class="sidebar-item"
             :class="{ active: currentRoute === 'workbench' }"
             type="button"
             @click="go('workbench')"
           >
-            <span class="plugin-nav-icon">▣</span>
+            <el-icon><Location /></el-icon>
             <span>{{ t('nav.workbench') }}</span>
           </button>
           <button
             v-if="canManage"
-            class="plugin-nav-item"
+            class="sidebar-item"
             :class="{ active: currentRoute === 'standard-packages' }"
             type="button"
             @click="go('standard-packages')"
           >
-            <span class="plugin-nav-icon">▤</span>
+            <el-icon><Setting /></el-icon>
             <span>{{ t('nav.standardPackages') }}</span>
           </button>
         </nav>
       </aside>
 
-      <div v-if="sidebarOpen" class="plugin-sidebar-mask" @click="sidebarOpen = false"></div>
-
-      <section class="plugin-main">
-        <header class="plugin-navbar">
-          <button v-if="ready && hasAccess" class="plugin-menu-btn" type="button" @click="sidebarOpen = true">☰</button>
-          <h1 class="plugin-navbar-title">{{ pageTitle }}</h1>
-          <div class="plugin-spacer"></div>
-          <div v-if="ready && hasAccess" class="plugin-user">
-            <span class="plugin-user-icon" aria-hidden="true"></span>
-            <span class="plugin-user-name">{{ userName }}</span>
-            <span v-for="role in roles" :key="role" class="plugin-role">{{ role }}</span>
+      <div class="main-area">
+        <header class="navbar">
+          <button v-if="ready && hasAccess" class="menu-btn" type="button" @click="sidebarOpen = true">
+            <el-icon :size="20"><Fold /></el-icon>
+          </button>
+          <h1 class="navbar-title">{{ pageTitle }}</h1>
+          <div class="navbar-spacer" />
+          <div v-if="ready && hasAccess" class="user-info">
+            <el-icon><User /></el-icon>
+            <span>{{ userName }}</span>
+            <el-tag size="small" v-for="role in roles" :key="role">{{ role }}</el-tag>
           </div>
         </header>
 
-        <main class="plugin-content">
-          <div v-if="loading" class="plugin-state-card">Connecting to host system...</div>
+        <main class="content">
+          <div v-if="loading" class="loading-state">
+            <el-icon class="is-loading" :size="24"><Loading /></el-icon>
+          </div>
           <div v-else-if="error" class="plugin-state-card error">
             <h2>{{ t('host.accessDeniedTitle') }}</h2>
             <p>{{ error }}</p>
@@ -100,7 +114,7 @@ const App = defineComponent({
             :can-manage="canManage"
           />
         </main>
-      </section>
+      </div>
     </div>
   `,
   setup() {
@@ -173,4 +187,4 @@ const App = defineComponent({
   },
 });
 
-createApp(App).mount('#app');
+createApp(App).use(ElementPlus, { size: 'default' }).mount('#app');
