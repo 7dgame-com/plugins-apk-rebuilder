@@ -3,6 +3,9 @@ const DICTIONARY = {
     'app.title': 'APK Rebuilder',
     'app.titleHost': 'APK Rebuilder - 宿主版',
     'app.titleLogs': 'APK Rebuilder 日志',
+    'nav.workbench': '工作台',
+    'nav.standardPackages': '标准包管理',
+    'user.unknown': '未知用户',
 
     'header.subtitle.full': '用于上传 APK、修改包信息与 Unity 参数，并自动重构建签名下载的可视化工具。',
     'header.subtitle.host': 'apk改包工具',
@@ -214,6 +217,9 @@ const DICTIONARY = {
     'app.title': 'APK Rebuilder',
     'app.titleHost': 'APK Rebuilder - Host Mode',
     'app.titleLogs': 'APK Rebuilder Logs',
+    'nav.workbench': 'Workbench',
+    'nav.standardPackages': 'Standard Packages',
+    'user.unknown': 'Unknown user',
 
     'header.subtitle.full': 'Upload APKs, edit package info and Unity params, then rebuild/sign automatically.',
     'header.subtitle.host': 'Standard Package Builder',
@@ -425,6 +431,9 @@ const DICTIONARY = {
     'app.title': 'APK 重構工具',
     'app.titleHost': 'APK 重構工具 - 宿主版',
     'app.titleLogs': 'APK 重構工具 日誌',
+    'nav.workbench': '工作台',
+    'nav.standardPackages': '標準包管理',
+    'user.unknown': '未知使用者',
 
     'header.subtitle.full': '用於上傳 APK、修改包資訊與 Unity 參數，並自動重構建簽名下載的可視化工具。',
     'header.subtitle.host': 'apk 改包工具',
@@ -628,6 +637,9 @@ const DICTIONARY = {
     'app.title': 'APK リビルドツール',
     'app.titleHost': 'APK リビルドツール - ホスト版',
     'app.titleLogs': 'APK リビルドツール ログ',
+    'nav.workbench': 'ワークベンチ',
+    'nav.standardPackages': '標準パッケージ',
+    'user.unknown': '不明なユーザー',
 
     'header.subtitle.full': 'APK をアップロードし、パッケージ情報と Unity パラメータを編集した後、自動で再構築/署名ダウンロードします。',
     'header.subtitle.host': '標準パッケージビルダー',
@@ -831,6 +843,9 @@ const DICTIONARY = {
     'app.title': 'เครื่องมือสร้าง APK',
     'app.titleHost': 'เครื่องมือสร้าง APK - โฮสต์',
     'app.titleLogs': 'บันทึกเครื่องมือสร้าง APK',
+    'nav.workbench': 'เวิร์กเบนช์',
+    'nav.standardPackages': 'แพ็กเกจมาตรฐาน',
+    'user.unknown': 'ผู้ใช้ไม่ทราบชื่อ',
 
     'header.subtitle.full': 'อัปโหลด APK แก้ไขข้อมูลแพ็กเกจและพารามิเตอร์ Unity แล้วสร้างใหม่/ลงชื่ออัตโนมัติ',
     'header.subtitle.host': 'ตัวสร้างแพ็กเกจมาตรฐาน',

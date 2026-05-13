@@ -19,6 +19,7 @@ export function useHostBridge(): HostBridgeApi {
     token: '',
     config: {},
     roles: [],
+    user: {},
     lastInitError: '',
   };
 
@@ -104,6 +105,15 @@ export function useHostBridge(): HostBridgeApi {
     }
     const cfg = state.config || {};
     const rawRoles = payload.roles ?? payload.role ?? payload.user?.roles ?? cfg.roles ?? cfg.role;
+    if (payload.user && typeof payload.user === 'object') {
+      state.user = {
+        ...state.user,
+        id: payload.user.id ?? state.user.id,
+        username: payload.user.username ?? state.user.username,
+        nickname: payload.user.nickname ?? state.user.nickname,
+        roles: payload.user.roles ?? state.user.roles,
+      };
+    }
 
     if (rawRoles) {
       if (Array.isArray(rawRoles)) {
@@ -118,6 +128,7 @@ export function useHostBridge(): HostBridgeApi {
     logAlways('INIT received', {
       token: state.token ? `${state.token.slice(0, 6)}...` : '',
       roles: state.roles,
+      user: state.user,
       hostApiBase: HOST_API_BASE,
     });
     if (!state.token) {

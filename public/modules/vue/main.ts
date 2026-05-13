@@ -47,7 +47,7 @@ const App = defineComponent({
             @click="go('workbench')"
           >
             <span class="plugin-nav-icon">▣</span>
-            <span>Workbench</span>
+            <span>{{ t('nav.workbench') }}</span>
           </button>
           <button
             v-if="canManage"
@@ -57,7 +57,7 @@ const App = defineComponent({
             @click="go('standard-packages')"
           >
             <span class="plugin-nav-icon">▤</span>
-            <span>Standard Packages</span>
+            <span>{{ t('nav.standardPackages') }}</span>
           </button>
         </nav>
       </aside>
@@ -70,7 +70,8 @@ const App = defineComponent({
           <h1 class="plugin-navbar-title">{{ pageTitle }}</h1>
           <div class="plugin-spacer"></div>
           <div v-if="ready && hasAccess" class="plugin-user">
-            <span class="plugin-user-name">Host user</span>
+            <span class="plugin-user-icon" aria-hidden="true"></span>
+            <span class="plugin-user-name">{{ userName }}</span>
             <span v-for="role in roles" :key="role" class="plugin-role">{{ role }}</span>
           </div>
         </header>
@@ -151,9 +152,10 @@ const App = defineComponent({
     const roles = computed(() => permissions.state.roles);
     const canManage = computed(() => permissions.canManageStandardPackage());
     const hasAccess = computed(() => permissions.hasAccess());
+    const userName = computed(() => host.state.user.nickname || host.state.user.username || t('user.unknown'));
     const pageTitle = computed(() => {
       state.langTick;
-      return state.currentRoute === 'standard-packages' ? t('standard.title') : 'Workbench';
+      return state.currentRoute === 'standard-packages' ? t('standard.title') : t('nav.workbench');
     });
 
     return {
@@ -162,6 +164,7 @@ const App = defineComponent({
       roles,
       canManage,
       hasAccess,
+      userName,
       pageTitle,
       appVersion,
       t,

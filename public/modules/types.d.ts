@@ -74,6 +74,12 @@ export interface HostBridgeState {
   token: string;
   config: HostBridgeConfig;
   roles: string[];
+  user: {
+    id?: number | string;
+    username?: string;
+    nickname?: string;
+    roles?: string[] | string;
+  };
   lastInitError: string;
 }
 
@@ -82,7 +88,12 @@ export interface HostBridgePayload {
   config?: HostBridgeConfig;
   roles?: string[] | string;
   role?: string[] | string;
-  user?: { roles?: string[] | string };
+  user?: {
+    id?: number | string;
+    username?: string;
+    nickname?: string;
+    roles?: string[] | string;
+  };
 }
 
 export interface HostBridgeApi {

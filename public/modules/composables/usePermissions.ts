@@ -24,9 +24,19 @@ export function usePermissions(host: HostBridgeApi) {
     try {
       const res = await host.hostFetch('/v1/plugin/verify-token');
       const json = await res.json().catch(() => ({}));
-      const fetchedRoles = json?.data?.roles;
+      const payload = json?.data || json;
+      const fetchedRoles = payload?.roles;
       if (Array.isArray(fetchedRoles)) {
         roles = fetchedRoles.map((role: unknown) => String(role).trim()).filter(Boolean);
+      }
+      if (payload && typeof payload === 'object') {
+        host.state.user = {
+          ...host.state.user,
+          id: payload.id ?? host.state.user.id,
+          username: payload.username ?? host.state.user.username,
+          nickname: payload.nickname ?? host.state.user.nickname,
+          roles: fetchedRoles ?? host.state.user.roles,
+        };
       }
       console.info('[APK-REBUILDER] verify-token', {
         status: res.status,
