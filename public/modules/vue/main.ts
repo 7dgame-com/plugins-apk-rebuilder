@@ -47,13 +47,13 @@ const App = defineComponent({
       <aside v-if="ready && hasAccess" class="sidebar" :class="{ open: sidebarOpen }">
         <div class="sidebar-header">
           <span class="sidebar-title">{{ t('app.title') }}</span>
-          <button class="sidebar-close" type="button" @click="sidebarOpen = false">
+          <button class="sidebar-close ghost" type="button" @click="sidebarOpen = false">
             <el-icon><Close /></el-icon>
           </button>
         </div>
         <nav class="sidebar-nav">
           <button
-            class="sidebar-item"
+            class="sidebar-item ghost"
             :class="{ active: currentRoute === 'workbench' }"
             type="button"
             @click="go('workbench')"
@@ -63,7 +63,7 @@ const App = defineComponent({
           </button>
           <button
             v-if="canManage"
-            class="sidebar-item"
+            class="sidebar-item ghost"
             :class="{ active: currentRoute === 'standard-packages' }"
             type="button"
             @click="go('standard-packages')"
@@ -76,7 +76,7 @@ const App = defineComponent({
 
       <div class="main-area">
         <header class="navbar">
-          <button v-if="ready && hasAccess" class="menu-btn" type="button" @click="sidebarOpen = true">
+          <button v-if="ready && hasAccess" class="menu-btn ghost" type="button" @click="sidebarOpen = true">
             <el-icon :size="20"><Fold /></el-icon>
           </button>
           <h1 class="navbar-title">{{ pageTitle }}</h1>

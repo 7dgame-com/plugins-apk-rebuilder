@@ -131,11 +131,12 @@
 .navbar {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-lg);
+  gap: var(--spacing-md);
+  padding: 0 var(--spacing-lg);
+  height: 56px;
   background: var(--bg-card);
   border-bottom: 1px solid var(--border-color);
-  height: 56px;
+  box-shadow: var(--shadow-sm);
 }
 
 .menu-btn {
@@ -143,7 +144,7 @@
   border: none;
   cursor: pointer;
   color: var(--text-secondary);
-  padding: var(--spacing-xs);
+  padding: var(--spacing-sm);
   border-radius: var(--radius-sm);
   transition: all var(--transition-fast);
   display: flex;
