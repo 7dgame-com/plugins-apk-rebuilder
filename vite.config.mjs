@@ -20,6 +20,11 @@ function buildVersion() {
 export default defineConfig({
   root: 'public',
   base: './',
+  resolve: {
+    alias: {
+      vue: 'vue/dist/vue.esm-bundler.js',
+    },
+  },
   define: {
     __APP_VERSION__: JSON.stringify(buildVersion()),
   },
@@ -27,6 +32,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index: path.resolve(__dirname, 'public/index.html'),
+        uiPreview: path.resolve(__dirname, 'public/ui-preview.html'),
       },
     },
   },

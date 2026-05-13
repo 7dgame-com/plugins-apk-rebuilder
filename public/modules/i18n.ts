@@ -186,6 +186,14 @@ const DICTIONARY = {
     'standard.iconUploadFailed': '图标上传失败',
     'standard.listLoadFailed': '标准包列表加载失败',
     'standard.sceneLoadFailed': '场景列表加载失败',
+    'standard.selected': '已选标准包',
+    'standard.inUse': '当前使用中',
+    'standard.selectedState': '已选中',
+    'standard.selectHint': '点击选择',
+
+    'workflow.info': '先改应用显示信息',
+    'workflow.scene': '再选择要打开的场景',
+    'workflow.submit': '最后生成并下载 APK',
 
     'notify.title': '提示',
     'notify.confirmTitle': '确认操作',
@@ -389,6 +397,14 @@ const DICTIONARY = {
     'standard.iconUploadFailed': 'Icon upload failed',
     'standard.listLoadFailed': 'Failed to load standard list',
     'standard.sceneLoadFailed': 'Failed to load scenes',
+    'standard.selected': 'Selected package',
+    'standard.inUse': 'In use',
+    'standard.selectedState': 'Selected',
+    'standard.selectHint': 'Click to select',
+
+    'workflow.info': 'Edit app display info',
+    'workflow.scene': 'Choose the scene to open',
+    'workflow.submit': 'Build and download APK',
 
     'notify.title': 'Notice',
     'notify.confirmTitle': 'Confirm',

@@ -1,4 +1,4 @@
-import { formatBytes, fmtTime } from '../state';
+import { escapeHtml, formatBytes } from '../state';
 import { t } from '../i18n';
 import { showAlert, showConfirm } from '../host/notify';
 import { normalizeHostErrorMessage } from '../host/errors';
@@ -17,6 +17,7 @@ type StandardPackageState = {
   activeStandardId: string | null;
   previousStandardId: string | null;
   disabledIds: string[];
+  selectedId: string | null;
   canManage: boolean;
   uploading: boolean;
 };
@@ -50,6 +51,7 @@ export function renderStandardPackageSection(
         <span id="standardUploadName" class="muted">${t('standard.noFile')}</span>
         <span id="standardUploadSpinner" class="inline-spinner" style="display:none" aria-hidden="true"></span>
       </div>
+      <div id="standardPackageActionBar" class="standard-package-action-bar" style="display:none;"></div>
       <div id="standardPackageReadonly" class="muted" style="margin-top:10px; display:none;"></div>
       <div id="standardPackageList" class="standard-package-list" style="margin-top:12px;"></div>
     </div>
@@ -68,6 +70,7 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     activeStandardId: null,
     previousStandardId: null,
     disabledIds: [],
+    selectedId: null,
     canManage: Boolean(canManage),
     uploading: false,
   };
@@ -101,6 +104,46 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     return value;
   }
 
+  function renderDeleteIcon(): string {
+    return `
+      <button class="secondary btn-danger-soft icon-danger" type="button" data-action="delete" title="${t('standard.delete')}" aria-label="${t('standard.delete')}">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 6h18" />
+          <path d="M8 6V4h8v2" />
+          <path d="M19 6l-1 14H6L5 6" />
+          <path d="M10 11v5" />
+          <path d="M14 11v5" />
+        </svg>
+      </button>
+    `;
+  }
+
+  function renderActionBar(): void {
+    const bar = document.getElementById('standardPackageActionBar');
+    if (!bar) return;
+    const selected = state.items.find((item) => item.id === state.selectedId);
+    if (!state.canManage || !selected) {
+      bar.style.display = 'none';
+      bar.innerHTML = '';
+      return;
+    }
+
+    const name = escapeHtml(normalizeDisplayName(selected.name || selected.storedName || selected.id));
+    const isActive = state.activeStandardId === selected.id;
+    bar.style.display = 'flex';
+    bar.innerHTML = `
+      <div class="standard-package-selected">
+        <span>${t('standard.selected')}</span>
+        <strong>${name}</strong>
+      </div>
+      <div class="toolbar-actions">
+        <button id="standardSetSelectedBtn" class="secondary" type="button" data-action="set-selected" ${isActive ? 'disabled' : ''}>
+          ${isActive ? t('standard.setCurrentDone') : t('standard.setCurrent')}
+        </button>
+      </div>
+    `;
+  }
+
   function render(): void {
     const list = document.getElementById('standardPackageList');
     if (!list) return;
@@ -110,32 +153,36 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     }
     if (!state.items.length) {
       list.innerHTML = `<div class="muted">${t('standard.empty')}</div>`;
+      renderActionBar();
       return;
     }
+
+    if (!state.selectedId || !state.items.some((item) => item.id === state.selectedId)) {
+      state.selectedId = state.previousStandardId || state.activeStandardId || state.items[0]?.id || null;
+    }
+    renderActionBar();
 
     list.innerHTML = state.items
       .map((item) => {
         const rawName = item.name || item.storedName || item.id;
-        const name = normalizeDisplayName(rawName);
+        const name = escapeHtml(normalizeDisplayName(rawName));
         const isActive = state.activeStandardId === item.id;
+        const isSelected = state.selectedId === item.id;
         const badges: string[] = [];
         if (isActive) badges.push(`<span class="tag ok">${t('standard.current')}</span>`);
         if (state.previousStandardId === item.id) badges.push(`<span class="tag warn">${t('standard.previous')}</span>`);
-        if (state.disabledIds.includes(item.id)) badges.push(`<span class="tag fail">${t('standard.disabled')}</span>`);
+        const statusText = isActive ? t('standard.inUse') : isSelected ? t('standard.selectedState') : t('standard.selectHint');
         return `
-          <div class="standard-package-item">
+          <div class="standard-package-item ${isSelected ? 'is-selected' : ''}" data-id="${escapeHtml(item.id)}" data-action="select" role="button" tabindex="0">
             <div class="standard-package-main">
               <div class="standard-package-title">${name}</div>
-              <div class="standard-package-id">ID: ${item.id}</div>
+              <div class="standard-package-id">ID: ${escapeHtml(item.id)}</div>
               <div class="standard-package-meta">${t('standard.size', { size: formatBytes(Number(item.size || 0)) })}</div>
-              <div class="standard-package-meta">${t('standard.uploadedAt', { time: fmtTime(item.createdAt || '') })}</div>
               <div class="standard-package-badges">${badges.join('')}</div>
             </div>
             <div class="standard-package-actions">
-              <button class="secondary ${isActive ? 'is-active' : ''}" type="button" data-action="set-standard" data-id="${item.id}" ${isActive ? 'disabled' : ''}>
-                ${isActive ? t('standard.setCurrentDone') : t('standard.setCurrent')}
-              </button>
-              <button class="secondary" type="button" data-action="delete" data-id="${item.id}">${t('standard.delete')}</button>
+              <span class="muted">${statusText}</span>
+              ${renderDeleteIcon()}
             </div>
           </div>
         `;
@@ -174,6 +221,9 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     state.activeStandardId = data.standard?.activeStandardId || null;
     state.previousStandardId = data.standard?.previousStandardId || null;
     state.disabledIds = data.standard?.disabledIds || [];
+    if (!state.selectedId || !state.items.some((item) => item.id === state.selectedId)) {
+      state.selectedId = state.previousStandardId || state.activeStandardId || state.items[0]?.id || null;
+    }
     render();
   }
 
@@ -249,15 +299,44 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     if (list) {
       list.addEventListener('click', (event) => {
         const target = event.target;
-        if (!(target instanceof HTMLElement)) return;
-        const action = target.getAttribute('data-action');
-        const id = target.getAttribute('data-id');
-        if (!action || !id) return;
-        if (action === 'set-standard') {
-          void setStandard(id).catch((error) => showAlert(normalizeHostErrorMessage(error, t, 'standard.setFailed')));
-        } else if (action === 'delete') {
+        if (!(target instanceof Element)) return;
+        const deleteButton = target.closest('[data-action="delete"]');
+        if (deleteButton) {
+          const row = deleteButton.closest<HTMLElement>('.standard-package-item[data-id]');
+          const id = row?.getAttribute('data-id') || '';
+          if (!id) return;
           void deleteItem(id).catch((error) => showAlert(normalizeHostErrorMessage(error, t, 'standard.deleteFailed')));
+          return;
         }
+
+        const row = target.closest<HTMLElement>('.standard-package-item[data-id]');
+        const id = row?.getAttribute('data-id') || '';
+        if (!id) return;
+        state.selectedId = id;
+        render();
+      });
+
+      list.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        const row = target.closest<HTMLElement>('.standard-package-item[data-id]');
+        const id = row?.getAttribute('data-id') || '';
+        if (!id) return;
+        event.preventDefault();
+        state.selectedId = id;
+        render();
+      });
+    }
+
+    const actionBar = document.getElementById('standardPackageActionBar');
+    if (actionBar) {
+      actionBar.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+        const action = target.closest('[data-action="set-selected"]');
+        if (!action || !state.selectedId) return;
+        void setStandard(state.selectedId).catch((error) => showAlert(normalizeHostErrorMessage(error, t, 'standard.setFailed')));
       });
     }
   }

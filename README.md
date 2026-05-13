@@ -32,6 +32,8 @@
   最短启动路径，本地开发 / 联调优先看这里。
 - [docs/INTEGRATION.md](./docs/INTEGRATION.md)
   宿主接入协议、角色权限模型、iframe 约定。
+- [docs/FRONTEND-UNIFICATION-PLAN.md](./docs/FRONTEND-UNIFICATION-PLAN.md)
+  Vue 外壳与完整插件模板统一迁移方案。
 - [deploy/README-domain.md](./deploy/README-domain.md)
   独立域名部署与反代说明。
 - [docs/STRUCTURE.md](./docs/STRUCTURE.md)

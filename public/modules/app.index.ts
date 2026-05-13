@@ -80,10 +80,24 @@ function cleanupUi(): void {
   if (modal) modal.remove();
 }
 
+function createWorkflowLane(step: number, title: string): HTMLElement {
+  const lane = document.createElement('div');
+  lane.className = 'apk-workflow-lane';
+  lane.insertAdjacentHTML(
+    'beforeend',
+    `
+    <div class="apk-workflow-title">
+      <span class="apk-workflow-index">${step}</span>
+      <span>${title}</span>
+    </div>
+    `
+  );
+  return lane;
+}
+
 function buildUi(): void {
   cleanupUi();
   const canRun = permissions.canRun();
-  const canRead = permissions.canRead();
   const canManageStandardPackage = permissions.canManageStandardPackage();
   const canCheckTools = permissions.canCheckTools();
 
@@ -99,23 +113,31 @@ function buildUi(): void {
     const slot = document.getElementById('toolsCheckSlot');
     if (slot) renderToolsCheck(slot);
   }
-  if (canRead) {
+  if (canManageStandardPackage) {
     renderStandardPackageSection(wrap, { canManage: canManageStandardPackage });
   }
   if (canRun) {
-    renderPackageInfoSection(wrap, {
+    const workflow = document.createElement('div');
+    workflow.className = 'apk-workflow';
+    const infoLane = createWorkflowLane(1, t('workflow.info'));
+    const sceneLane = createWorkflowLane(2, t('workflow.scene'));
+    const submitLane = createWorkflowLane(3, t('workflow.submit'));
+    workflow.append(infoLane, sceneLane, submitLane);
+    wrap.appendChild(workflow);
+
+    renderPackageInfoSection(infoLane, {
       showOriginal: false,
       fields: ['appName', 'packageName', 'versionName', 'versionCode'],
       showIcon: true,
       showChangeCount: false,
       title: t('pkg.title'),
     });
-    renderSceneConfigSection(wrap);
-    renderSubmitSection(wrap);
+    renderSceneConfigSection(sceneLane);
+    renderSubmitSection(submitLane);
   }
   renderIconEditorModal(document.body);
 
-  const standardSection = canRead ? createStandardPackageSection({ host, canManage: canManageStandardPackage }) : null;
+  const standardSection = canManageStandardPackage ? createStandardPackageSection({ host, canManage: canManageStandardPackage }) : null;
   const tools = canCheckTools ? createToolsCheck({ state, host }) : null;
   const iconModal = createIconEditor({ state, onIconChanged: () => setIcon('newIcon', 'newIconEmpty', state.iconPreviewUrl) });
   const sceneSection = canRun ? createSceneConfigSection({ host, perPage: 10 }) : null;
