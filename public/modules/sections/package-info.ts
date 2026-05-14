@@ -41,7 +41,7 @@ export function renderPackageInfoSection(container: HTMLElement, options: Packag
   const renderField = (field: PackageInfoField): string => {
     const label = fieldLabelMap[field] || field;
     const placeholder = fieldPlaceholderMap[field] || '';
-    return `<div class="field"><label>${label}</label><input id="${field}" type="text" placeholder="${placeholder}" /></div>`;
+    return `<div class="field"><label>${label}</label><input id="${field}" type="text" placeholder="${placeholder}" autocomplete="off" spellcheck="false" /></div>`;
   };
 
   const fieldsHtml = fields.map(renderField).join('');

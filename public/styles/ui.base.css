@@ -162,6 +162,22 @@ select:focus {
   box-shadow: 0 0 0 3px var(--primary-light);
 }
 
+input[type="text"]:-webkit-autofill,
+input[type="text"]:-webkit-autofill:hover,
+input[type="text"]:-webkit-autofill:focus,
+input[type="password"]:-webkit-autofill,
+input[type="password"]:-webkit-autofill:hover,
+input[type="password"]:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text-primary);
+  box-shadow: 0 0 0 1000px var(--bg-card) inset, 0 0 0 3px transparent;
+  caret-color: var(--text-primary);
+}
+
+input[type="text"]:-webkit-autofill:focus,
+input[type="password"]:-webkit-autofill:focus {
+  box-shadow: 0 0 0 1000px var(--bg-card) inset, 0 0 0 3px var(--primary-light);
+}
+
 textarea {
   min-height: 180px;
   font-family: ui-monospace, Menlo, monospace;
