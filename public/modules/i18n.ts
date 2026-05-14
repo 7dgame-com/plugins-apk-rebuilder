@@ -624,6 +624,10 @@ const DICTIONARY = {
     'standard.listLoadFailed': '標準包列表載入失敗',
     'standard.sceneLoadFailed': '場景列表載入失敗',
 
+    'workflow.info': '先修改應用顯示資訊',
+    'workflow.scene': '再選擇要開啟的場景',
+    'workflow.submit': '最後產生並下載 APK',
+
     'notify.title': '提示',
     'notify.confirmTitle': '確認操作',
     'notify.close': '關閉',
@@ -832,6 +836,10 @@ const DICTIONARY = {
     'standard.listLoadFailed': '標準パッケージ一覧読み込み失敗',
     'standard.sceneLoadFailed': 'シーン一覧読み込み失敗',
 
+    'workflow.info': 'まずアプリ表示情報を編集',
+    'workflow.scene': '次に起動するシーンを選択',
+    'workflow.submit': '最後に APK を生成してダウンロード',
+
     'notify.title': '通知',
     'notify.confirmTitle': '確認',
     'notify.close': '閉じる',
@@ -1039,6 +1047,10 @@ const DICTIONARY = {
     'standard.iconUploadFailed': 'อัปโหลดไอคอนล้มเหลว',
     'standard.listLoadFailed': 'โหลดรายการล้มเหลว',
     'standard.sceneLoadFailed': 'โหลดซีนล้มเหลว',
+
+    'workflow.info': 'แก้ไขข้อมูลที่แสดงของแอปก่อน',
+    'workflow.scene': 'จากนั้นเลือกซีนที่จะเปิด',
+    'workflow.submit': 'สุดท้ายสร้างและดาวน์โหลด APK',
 
     'notify.title': 'แจ้งเตือน',
     'notify.confirmTitle': 'ยืนยัน',
