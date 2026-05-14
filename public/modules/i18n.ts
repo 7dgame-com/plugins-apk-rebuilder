@@ -195,6 +195,8 @@ const DICTIONARY = {
     'standard.inUse': '当前使用中',
     'standard.selectedState': '已选中',
     'standard.selectHint': '点击选择',
+    'standard.originalInfo': '选中包原包信息',
+    'standard.noOriginalInfo': '暂无原包信息',
 
     'workflow.info': '先改应用显示信息',
     'workflow.scene': '再选择要打开的场景',
@@ -411,6 +413,8 @@ const DICTIONARY = {
     'standard.inUse': 'In use',
     'standard.selectedState': 'Selected',
     'standard.selectHint': 'Click to select',
+    'standard.originalInfo': 'Selected package original info',
+    'standard.noOriginalInfo': 'No original info yet',
 
     'workflow.info': 'Edit app display info',
     'workflow.scene': 'Choose the scene to open',
@@ -623,6 +627,8 @@ const DICTIONARY = {
     'standard.iconUploadFailed': '圖示上傳失敗',
     'standard.listLoadFailed': '標準包列表載入失敗',
     'standard.sceneLoadFailed': '場景列表載入失敗',
+    'standard.originalInfo': '選中包原始資訊',
+    'standard.noOriginalInfo': '暫無原始資訊',
 
     'workflow.info': '先修改應用顯示資訊',
     'workflow.scene': '再選擇要開啟的場景',
@@ -835,6 +841,8 @@ const DICTIONARY = {
     'standard.iconUploadFailed': 'アイコンアップロード失敗',
     'standard.listLoadFailed': '標準パッケージ一覧読み込み失敗',
     'standard.sceneLoadFailed': 'シーン一覧読み込み失敗',
+    'standard.originalInfo': '選択中パッケージの元情報',
+    'standard.noOriginalInfo': '元情報はまだありません',
 
     'workflow.info': 'まずアプリ表示情報を編集',
     'workflow.scene': '次に起動するシーンを選択',
@@ -1047,6 +1055,8 @@ const DICTIONARY = {
     'standard.iconUploadFailed': 'อัปโหลดไอคอนล้มเหลว',
     'standard.listLoadFailed': 'โหลดรายการล้มเหลว',
     'standard.sceneLoadFailed': 'โหลดซีนล้มเหลว',
+    'standard.originalInfo': 'ข้อมูลต้นฉบับของแพ็กเกจที่เลือก',
+    'standard.noOriginalInfo': 'ยังไม่มีข้อมูลต้นฉบับ',
 
     'workflow.info': 'แก้ไขข้อมูลที่แสดงของแอปก่อน',
     'workflow.scene': 'จากนั้นเลือกซีนที่จะเปิด',

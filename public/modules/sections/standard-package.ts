@@ -10,6 +10,13 @@ type StandardPackageItem = {
   storedName?: string;
   size?: string | number;
   createdAt?: string;
+  parsedReady?: boolean;
+  apkInfo?: {
+    appName?: string | null;
+    packageName?: string | null;
+    versionName?: string | number | null;
+    versionCode?: string | number | null;
+  } | null;
 };
 
 type StandardPackageState = {
@@ -52,6 +59,7 @@ export function renderStandardPackageSection(
         <span id="standardUploadSpinner" class="inline-spinner" style="display:none" aria-hidden="true"></span>
       </div>
       <div id="standardPackageActionBar" class="standard-package-action-bar" style="display:none;"></div>
+      <div id="standardPackageInfo" class="standard-package-info" style="display:none;"></div>
       <div id="standardPackageReadonly" class="muted" style="margin-top:10px; display:none;"></div>
       <div id="standardPackageList" class="standard-package-list" style="margin-top:12px;"></div>
     </div>
@@ -104,6 +112,15 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     return value;
   }
 
+  function renderValue(value: unknown): string {
+    const text = value === undefined || value === null ? '' : String(value).trim();
+    return escapeHtml(text || '-');
+  }
+
+  function selectedItem(): StandardPackageItem | undefined {
+    return state.items.find((item) => item.id === state.selectedId);
+  }
+
   function renderDeleteIcon(): string {
     return `
       <button class="secondary btn-danger-soft icon-danger" type="button" data-action="delete" title="${t('standard.delete')}" aria-label="${t('standard.delete')}">
@@ -121,7 +138,7 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
   function renderActionBar(): void {
     const bar = document.getElementById('standardPackageActionBar');
     if (!bar) return;
-    const selected = state.items.find((item) => item.id === state.selectedId);
+    const selected = selectedItem();
     if (!state.canManage || !selected) {
       bar.style.display = 'none';
       bar.innerHTML = '';
@@ -144,16 +161,61 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     `;
   }
 
+  function renderInfo(): void {
+    const info = document.getElementById('standardPackageInfo');
+    if (!info) return;
+    const selected = selectedItem();
+    if (!state.canManage || !selected) {
+      info.style.display = 'none';
+      info.innerHTML = '';
+      return;
+    }
+
+    const apkInfo = selected.apkInfo || null;
+    info.style.display = 'block';
+    if (!apkInfo) {
+      info.innerHTML = `
+        <div class="standard-package-info-title">${t('standard.originalInfo')}</div>
+        <div class="standard-package-info-empty">${t('standard.noOriginalInfo')}</div>
+      `;
+      return;
+    }
+
+    info.innerHTML = `
+      <div class="standard-package-info-title">${t('standard.originalInfo')}</div>
+      <div class="standard-package-info-grid">
+        <div class="standard-package-info-field">
+          <span>${t('pkg.appName')}</span>
+          <strong>${renderValue(apkInfo.appName)}</strong>
+        </div>
+        <div class="standard-package-info-field">
+          <span>${t('pkg.packageName')}</span>
+          <strong>${renderValue(apkInfo.packageName)}</strong>
+        </div>
+        <div class="standard-package-info-field">
+          <span>${t('pkg.versionName')}</span>
+          <strong>${renderValue(apkInfo.versionName)}</strong>
+        </div>
+        <div class="standard-package-info-field">
+          <span>${t('pkg.versionCode')}</span>
+          <strong>${renderValue(apkInfo.versionCode)}</strong>
+        </div>
+      </div>
+    `;
+  }
+
   function render(): void {
     const list = document.getElementById('standardPackageList');
     if (!list) return;
     if (!state.canManage) {
       list.innerHTML = '';
+      renderInfo();
       return;
     }
     if (!state.items.length) {
       list.innerHTML = `<div class="muted">${t('standard.empty')}</div>`;
       renderActionBar();
+      renderInfo();
       return;
     }
 
@@ -161,6 +223,7 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
       state.selectedId = state.previousStandardId || state.activeStandardId || state.items[0]?.id || null;
     }
     renderActionBar();
+    renderInfo();
 
     list.innerHTML = state.items
       .map((item) => {

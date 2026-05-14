@@ -889,6 +889,54 @@ input[type="range"] {
   flex-shrink: 0;
 }
 
+.standard-package-info {
+  margin-top: var(--spacing-sm);
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+}
+
+.standard-package-info-title {
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  margin-bottom: 10px;
+}
+
+.standard-package-info-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--spacing-sm);
+}
+
+.standard-package-info-field {
+  min-width: 0;
+}
+
+.standard-package-info-field span {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.35;
+  margin-bottom: 4px;
+}
+
+.standard-package-info-field strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.standard-package-info-empty {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+}
+
 .standard-package-actions .btn-danger-soft {
   background: var(--btn-secondary-bg);
   border-color: var(--btn-secondary-border);
@@ -1250,5 +1298,9 @@ body.apk-entry .standard-package-actions button.btn-danger-soft:focus-visible {
   .standard-package-actions {
     width: 100%;
     flex-wrap: wrap;
+  }
+
+  .standard-package-info-grid {
+    grid-template-columns: 1fr;
   }
 }
