@@ -41,7 +41,7 @@ const App = defineComponent({
   name: 'ApkRebuilderShell',
   components: { Close, Fold, Location, Loading, Setting, User, WorkbenchView, StandardPackagesView },
   template: `
-    <div class="app-layout">
+    <div class="app-layout" :data-lang-tick="langTick">
       <div
         v-if="sidebarOpen && hasAccess"
         class="sidebar-overlay"
@@ -107,13 +107,13 @@ const App = defineComponent({
           </div>
           <WorkbenchView
             v-else-if="currentRoute === 'workbench'"
-            :key="currentRoute"
+            :key="currentRoute + '-' + langTick"
             :host="host"
             :can-manage-standard-package="canManage"
           />
           <StandardPackagesView
             v-else
-            :key="currentRoute"
+            :key="currentRoute + '-' + langTick"
             :host="host"
             :can-manage="canManage"
           />

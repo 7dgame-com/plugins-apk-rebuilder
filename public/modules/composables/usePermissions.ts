@@ -38,6 +38,10 @@ function readId(value: unknown): string | number | undefined {
 }
 
 function readRoles(value: unknown): string[] | undefined {
+  if (typeof value === 'string') {
+    const roles = value.split(/[\s,]+/).map((role) => role.trim()).filter(Boolean);
+    return roles.length ? roles : undefined;
+  }
   if (!Array.isArray(value)) return undefined;
   const roles = value.map((role) => readText(role)).filter((role): role is string => Boolean(role));
   return roles.length ? roles : undefined;
@@ -46,6 +50,12 @@ function readRoles(value: unknown): string[] | undefined {
 function getUserPayload(payload: HostSessionPayload): HostSessionUser {
   const nestedUser = asRecord(payload.user);
   return (nestedUser || payload) as HostSessionUser;
+}
+
+function mergeRoles(...groups: Array<string[] | undefined>): string[] {
+  const roles = new Set<string>();
+  groups.forEach((group) => group?.forEach((role) => roles.add(role)));
+  return Array.from(roles);
 }
 
 export function usePermissions(host: HostBridgeApi) {
@@ -59,7 +69,7 @@ export function usePermissions(host: HostBridgeApi) {
   };
 
   async function loadPermissions(): Promise<PermissionSnapshot> {
-    let roles = Array.isArray(host.state?.roles) ? host.state.roles : [];
+    let roles = readRoles(host.state?.roles) ?? [];
     console.info('[APK-REBUILDER] init payload', {
       token: host.state?.token ? `${String(host.state.token).slice(0, 6)}...` : '',
       roles: host.state?.roles,
@@ -73,14 +83,14 @@ export function usePermissions(host: HostBridgeApi) {
       const userPayload = getUserPayload(payload);
       const fetchedRoles = readRoles(userPayload.roles ?? payload.roles);
       if (Array.isArray(fetchedRoles)) {
-        roles = fetchedRoles;
+        roles = mergeRoles(roles, fetchedRoles);
       }
       host.state.user = {
         ...host.state.user,
         id: readId(userPayload.id ?? userPayload.userId ?? userPayload.user_id) ?? host.state.user.id,
         username: readText(userPayload.username) ?? host.state.user.username,
         nickname: readText(userPayload.nickname) ?? host.state.user.nickname,
-        roles: fetchedRoles ?? host.state.user.roles,
+        roles,
       };
       console.info('[APK-REBUILDER] verify-token', {
         status: res.status,

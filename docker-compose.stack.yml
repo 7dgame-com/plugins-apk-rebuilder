@@ -7,12 +7,12 @@ services:
     volumes:
       - apk_rebuilder_data:/app/data
     environment:
-      - APP_API_1_URL=https://api.xrteeth.com
-      - APP_API_2_URL=https://api.tmrpp.com
+      - APP_API_1_URL=https://api.d.xrteeth.com
+      - APP_API_2_URL=https://api.d.tmrpp.com
       - PORT=3007
       - HOST=0.0.0.0
-      - MAIN_API_URL=https://api.xrteeth.com
-      - HOST_API_BASE=https://api.xrteeth.com
+      - MAIN_API_URL=https://api.d.xrteeth.com
+      - HOST_API_BASE=https://api.d.xrteeth.com
       - STRICT_TOOLCHAIN=true
       - STRICT_REDIS=true
       - PLUGIN_TOKEN_SECRET=change-me

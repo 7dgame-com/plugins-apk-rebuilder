@@ -7,6 +7,9 @@ export function renderSubmitSection(container: HTMLElement): void {
     'beforeend',
     `
     <div class="card" id="sectionSubmit">
+      <div class="toolbar">
+        <strong>${t('submit.title')}</strong>
+      </div>
       <div class="submit-summary">
         <div class="submit-summary-item">
           <span>${t('pkg.appName')}</span>

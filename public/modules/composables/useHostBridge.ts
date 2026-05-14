@@ -297,13 +297,26 @@ export function useHostBridge(): HostBridgeApi {
     if (event.source !== window.parent) return;
     const msg = (event.data || {}) as {
       type?: string;
-      payload?: HostBridgePayload & { token?: string; lang?: string; language?: string; theme?: string };
+      payload?: HostBridgePayload & {
+        token?: string;
+        lang?: string;
+        language?: string;
+        theme?: string;
+        config?: HostBridgePayload['config'];
+      };
     };
     if (event.origin) parentOrigin = event.origin;
 
     if (msg.type === 'INIT' && msg.payload) {
       logAlways('postMessage <- INIT', { origin: event.origin });
       applyInit(msg.payload);
+      applyThemeSettings({
+        theme: msg.payload.config?.theme,
+        language: msg.payload.language || msg.payload.config?.language,
+        lang: msg.payload.lang || msg.payload.config?.lang,
+        themeVars: msg.payload.config?.themeVars,
+        isDark: msg.payload.config?.isDark,
+      });
     }
     if (msg.type === 'TOKEN_UPDATE' && msg.payload) {
       if (msg.payload.token) state.token = String(msg.payload.token).trim();
@@ -311,10 +324,12 @@ export function useHostBridge(): HostBridgeApi {
     }
     if (msg.type === 'LANG_CHANGE' && msg.payload) {
       applyThemeSettings({
-        language: msg.payload.language,
-        lang: msg.payload.lang,
+        language: msg.payload.language || msg.payload.config?.language,
+        lang: msg.payload.lang || msg.payload.config?.lang,
       });
-      logAlways('LANG_CHANGE', { lang: msg.payload.lang || msg.payload.language });
+      logAlways('LANG_CHANGE', {
+        lang: msg.payload.lang || msg.payload.language || msg.payload.config?.lang || msg.payload.config?.language,
+      });
     }
     if (msg.type === 'THEME_CHANGE' && msg.payload) {
       applyThemeSettings(msg.payload);

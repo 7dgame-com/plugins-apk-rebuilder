@@ -3,7 +3,7 @@ import { defineConfig } from 'vite';
 import path from 'path';
 
 const backendPort = Number.parseInt(process.env.PORT || '3007', 10);
-const hostOrigin = process.env.APK_REBUILDER_HOST_ORIGIN || 'http://127.0.0.1:3001';
+const hostOrigin = process.env.APK_REBUILDER_HOST_ORIGIN || 'http://127.0.0.1:8081';
 
 // 生成北京时间版本号，格式：2026.03.25-0200
 function buildVersion() {
@@ -44,6 +44,7 @@ export default defineConfig({
       '/api': {
         target: hostOrigin,
         changeOrigin: true,
+        rewrite: (urlPath) => urlPath.replace(/^\/api/, ''),
       },
       '/plugin': {
         target: `http://127.0.0.1:${backendPort}`,
