@@ -32,7 +32,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index: path.resolve(__dirname, 'public/index.html'),
-        uiPreview: path.resolve(__dirname, 'public/ui-preview.html'),
       },
     },
   },
