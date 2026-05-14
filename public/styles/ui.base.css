@@ -215,7 +215,7 @@ button:not(.shell-control):active:not(:disabled),
   background: var(--btn-submit-active);
 }
 
-button:not(.shell-control):not(.secondary):not(.btn-secondary):not(.ghost):not(.btn-ghost):not(.success):not(.btn-success):not(.btn-danger):active:not(:disabled),
+button:not(.shell-control):not(.secondary):not(.btn-secondary):not(.ghost):not(.btn-ghost):not(.success):not(.btn-success):not(.btn-danger):not(.apk-modal-close):not(.apk-modal-ok-neutral):not(.apk-modal-cancel):active:not(:disabled),
 .btn.primary:active:not(:disabled),
 .btn-primary:active:not(:disabled),
 .btn:not(.secondary):not(.ghost):not(.success):not(.btn-danger):active:not(:disabled) {
@@ -490,25 +490,111 @@ button:not(.shell-control):not(.btn-danger):focus-visible,
   box-shadow: var(--shadow-lg);
 }
 
+.apk-modal {
+  width: min(440px, calc(100vw - 32px));
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
+}
+
 .apk-modal-body {
-  font-size: var(--font-size-xl);
+  padding: 18px 22px 8px;
+  font-size: var(--font-size-lg);
   color: var(--text-primary);
-  line-height: 1.7;
+  line-height: 1.6;
+  word-break: break-word;
 }
 
 .apk-modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 16px;
+  gap: var(--spacing-sm);
+  padding: 14px 22px 22px;
+  margin-top: 0;
 }
 
+.apk-modal-ok,
+.apk-modal-cancel {
+  min-width: 84px;
+  justify-content: center;
+}
+
+button.apk-modal-ok-neutral {
+  background: var(--btn-secondary-bg);
+  color: var(--btn-secondary-text);
+  border: 1px solid var(--btn-secondary-border);
+  box-shadow: none;
+}
+
+button.apk-modal-ok-neutral:hover:not(:disabled) {
+  background: var(--btn-secondary-hover);
+  border-color: var(--btn-secondary-border-hover);
+  color: var(--primary-color);
+  box-shadow: none;
+}
+
+button.apk-modal-ok-neutral:focus-visible {
+  outline: none;
+  background: var(--btn-secondary-hover);
+  border-color: var(--border-color-active);
+  box-shadow: var(--btn-focus-ring);
+}
+
+button.apk-modal-ok-neutral:active:not(:disabled) {
+  background: var(--btn-secondary-active);
+  border-color: var(--border-color-active);
+  color: var(--primary-color);
+  box-shadow: var(--btn-focus-ring);
+  transform: translateY(1px);
+}
+
+button.apk-modal-close {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  box-shadow: none;
+  font-size: 20px;
+  line-height: 1;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+button.apk-modal-close:hover:not(:disabled) {
+  background: var(--danger-light);
+  color: var(--danger-color);
+  box-shadow: none;
+}
+
+button.apk-modal-close:focus-visible {
+  outline: none;
+  background: var(--danger-light);
+  color: var(--danger-color);
+  box-shadow: 0 0 0 3px var(--danger-light);
+}
+
+button.apk-modal-close:active:not(:disabled) {
+  background: color-mix(in srgb, var(--danger-color) 16%, transparent);
+  color: var(--danger-color);
+  box-shadow: none;
+  transform: scale(0.96);
+}
+
+button.btn-ghost,
 .btn-ghost {
   background: var(--btn-ghost-bg);
   color: var(--btn-ghost-text);
   border: 1px solid var(--border-color);
 }
 
+button.btn-ghost:hover,
 .btn-ghost:hover {
   background: var(--btn-ghost-hover);
   border-color: var(--border-color-hover);
@@ -548,6 +634,35 @@ button.btn-danger:active:not(:disabled),
   border-color: var(--border-color-active);
 }
 
+button.apk-modal-cancel {
+  background: var(--btn-secondary-bg);
+  color: var(--btn-secondary-text);
+  border-color: var(--btn-secondary-border);
+  box-shadow: none;
+}
+
+button.apk-modal-cancel:hover:not(:disabled) {
+  background: var(--btn-secondary-hover);
+  color: var(--primary-color);
+  border-color: var(--btn-secondary-border-hover);
+  box-shadow: none;
+}
+
+button.apk-modal-cancel:focus-visible {
+  outline: none;
+  background: var(--btn-secondary-hover);
+  border-color: var(--border-color-active);
+  box-shadow: var(--btn-focus-ring);
+}
+
+button.apk-modal-cancel:active:not(:disabled) {
+  background: var(--btn-secondary-active);
+  color: var(--primary-color);
+  border-color: var(--border-color-active);
+  box-shadow: var(--btn-focus-ring);
+  transform: translateY(1px);
+}
+
 button.btn-danger:focus,
 button.btn-danger:focus-visible,
 button.btn-danger:active,
@@ -567,6 +682,18 @@ button.btn-danger:active,
   margin-bottom: var(--spacing-sm);
   padding-bottom: var(--spacing-sm);
   border-bottom: 1px solid var(--border-color);
+}
+
+.apk-modal .modal-head {
+  margin-bottom: 0;
+  padding: 18px 22px 12px;
+  border-bottom: 0;
+}
+
+.apk-modal .modal-head strong {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
 }
 
 .editor-canvas-wrap {

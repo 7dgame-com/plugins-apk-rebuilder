@@ -16,12 +16,14 @@ function ensureModal(): void {
     <div class="modal apk-modal" role="dialog" aria-modal="true">
       <div class="modal-head">
         <strong id="apkModalTitle">${t('notify.title')}</strong>
-        <button id="apkModalClose" class="btn-ghost" type="button">${t('notify.close')}</button>
+        <button id="apkModalClose" class="apk-modal-close" type="button" aria-label="${t('notify.close')}">
+          <span aria-hidden="true">×</span>
+        </button>
       </div>
       <div id="apkModalBody" class="apk-modal-body"></div>
       <div class="apk-modal-actions">
-        <button id="apkModalCancel" class="btn-ghost" type="button">${t('notify.cancel')}</button>
-        <button id="apkModalOk" class="btn-danger" type="button">${t('notify.ok')}</button>
+        <button id="apkModalCancel" class="btn-ghost apk-modal-cancel" type="button">${t('notify.cancel')}</button>
+        <button id="apkModalOk" class="apk-modal-ok apk-modal-ok-neutral" type="button">${t('notify.ok')}</button>
       </div>
     </div>
   `;
@@ -56,10 +58,14 @@ function openModal({
   ensureModal();
   if (modalTitle) modalTitle.textContent = title || t('notify.title');
   if (modalBody) modalBody.textContent = message || '';
-  if (closeBtn) closeBtn.textContent = t('notify.close');
+  if (closeBtn) closeBtn.setAttribute('aria-label', t('notify.close'));
   if (cancelBtn) cancelBtn.textContent = t('notify.cancel');
   if (cancelBtn) cancelBtn.style.display = confirm ? 'inline-flex' : 'none';
-  if (okBtn) okBtn.textContent = confirm ? t('notify.ok') : t('notify.gotIt');
+  if (okBtn) {
+    okBtn.textContent = confirm ? t('notify.ok') : t('notify.gotIt');
+    okBtn.className = confirm ? 'btn-danger apk-modal-ok' : 'apk-modal-ok apk-modal-ok-neutral';
+  }
+  if (modalEl) modalEl.dataset.variant = confirm ? 'confirm' : 'alert';
   modalEl?.classList.add('open');
   return new Promise((resolve) => {
     currentResolve = resolve;

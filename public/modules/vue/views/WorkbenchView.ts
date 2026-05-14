@@ -1,6 +1,6 @@
-import { defineComponent, nextTick, onBeforeUnmount, onMounted, type PropType } from 'vue';
+import { defineComponent, nextTick, onBeforeUnmount, onMounted, ref, type PropType } from 'vue';
 import { state, setIcon } from '../../state';
-import { t } from '../../i18n';
+import { onLanguageChange, t } from '../../i18n';
 import type { HostBridgeApi } from '../../types';
 import { renderPackageInfoSection, bindPackageInfoSection } from '../../sections/package-info';
 import { renderSceneConfigSection, createSceneConfigSection } from '../../sections/scene-config';
@@ -26,32 +26,77 @@ export default defineComponent({
       default: false,
     },
   },
-  template: '<div class="legacy-view"></div>',
+  template: `
+    <div class="apk-workflow" :data-lang-tick="langTick">
+      <div ref="infoLaneRef" class="apk-workflow-lane">
+        <div class="apk-workflow-title">
+          <span class="apk-workflow-index">1</span>
+          <span>{{ tr('workflow.info') }}</span>
+        </div>
+      </div>
+      <div ref="sceneLaneRef" class="apk-workflow-lane">
+        <div class="apk-workflow-title">
+          <span class="apk-workflow-index">2</span>
+          <span>{{ tr('workflow.scene') }}</span>
+        </div>
+      </div>
+      <div ref="submitLaneRef" class="apk-workflow-lane">
+        <div class="apk-workflow-title">
+          <span class="apk-workflow-index">3</span>
+          <span>{{ tr('workflow.submit') }}</span>
+        </div>
+      </div>
+    </div>
+  `,
   setup(props) {
-    let root: HTMLElement | null = null;
+    const infoLaneRef = ref<HTMLElement | null>(null);
+    const sceneLaneRef = ref<HTMLElement | null>(null);
+    const submitLaneRef = ref<HTMLElement | null>(null);
+    const langTick = ref(0);
+    let stopLanguageSync: (() => boolean | void) | null = null;
+
+    function tr(key: string): string {
+      langTick.value;
+      return t(key);
+    }
+
+    function refreshLanguageText(): void {
+      [infoLaneRef.value, sceneLaneRef.value, submitLaneRef.value].forEach((lane) => {
+        lane?.querySelectorAll<HTMLElement>('[data-i18n-key]').forEach((el) => {
+          const key = el.dataset.i18nKey || '';
+          if (key) el.textContent = t(key);
+        });
+      });
+    }
+
+    function markSectionTitles(): void {
+      const packageTitle = infoLaneRef.value?.querySelector<HTMLElement>('#sectionPackageInfo .toolbar strong');
+      if (packageTitle) packageTitle.dataset.i18nKey = 'pkg.title';
+      const sceneTitle = sceneLaneRef.value?.querySelector<HTMLElement>('#sectionSceneConfig .toolbar strong');
+      if (sceneTitle) sceneTitle.dataset.i18nKey = 'scene.title';
+      const submitTitle = submitLaneRef.value?.querySelector<HTMLElement>('#sectionSubmit .toolbar strong');
+      if (submitTitle) submitTitle.dataset.i18nKey = 'submit.title';
+      const submitBtn = submitLaneRef.value?.querySelector<HTMLElement>('#submitBtn');
+      if (submitBtn) submitBtn.dataset.i18nKey = 'submit.title';
+    }
+
+    function clearLegacySections(): void {
+      [infoLaneRef.value, sceneLaneRef.value, submitLaneRef.value].forEach((lane) => {
+        lane?.querySelectorAll<HTMLElement>('.card').forEach((el) => el.remove());
+      });
+    }
+
+    function syncLanguage(): void {
+      langTick.value += 1;
+      refreshLanguageText();
+    }
 
     onMounted(async () => {
       await nextTick();
-      root = document.querySelector('.legacy-view');
-      if (!root) return;
-
-      const workflow = document.createElement('div');
-      workflow.className = 'apk-workflow';
-      root.appendChild(workflow);
-
-      const infoLane = document.createElement('div');
-      infoLane.className = 'apk-workflow-lane';
-      infoLane.innerHTML = `<div class="apk-workflow-title"><span class="apk-workflow-index">1</span><span>${t('workflow.info')}</span></div>`;
-
-      const sceneLane = document.createElement('div');
-      sceneLane.className = 'apk-workflow-lane';
-      sceneLane.innerHTML = `<div class="apk-workflow-title"><span class="apk-workflow-index">2</span><span>${t('workflow.scene')}</span></div>`;
-
-      const submitLane = document.createElement('div');
-      submitLane.className = 'apk-workflow-lane';
-      submitLane.innerHTML = `<div class="apk-workflow-title"><span class="apk-workflow-index">3</span><span>${t('workflow.submit')}</span></div>`;
-
-      workflow.append(infoLane, sceneLane, submitLane);
+      const infoLane = infoLaneRef.value;
+      const sceneLane = sceneLaneRef.value;
+      const submitLane = submitLaneRef.value;
+      if (!infoLane || !sceneLane || !submitLane) return;
 
       renderPackageInfoSection(infoLane, {
         showOriginal: false,
@@ -63,6 +108,8 @@ export default defineComponent({
       renderSceneConfigSection(sceneLane);
       renderSubmitSection(submitLane);
       renderIconEditorModal(document.body);
+      markSectionTitles();
+      stopLanguageSync = onLanguageChange(syncLanguage);
 
       const iconModal = createIconEditor({
         state,
@@ -97,10 +144,20 @@ export default defineComponent({
     });
 
     onBeforeUnmount(() => {
-      if (root) root.innerHTML = '';
+      if (stopLanguageSync) {
+        stopLanguageSync();
+        stopLanguageSync = null;
+      }
+      clearLegacySections();
       document.getElementById('iconEditorMask')?.remove();
     });
 
-    return {};
+    return {
+      infoLaneRef,
+      sceneLaneRef,
+      submitLaneRef,
+      langTick,
+      tr,
+    };
   },
 });
