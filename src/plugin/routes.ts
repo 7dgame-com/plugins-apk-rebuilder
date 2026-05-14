@@ -29,7 +29,6 @@ import {
 } from './standardPackage';
 import { MOD_UPLOAD_DIR, UPLOAD_DIR } from '../config';
 import { getToolchainStatus } from '../toolchain';
-import { runDecompileTask } from '../buildService';
 import type { ApkLibraryItem } from '../types';
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -68,37 +67,54 @@ function principalPreview(principal: { userId: string | null; pluginId: string; 
   };
 }
 
-async function ensureApkInfo(item: ApkLibraryItem): Promise<ApkLibraryItem> {
-  if (item.apkInfo) {
-    return item;
+const metadataParseItemIds = new Set<string>();
+const METADATA_PARSE_DEDUPE_MS = 120_000;
+
+function scheduleApkInfoParse(item: ApkLibraryItem): void {
+  if (item.apkInfo || metadataParseItemIds.has(item.id)) {
+    return;
   }
 
-  try {
-    const { task, cacheHit } = createTaskFromLibraryItem(item, null);
-    if (!cacheHit) {
-      await runDecompileTask(task);
-    }
-    if (cacheHit && task.decodedDir && task.apkInfo) {
-      updateParseCache(item.id, task.decodedDir, task.apkInfo);
-    }
-  } catch (error) {
-    console.warn('[APK-REBUILDER] standard package metadata parse failed', {
-      itemId: item.id,
-      name: item.name,
-      error: error instanceof Error ? error.message : String(error),
+  metadataParseItemIds.add(item.id);
+  const releaseTimer = setTimeout(() => metadataParseItemIds.delete(item.id), METADATA_PARSE_DEDUPE_MS);
+  releaseTimer.unref?.();
+
+  void Promise.resolve()
+    .then(async () => {
+      const latest = getApkItem(item.id);
+      if (!latest || latest.apkInfo) {
+        return;
+      }
+
+      const { task, cacheHit } = createTaskFromLibraryItem(latest, null);
+      if (cacheHit && task.decodedDir && task.apkInfo) {
+        updateParseCache(latest.id, task.decodedDir, task.apkInfo);
+        return;
+      }
+
+      await modQueue.add(
+        'apk-metadata',
+        { type: 'decompile', taskId: task.id },
+        { jobId: `apk-metadata:${latest.id}:${task.id}` },
+      );
+    })
+    .catch((error) => {
+      metadataParseItemIds.delete(item.id);
+      clearTimeout(releaseTimer);
+      console.warn('[APK-REBUILDER] standard package metadata parse enqueue failed', {
+        itemId: item.id,
+        name: item.name,
+        error: error instanceof Error ? error.message : String(error),
+      });
     });
-  }
-
-  return getApkItem(item.id) || item;
 }
 
-async function listApkItemsWithInfo(): Promise<ApkLibraryItem[]> {
+function listApkItemsWithInfo(): ApkLibraryItem[] {
   const items = listApkItems();
-  const withInfo: ApkLibraryItem[] = [];
   for (const item of items) {
-    withInfo.push(await ensureApkInfo(item));
+    scheduleApkInfoParse(item);
   }
-  return withInfo;
+  return items;
 }
 
 export function createPluginRouter(): Router {
@@ -275,7 +291,7 @@ export function createPluginRouter(): Router {
       await requireHostPermission(req, 'apk.rebuilder.admin');
       const config = readStandardPackageConfig();
       ok(res, {
-        items: await listApkItemsWithInfo(),
+        items: listApkItemsWithInfo(),
         standard: {
           activeStandardId: config.activeStandardId,
           previousStandardId: config.previousStandardId,
@@ -302,7 +318,8 @@ export function createPluginRouter(): Router {
           file.originalname || 'uploaded.apk',
           file.path,
         );
-        ok(res, { item: await ensureApkInfo(item), deduplicatedUpload: !created });
+        scheduleApkInfoParse(item);
+        ok(res, { item, deduplicatedUpload: !created });
       } finally {
         // addOrGetApkItemFromFile moves or cleans up the temp file,
         // but ensure cleanup if it still exists

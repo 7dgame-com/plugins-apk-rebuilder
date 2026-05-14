@@ -197,6 +197,7 @@ const DICTIONARY = {
     'standard.selectHint': '点击选择',
     'standard.originalInfo': '选中包原包信息',
     'standard.noOriginalInfo': '暂无原包信息',
+    'standard.infoPending': '正在解析原包信息，请稍候...',
 
     'workflow.info': '先改应用显示信息',
     'workflow.scene': '再选择要打开的场景',
@@ -415,6 +416,7 @@ const DICTIONARY = {
     'standard.selectHint': 'Click to select',
     'standard.originalInfo': 'Selected package original info',
     'standard.noOriginalInfo': 'No original info yet',
+    'standard.infoPending': 'Parsing original package info...',
 
     'workflow.info': 'Edit app display info',
     'workflow.scene': 'Choose the scene to open',
@@ -629,6 +631,7 @@ const DICTIONARY = {
     'standard.sceneLoadFailed': '場景列表載入失敗',
     'standard.originalInfo': '選中包原始資訊',
     'standard.noOriginalInfo': '暫無原始資訊',
+    'standard.infoPending': '正在解析原始包資訊，請稍候...',
 
     'workflow.info': '先修改應用顯示資訊',
     'workflow.scene': '再選擇要開啟的場景',
@@ -843,6 +846,7 @@ const DICTIONARY = {
     'standard.sceneLoadFailed': 'シーン一覧読み込み失敗',
     'standard.originalInfo': '選択中パッケージの元情報',
     'standard.noOriginalInfo': '元情報はまだありません',
+    'standard.infoPending': '元のパッケージ情報を解析中です...',
 
     'workflow.info': 'まずアプリ表示情報を編集',
     'workflow.scene': '次に起動するシーンを選択',
@@ -1057,6 +1061,7 @@ const DICTIONARY = {
     'standard.sceneLoadFailed': 'โหลดซีนล้มเหลว',
     'standard.originalInfo': 'ข้อมูลต้นฉบับของแพ็กเกจที่เลือก',
     'standard.noOriginalInfo': 'ยังไม่มีข้อมูลต้นฉบับ',
+    'standard.infoPending': 'กำลังแยกวิเคราะห์ข้อมูลแพ็กเกจต้นฉบับ...',
 
     'workflow.info': 'แก้ไขข้อมูลที่แสดงของแอปก่อน',
     'workflow.scene': 'จากนั้นเลือกซีนที่จะเปิด',

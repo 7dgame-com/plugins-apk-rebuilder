@@ -28,6 +28,7 @@ export default defineComponent({
   `,
   setup(props) {
     let root: HTMLElement | null = null;
+    let standardSection: ReturnType<typeof createStandardPackageSection> | null = null;
 
     onMounted(async () => {
       await nextTick();
@@ -42,7 +43,7 @@ export default defineComponent({
       renderStandardPackageSection(root, { canManage: true });
 
       const tools = createToolsCheck({ state, host: props.host });
-      const standardSection = createStandardPackageSection({ host: props.host, canManage: true });
+      standardSection = createStandardPackageSection({ host: props.host, canManage: true });
       tools.bind();
       standardSection.bind();
       tools.refreshTools?.();
@@ -50,6 +51,8 @@ export default defineComponent({
     });
 
     onBeforeUnmount(() => {
+      standardSection?.destroy?.();
+      standardSection = null;
       if (root) root.innerHTML = '';
     });
 

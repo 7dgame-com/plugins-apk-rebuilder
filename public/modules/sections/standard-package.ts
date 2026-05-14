@@ -82,6 +82,35 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     canManage: Boolean(canManage),
     uploading: false,
   };
+  let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  let refreshAttempts = 0;
+  const maxRefreshAttempts = 20;
+
+  function hasPendingInfo(): boolean {
+    return state.items.some((item) => !item.apkInfo);
+  }
+
+  function clearRefreshTimer(): void {
+    if (!refreshTimer) return;
+    clearTimeout(refreshTimer);
+    refreshTimer = null;
+  }
+
+  function scheduleInfoRefresh(): void {
+    if (!state.canManage || state.uploading || !hasPendingInfo()) {
+      clearRefreshTimer();
+      refreshAttempts = 0;
+      return;
+    }
+    if (refreshTimer || refreshAttempts >= maxRefreshAttempts) {
+      return;
+    }
+    refreshAttempts += 1;
+    refreshTimer = setTimeout(() => {
+      refreshTimer = null;
+      void load().catch((error) => showAlert(normalizeHostErrorMessage(error, t, 'standard.listLoadFailed')));
+    }, 3000);
+  }
 
   function setUploadBusy(isBusy: boolean): void {
     state.uploading = Boolean(isBusy);
@@ -176,7 +205,7 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     if (!apkInfo) {
       info.innerHTML = `
         <div class="standard-package-info-title">${t('standard.originalInfo')}</div>
-        <div class="standard-package-info-empty">${t('standard.noOriginalInfo')}</div>
+        <div class="standard-package-info-empty">${t('standard.infoPending')}</div>
       `;
       return;
     }
@@ -210,12 +239,15 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     if (!state.canManage) {
       list.innerHTML = '';
       renderInfo();
+      clearRefreshTimer();
       return;
     }
     if (!state.items.length) {
       list.innerHTML = `<div class="muted">${t('standard.empty')}</div>`;
       renderActionBar();
       renderInfo();
+      clearRefreshTimer();
+      refreshAttempts = 0;
       return;
     }
 
@@ -224,6 +256,7 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     }
     renderActionBar();
     renderInfo();
+    scheduleInfoRefresh();
 
     list.innerHTML = state.items
       .map((item) => {
@@ -287,6 +320,9 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     if (!state.selectedId || !state.items.some((item) => item.id === state.selectedId)) {
       state.selectedId = state.previousStandardId || state.activeStandardId || state.items[0]?.id || null;
     }
+    if (!hasPendingInfo()) {
+      refreshAttempts = 0;
+    }
     render();
   }
 
@@ -335,6 +371,7 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
           normalizeHostErrorMessage(json?.error?.message || json?.message || `上传失败(${res.status})`, t, 'standard.uploadFailed')
         );
       }
+      setUploadBusy(false);
       await load();
     } finally {
       setUploadBusy(false);
@@ -404,5 +441,9 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     }
   }
 
-  return { bind, load };
+  function destroy(): void {
+    clearRefreshTimer();
+  }
+
+  return { bind, load, destroy };
 }
