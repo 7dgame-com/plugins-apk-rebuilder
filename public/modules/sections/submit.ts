@@ -4,7 +4,7 @@ import { escapeHtml } from '../state';
 import type { SubmitRecord, SubmitSectionDeps } from '../types';
 
 const STORAGE_KEY = 'apk-rebuilder-submit-records-v1';
-const RECORD_LIMIT = 5;
+const RECORD_LIMIT = 3;
 
 export function renderSubmitSection(container: HTMLElement): void {
   container.insertAdjacentHTML(
@@ -34,14 +34,16 @@ export function renderSubmitSection(container: HTMLElement): void {
         </div>
         <a id="submitResultDownload" class="btn success" href="#" target="_blank" rel="noopener">${t('submit.downloadPackage')}</a>
       </div>
-      <div id="submitRecordBlock" class="submit-record-block" style="display:none;">
-        <div class="submit-record-title">${t('submit.history')}</div>
-        <div id="submitRecordList" class="submit-record-list"></div>
-      </div>
       <div class="row" style="margin-top:8px;">
         <span id="submitStatus" class="muted">${t('submit.waiting')}</span>
         <span id="submitSpinner" class="inline-spinner" style="display:none" aria-hidden="true"></span>
       </div>
+    </div>
+    <div id="submitRecordBlock" class="card submit-record-block" style="display:none;">
+      <div class="toolbar">
+        <strong>${t('submit.history')}</strong>
+      </div>
+      <div id="submitRecordList" class="submit-record-list"></div>
     </div>
     `
   );
@@ -90,6 +92,8 @@ function formatTime(value: string): string {
 }
 
 export function createSubmitSection({ buildDownloadUrl, onSubmit }: SubmitSectionDeps) {
+  let currentResultArtifactId = '';
+
   function getInputValue(id: string): string {
     return (document.getElementById(id) as HTMLInputElement | null)?.value.trim() || '';
   }
@@ -131,10 +135,12 @@ export function createSubmitSection({ buildDownloadUrl, onSubmit }: SubmitSectio
     const link = document.getElementById('submitResultDownload') as HTMLAnchorElement | null;
     if (!card || !name || !link) return;
     if (!record) {
+      currentResultArtifactId = '';
       card.style.display = 'none';
       return;
     }
 
+    currentResultArtifactId = record.artifactId;
     const url = buildDownloadUrl(record.artifactId);
     name.textContent = record.fileName;
     link.href = url || '#';
@@ -143,18 +149,16 @@ export function createSubmitSection({ buildDownloadUrl, onSubmit }: SubmitSectio
   }
 
   function renderRecords(): void {
-    const records = readRecords();
+    const records = readRecords().filter((record) => record.artifactId !== currentResultArtifactId);
     const block = document.getElementById('submitRecordBlock');
     const list = document.getElementById('submitRecordList');
     if (!block || !list) return;
     if (!records.length) {
       block.style.display = 'none';
       list.innerHTML = '';
-      showResult(null);
       return;
     }
 
-    showResult(records[0]);
     block.style.display = 'block';
     list.innerHTML = records
       .map((record) => {
@@ -177,12 +181,14 @@ export function createSubmitSection({ buildDownloadUrl, onSubmit }: SubmitSectio
   function addRecord(record: SubmitRecord): void {
     const records = readRecords().filter((item) => item.artifactId !== record.artifactId && item.runId !== record.runId);
     writeRecords([record, ...records]);
+    showResult(record);
     renderRecords();
   }
 
   function setDownload(url: string, label = t('submit.download')): void {
     if (!url) {
       showResult(null);
+      renderRecords();
       return;
     }
     const link = document.getElementById('submitResultDownload') as HTMLAnchorElement | null;
@@ -196,6 +202,7 @@ export function createSubmitSection({ buildDownloadUrl, onSubmit }: SubmitSectio
   }
 
   function bind(): void {
+    showResult(null);
     renderRecords();
     refreshSummary();
     ['appName', 'sceneId', 'sceneName'].forEach((id) => {
