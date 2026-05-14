@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -27,7 +27,7 @@ import {
   updateStandardPackageConfig,
   resolveStandardLibraryItem,
 } from './standardPackage';
-import { MOD_UPLOAD_DIR, UPLOAD_DIR } from '../config';
+import { ARTIFACTS_DIR, MOD_UPLOAD_DIR, UPLOAD_DIR, X_ACCEL_REDIRECT_ENABLED } from '../config';
 import { getToolchainStatus } from '../toolchain';
 import type { ApkLibraryItem } from '../types';
 
@@ -51,6 +51,40 @@ function applyCors(req: Request, res: Response): void {
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Authorization,Content-Type');
   res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+}
+
+function markUploadStart(req: Request, res: Response, next: NextFunction): void {
+  res.locals['uploadStartedAt'] = Date.now();
+  req.on('aborted', () => {
+    console.warn('[APK-REBUILDER] standard apk upload aborted', {
+      url: req.originalUrl,
+      durationMs: Date.now() - Number(res.locals['uploadStartedAt'] || Date.now()),
+    });
+  });
+  next();
+}
+
+function sanitizeHeaderFilename(fileName: string): string {
+  const cleaned = path.basename(fileName || 'artifact.apk').replace(/[\r\n"]/g, '_');
+  return cleaned || 'artifact.apk';
+}
+
+function contentDisposition(kind: 'attachment' | 'inline', fileName: string): string {
+  const safeName = sanitizeHeaderFilename(fileName);
+  const fallback = safeName.replace(/[^\x20-\x7E]/g, '_');
+  const encoded = encodeURIComponent(safeName)
+    .replace(/['()]/g, char => `%${char.charCodeAt(0).toString(16).toUpperCase()}`)
+    .replace(/\*/g, '%2A');
+  return `${kind}; filename="${fallback}"; filename*=UTF-8''${encoded}`;
+}
+
+function toInternalArtifactUri(localPath: string): string | null {
+  const relativePath = path.relative(ARTIFACTS_DIR, localPath);
+  if (!relativePath || relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+    return null;
+  }
+  const encodedPath = relativePath.split(path.sep).map(part => encodeURIComponent(part)).join('/');
+  return `/_protected_artifacts/${encodedPath}`;
 }
 
 function detectAuthSource(req: Request): 'authorization' | 'query-token' | 'none' {
@@ -304,8 +338,10 @@ export function createPluginRouter(): Router {
     }
   });
 
-  router.post('/admin/upload-standard', uploadStandardApk.single('apk'), async (req: Request, res: Response) => {
+  router.post('/admin/upload-standard', markUploadStart, uploadStandardApk.single('apk'), async (req: Request, res: Response) => {
     try {
+      const handlerStartedAt = Date.now();
+      const uploadStartedAt = Number(res.locals['uploadStartedAt'] || handlerStartedAt);
       getLoosePrincipal(req);
       await requireHostPermission(req, 'apk.rebuilder.admin');
       const file = (req as any).file as Express.Multer.File | undefined;
@@ -314,11 +350,24 @@ export function createPluginRouter(): Router {
         return;
       }
       try {
+        console.info('[APK-REBUILDER] standard apk multipart received', {
+          fileName: file.originalname || 'uploaded.apk',
+          size: file.size,
+          receiveDurationMs: handlerStartedAt - uploadStartedAt,
+        });
         const { item, created } = await addOrGetApkItemFromFile(
           file.originalname || 'uploaded.apk',
           file.path,
         );
         scheduleApkInfoParse(item);
+        console.info('[APK-REBUILDER] standard apk upload complete', {
+          itemId: item.id,
+          fileName: item.name,
+          size: item.size,
+          deduplicatedUpload: !created,
+          handlerDurationMs: Date.now() - handlerStartedAt,
+          totalDurationMs: Date.now() - uploadStartedAt,
+        });
         ok(res, { item, deduplicatedUpload: !created });
       } finally {
         // addOrGetApkItemFromFile moves or cleans up the temp file,
@@ -458,6 +507,7 @@ export function createPluginRouter(): Router {
   });
 
   router.get('/artifacts/:artifactId', async (req: Request, res: Response) => {
+    const startedAt = Date.now();
     applyCors(req, res);
     const authSourceBeforeRewrite = detectAuthSource(req);
     if (!req.header('authorization') && req.query?.token) {
@@ -475,10 +525,13 @@ export function createPluginRouter(): Router {
     try {
       const principal = getLoosePrincipal(req);
       await requireHostPermission(req, 'apk.rebuilder.read');
+      const authDurationMs = Date.now() - startedAt;
       const artifactId = String(req.params['artifactId']);
       const localPath = fetchArtifactToLocal(artifactId);
       const artifact = getArtifact(artifactId);
       const shouldInline = String(req.query['raw'] || '').toLowerCase() === 'true';
+      const artifactName = artifact?.name || path.basename(localPath);
+      const artifactSize = fs.statSync(localPath).size;
 
       console.info('[APK-REBUILDER] /plugin/artifacts/:artifactId authorized', {
         artifactId,
@@ -486,25 +539,47 @@ export function createPluginRouter(): Router {
         authSource: authSourceBeforeRewrite === 'none' ? detectAuthSource(req) : authSourceBeforeRewrite,
         shouldInline,
         download: String(req.query['download'] || '') === '1',
-        artifactName: artifact?.name || path.basename(localPath),
+        artifactName,
+        size: artifactSize,
+        authDurationMs,
       });
+
+      const internalUri = X_ACCEL_REDIRECT_ENABLED ? toInternalArtifactUri(localPath) : null;
+      if (internalUri) {
+        const dispositionKind = shouldInline ? 'inline' : 'attachment';
+        res.setHeader('Content-Type', artifact?.mimeType || 'application/octet-stream');
+        res.setHeader('Content-Disposition', contentDisposition(dispositionKind, artifactName));
+        res.setHeader('X-Accel-Redirect', internalUri);
+        res.end();
+        console.info('[APK-REBUILDER] artifact download delegated to nginx', {
+          artifactId,
+          artifactName,
+          size: artifactSize,
+          internalUri,
+          durationMs: Date.now() - startedAt,
+        });
+        return;
+      }
 
       if (shouldInline) {
         res.setHeader('Content-Type', artifact?.mimeType || 'application/octet-stream');
-        res.setHeader('Content-Disposition', `inline; filename="${artifact?.name || path.basename(localPath)}"`);
+        res.setHeader('Content-Disposition', contentDisposition('inline', artifactName));
         res.sendFile(localPath, (sendError) => {
           if (sendError) {
             console.error('[APK-REBUILDER] artifact inline stream failed', sendError);
           } else {
             console.info('[APK-REBUILDER] artifact inline stream complete', {
               artifactId,
+              artifactName,
+              size: artifactSize,
+              durationMs: Date.now() - startedAt,
             });
           }
         });
         return;
       }
 
-      res.download(localPath, artifact?.name || path.basename(localPath), (downloadError) => {
+      res.download(localPath, artifactName, (downloadError) => {
         if (downloadError) {
           if (!res.headersSent) {
             const mapped = mapPluginError(downloadError);
@@ -515,7 +590,9 @@ export function createPluginRouter(): Router {
         } else {
           console.info('[APK-REBUILDER] artifact download complete', {
             artifactId,
-            artifactName: artifact?.name || path.basename(localPath),
+            artifactName,
+            size: artifactSize,
+            durationMs: Date.now() - startedAt,
           });
         }
       });

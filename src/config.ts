@@ -107,6 +107,10 @@ export const DEBUG_PASS = process.env['DEBUG_KEY_PASS'] || 'android';
 export const API_KEY = process.env['API_KEY'] || process.env['AUTH_TOKEN'] || '';
 export const AUTH_ENABLED = process.env['AUTH_ENABLED'] !== 'false';
 export const APK_REBUILDER_MODE = process.env['APK_REBUILDER_MODE'] || 'prod';
+export const X_ACCEL_REDIRECT_ENABLED = readBooleanEnv(
+  'X_ACCEL_REDIRECT_ENABLED',
+  APK_REBUILDER_MODE !== 'dev',
+);
 export const FRONTEND_SOURCE_DIR = path.join(process.cwd(), 'public');
 export const FRONTEND_DIST_DIR = path.join(process.cwd(), 'frontend-dist');
 export const FRONTEND_DIST_READY = fs.existsSync(FRONTEND_DIST_DIR) && fs.statSync(FRONTEND_DIST_DIR).isDirectory();

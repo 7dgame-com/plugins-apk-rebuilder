@@ -136,11 +136,15 @@ export async function addOrGetApkItemFromFile(
   originalName: string,
   tempPath: string,
 ): Promise<{ item: ApkLibraryItem; created: boolean }> {
+  const startedAt = Date.now();
   const items = readItems();
   const baseDir = APK_LIBRARY_DIR;
   const displayName = safeFilename(normalizeOriginalName(originalName || 'uploaded.apk'));
   const createdAt = nowIso();
+  const size = fs.statSync(tempPath).size;
+  const hashStartedAt = Date.now();
   const digest = await sha256File(tempPath);
+  const hashDurationMs = Date.now() - hashStartedAt;
 
   for (const item of items) {
     if (item.sha256 === digest) {
@@ -152,6 +156,13 @@ export async function addOrGetApkItemFromFile(
       } catch {
         // ignore temp cleanup errors
       }
+      console.info('[APK-REBUILDER] standard apk deduplicated', {
+        itemId: item.id,
+        fileName: displayName,
+        size,
+        hashDurationMs,
+        durationMs: Date.now() - startedAt,
+      });
       return { item, created: false };
     }
   }
@@ -160,8 +171,9 @@ export async function addOrGetApkItemFromFile(
   const suffix = path.extname(displayName) || '.apk';
   const storedName = `${fileId}${suffix.toLowerCase()}`;
   const storePath = path.join(baseDir, storedName);
+  const moveStartedAt = Date.now();
   moveFileSync(tempPath, storePath);
-  const size = fs.statSync(storePath).size;
+  const moveDurationMs = Date.now() - moveStartedAt;
 
   const item: ApkLibraryItem = {
     id: fileId,
@@ -179,6 +191,14 @@ export async function addOrGetApkItemFromFile(
 
   items.push(item);
   writeItems(items);
+  console.info('[APK-REBUILDER] standard apk stored', {
+    itemId: item.id,
+    fileName: displayName,
+    size,
+    hashDurationMs,
+    moveDurationMs,
+    durationMs: Date.now() - startedAt,
+  });
   return { item, created: true };
 }
 
