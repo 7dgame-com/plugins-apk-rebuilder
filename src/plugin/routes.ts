@@ -146,7 +146,7 @@ export function createPluginRouter(): Router {
         fail(
           res,
           400,
-          'At least one field is required: appName, packageName, versionName, versionCode, icon, unityPatches, filePatches',
+          'At least one field is required: appName, packageName, versionName, versionCode, icon, whiteLabelProfile, unityPatches, filePatches',
           'BAD_REQUEST',
         );
         return;

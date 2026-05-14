@@ -79,6 +79,40 @@
           "unityConfigPath": {
             "type": "string"
           },
+          "whiteLabelProfile": {
+            "type": "object",
+            "description": "Upsert a Unity white-label profile by fixed key, set it as config.default, and lock the catalog to that key.",
+            "properties": {
+              "key": {
+                "type": "string",
+                "default": "apk-rebuilder"
+              },
+              "appName": {
+                "type": "string"
+              },
+              "packageName": {
+                "type": "string"
+              },
+              "versionName": {
+                "type": "string"
+              },
+              "versionCode": {
+                "type": "string"
+              },
+              "sceneId": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "tenantId": {
+                "type": "string"
+              }
+            }
+          },
           "unityPatches": {
             "type": "array",
             "items": {

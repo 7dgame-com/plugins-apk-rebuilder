@@ -3,6 +3,8 @@ import { normalizeHostErrorMessage } from '../host/errors';
 import { TASK_STATUS } from '../state';
 import type { HostBridgeApi, SubmitRunData } from '../types';
 
+const WHITE_LABEL_PROFILE_KEY = 'apk-rebuilder';
+
 type SubmitFlowDeps = {
   host: HostBridgeApi;
   getAppName(): string;
@@ -93,10 +95,15 @@ export function useSubmitFlow({
           versionName: versionName || undefined,
           versionCode: versionCode || undefined,
           unityConfigPath: 'Assets/StreamingAssets/WhiteLabel/white-label.json',
-          unityPatches: [
-            { path: 'profiles.0.extensions.1.text', value: sceneId },
-            { path: 'profiles.0.extensions.0.enabled', value: true },
-          ],
+          whiteLabelProfile: {
+            key: WHITE_LABEL_PROFILE_KEY,
+            appName,
+            packageName: packageName || undefined,
+            versionName: versionName || undefined,
+            versionCode: versionCode || undefined,
+            sceneId,
+            title: appName,
+          },
           iconArtifactId,
         },
         options: {

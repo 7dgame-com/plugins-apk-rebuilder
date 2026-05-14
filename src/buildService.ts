@@ -17,7 +17,7 @@ import { applyIconReplacement, parseApkInfo, updateManifest } from './manifestSe
 import { logTask, setTaskError, updateTask } from './taskStore';
 import { ModPayload, Task } from './types';
 import { runCommand } from './toolchain';
-import { applyUnityPatches } from './unityConfigService';
+import { applyUnityPatches, applyWhiteLabelProfile } from './unityConfigService';
 
 function ensureDebugKeystore(task: Task): void {
   if (fs.existsSync(DEBUG_KEYSTORE_PATH)) {
@@ -148,6 +148,7 @@ export async function runModTask(task: Task, payload: ModPayload): Promise<void>
     }
     updateManifest(task, payload, iconRef);
     applyUnityPatches(task, payload);
+    applyWhiteLabelProfile(task, payload);
     applyFilePatches(task, payload);
   } catch (error) {
     setTaskError(task, error, 'Manifest update failed', 'APK_MOD_FAILED');
