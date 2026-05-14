@@ -1,5 +1,5 @@
 x-apk-rebuilder-service: &apk-rebuilder-service
-  image: ${APK_REBUILDER_IMAGE:-hkccr.ccs.tencentyun.com/plugins/apk-rebuilder:publish}
+  image: ${APK_REBUILDER_IMAGE:-hkccr.ccs.tencentyun.com/plugins/apk-rebuilder:develop}
   networks:
     - proxy
     - internal
@@ -37,16 +37,17 @@ services:
       HOST_API_BASE: https://api.d.xrteeth.com
       STRICT_TOOLCHAIN: "true"
       STRICT_REDIS: "true"
-      PLUGIN_TOKEN_SECRET: change-me
+      PLUGIN_TOKEN_SECRET: ${APK_REBUILDER_PLUGIN_TOKEN_SECRET}
       REDIS_HOST: redis-apk-rebuilder-d
       REDIS_PORT: 6379
     labels:
       - traefik.enable=true
+      - traefik.docker.network=proxy
       - "traefik.http.routers.apk-rebuilder-d.rule=Host(`${APK_REBUILDER_DEV_HOST:-apk-rebuilder-d.plugins.xrugc.com}`)"
       - traefik.http.routers.apk-rebuilder-d.entrypoints=websecure
+      - traefik.http.routers.apk-rebuilder-d.tls=true
       - traefik.http.routers.apk-rebuilder-d.tls.certresolver=letsencrypt
       - traefik.http.services.apk-rebuilder-d.loadbalancer.server.port=80
-      - traefik.docker.network=proxy
     depends_on:
       redis-apk-rebuilder-d:
         condition: service_healthy
@@ -64,16 +65,17 @@ services:
       HOST_API_BASE: https://api.xrteeth.com
       STRICT_TOOLCHAIN: "true"
       STRICT_REDIS: "true"
-      PLUGIN_TOKEN_SECRET: change-me
+      PLUGIN_TOKEN_SECRET: ${APK_REBUILDER_PLUGIN_TOKEN_SECRET}
       REDIS_HOST: redis-apk-rebuilder
       REDIS_PORT: 6379
     labels:
       - traefik.enable=true
+      - traefik.docker.network=proxy
       - "traefik.http.routers.apk-rebuilder.rule=Host(`${APK_REBUILDER_PROD_HOST:-apk-rebuilder.plugins.xrugc.com}`)"
       - traefik.http.routers.apk-rebuilder.entrypoints=websecure
+      - traefik.http.routers.apk-rebuilder.tls=true
       - traefik.http.routers.apk-rebuilder.tls.certresolver=letsencrypt
       - traefik.http.services.apk-rebuilder.loadbalancer.server.port=80
-      - traefik.docker.network=proxy
     depends_on:
       redis-apk-rebuilder:
         condition: service_healthy
