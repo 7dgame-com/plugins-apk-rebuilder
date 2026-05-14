@@ -63,6 +63,15 @@ function getVersionCodeInput(): HTMLInputElement | null {
   return document.getElementById('versionCode') as HTMLInputElement | null;
 }
 
+function buildArtifactUrl(artifactId: string): string {
+  if (!artifactId) return '#';
+  const params = new URLSearchParams({ download: '1' });
+  if (host.state.token) {
+    params.set('token', host.state.token);
+  }
+  return host.buildUrl(`/plugin/artifacts/${encodeURIComponent(artifactId)}?${params.toString()}`);
+}
+
 function getSceneIdInput(): HTMLInputElement | null {
   return document.getElementById('sceneId') as HTMLInputElement | null;
 }
@@ -156,6 +165,7 @@ function buildUi(): void {
 
   const submitSection = canRun
     ? createSubmitSection({
+        buildDownloadUrl: buildArtifactUrl,
         onSubmit: (ui) => submitFlow.submit(ui),
       })
     : null;

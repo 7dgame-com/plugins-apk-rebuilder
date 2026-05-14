@@ -1195,6 +1195,94 @@ body.apk-entry .standard-package-actions button.btn-danger-soft:focus-visible {
   white-space: nowrap;
 }
 
+.submit-result-panel {
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--success-color) 24%, var(--border-color));
+  border-radius: var(--radius-sm);
+  background: var(--success-light);
+}
+
+.submit-result-main {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.submit-result-main span {
+  color: var(--success-dark);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.submit-result-main strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.submit-record-block {
+  margin-top: var(--spacing-sm);
+}
+
+.submit-record-title {
+  margin-bottom: 6px;
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.submit-record-list {
+  display: grid;
+  gap: 6px;
+}
+
+.submit-record-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+}
+
+.submit-record-meta {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.submit-record-meta strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.submit-record-meta span {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.submit-record-item .btn {
+  min-height: 30px;
+  padding: 5px 10px;
+  font-size: var(--font-size-xs);
+}
+
 .tools-check-wrap {
   display: flex;
   align-items: center;
@@ -1318,5 +1406,19 @@ body.apk-entry .standard-package-actions button.btn-danger-soft:focus-visible {
 
   .standard-package-info-grid {
     grid-template-columns: 1fr;
+  }
+
+  .submit-result-panel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .submit-record-item {
+    grid-template-columns: 1fr;
+  }
+
+  .submit-result-panel .btn,
+  .submit-record-item .btn {
+    justify-content: center;
   }
 }

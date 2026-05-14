@@ -1,7 +1,7 @@
 import { t } from '../i18n';
 import { normalizeHostErrorMessage } from '../host/errors';
 import { TASK_STATUS } from '../state';
-import type { HostBridgeApi, SubmitRunData } from '../types';
+import type { HostBridgeApi, SubmitRecord, SubmitRunData } from '../types';
 
 const WHITE_LABEL_PROFILE_KEY = 'apk-rebuilder';
 
@@ -22,6 +22,7 @@ type SubmitUiBridge = {
   setStatus(text: string): void;
   setSubmitting(value: boolean): void;
   setDownload(url: string, label?: string): void;
+  addRecord(record: SubmitRecord): void;
 };
 
 export function useSubmitFlow({
@@ -154,6 +155,12 @@ export function useSubmitFlow({
             directUrl,
           });
           ui.setDownload(directUrl, fileName);
+          ui.addRecord({
+            runId,
+            artifactId: artifact.artifactId,
+            fileName,
+            createdAt: data.updatedAt || new Date().toISOString(),
+          });
         }
 
         return true;

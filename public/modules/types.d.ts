@@ -119,14 +119,24 @@ export interface SubmitArtifact {
 export interface SubmitRunData {
   runId?: string;
   status?: string;
+  updatedAt?: string;
   artifacts?: SubmitArtifact[];
 }
 
+export interface SubmitRecord {
+  runId: string;
+  artifactId: string;
+  fileName: string;
+  createdAt: string;
+}
+
 export interface SubmitSectionDeps {
+  buildDownloadUrl(artifactId: string): string;
   onSubmit(ui: {
     setStatus(text: string): void;
     setSubmitting(value: boolean): void;
     setDownload(url: string, label?: string): void;
+    addRecord(record: SubmitRecord): void;
   }): Promise<void>;
 }
 

@@ -152,6 +152,9 @@ const DICTIONARY = {
 
     'submit.title': '生成 APK',
     'submit.download': '下载 APK',
+    'submit.downloadPackage': '下载安装包',
+    'submit.resultTitle': '安装包已生成',
+    'submit.history': '最近生成',
     'submit.waiting': '等待生成',
     'submit.fetchStatusFailed': '生成状态获取失败',
     'submit.done': 'APK 已生成',
@@ -371,6 +374,9 @@ const DICTIONARY = {
 
     'submit.title': 'Generate APK',
     'submit.download': 'Download APK',
+    'submit.downloadPackage': 'Download package',
+    'submit.resultTitle': 'Package is ready',
+    'submit.history': 'Recent packages',
     'submit.waiting': 'Waiting to generate',
     'submit.fetchStatusFailed': 'Failed to fetch generation status',
     'submit.done': 'APK generated',
@@ -590,6 +596,9 @@ const DICTIONARY = {
 
     'submit.title': '產生 APK',
     'submit.download': '下載 APK',
+    'submit.downloadPackage': '下載安裝包',
+    'submit.resultTitle': '安裝包已產生',
+    'submit.history': '最近產生',
     'submit.waiting': '等待產生',
     'submit.fetchStatusFailed': '產生狀態獲取失敗',
     'submit.done': 'APK 已產生',
@@ -805,6 +814,9 @@ const DICTIONARY = {
 
     'submit.title': 'APKを生成',
     'submit.download': 'APK をダウンロード',
+    'submit.downloadPackage': 'インストールパッケージをダウンロード',
+    'submit.resultTitle': 'インストールパッケージを生成しました',
+    'submit.history': '最近の生成',
     'submit.waiting': '生成待ち',
     'submit.fetchStatusFailed': '生成ステータス取得失敗',
     'submit.done': 'APKを生成しました',
@@ -1020,6 +1032,9 @@ const DICTIONARY = {
 
     'submit.title': 'สร้าง APK',
     'submit.download': 'ดาวน์โหลด APK',
+    'submit.downloadPackage': 'ดาวน์โหลดแพ็กเกจติดตั้ง',
+    'submit.resultTitle': 'สร้างแพ็กเกจติดตั้งแล้ว',
+    'submit.history': 'รายการล่าสุด',
     'submit.waiting': 'รอสร้าง',
     'submit.fetchStatusFailed': 'ดึงสถานะการสร้างล้มเหลว',
     'submit.done': 'สร้าง APK แล้ว',

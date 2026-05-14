@@ -14,6 +14,15 @@ function getInput(id: string): HTMLInputElement | null {
   return document.getElementById(id) as HTMLInputElement | null;
 }
 
+function buildArtifactUrl(host: HostBridgeApi, artifactId: string): string {
+  if (!artifactId) return '#';
+  const params = new URLSearchParams({ download: '1' });
+  if (host.state.token) {
+    params.set('token', host.state.token);
+  }
+  return host.buildUrl(`/plugin/artifacts/${encodeURIComponent(artifactId)}?${params.toString()}`);
+}
+
 export default defineComponent({
   name: 'WorkbenchView',
   props: {
@@ -129,6 +138,7 @@ export default defineComponent({
         canManageStandardPackage: () => props.canManageStandardPackage,
       });
       const submitSection = createSubmitSection({
+        buildDownloadUrl: (artifactId: string) => buildArtifactUrl(props.host, artifactId),
         onSubmit: (ui) => submitFlow.submit(ui),
       });
 
