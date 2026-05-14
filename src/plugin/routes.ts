@@ -19,7 +19,7 @@ import {
   buildModPayload,
 } from './helpers';
 import { mapProgress, ensureUploadedArtifact, createTaskFromLibraryItem, createTaskFromArtifact } from '../common/taskUtils';
-import { addOrGetApkItemFromFile, deleteApkItem, getApkItem, listApkItems } from '../apkLibrary';
+import { addOrGetApkItemFromFile, deleteApkItem, getApkItem, listApkItems, updateParseCache } from '../apkLibrary';
 import { updateTask, logTask, getTask } from '../taskStore';
 import { fetchArtifactToLocal, getArtifact, uploadArtifact } from '../artifactService';
 import {
@@ -29,6 +29,8 @@ import {
 } from './standardPackage';
 import { MOD_UPLOAD_DIR, UPLOAD_DIR } from '../config';
 import { getToolchainStatus } from '../toolchain';
+import { runDecompileTask } from '../buildService';
+import type { ApkLibraryItem } from '../types';
 
 const upload = multer({ storage: multer.memoryStorage() });
 const uploadStandardApk = multer({
@@ -64,6 +66,39 @@ function principalPreview(principal: { userId: string | null; pluginId: string; 
     pluginId: principal.pluginId,
     scopes: principal.scopes,
   };
+}
+
+async function ensureApkInfo(item: ApkLibraryItem): Promise<ApkLibraryItem> {
+  if (item.apkInfo) {
+    return item;
+  }
+
+  try {
+    const { task, cacheHit } = createTaskFromLibraryItem(item, null);
+    if (!cacheHit) {
+      await runDecompileTask(task);
+    }
+    if (cacheHit && task.decodedDir && task.apkInfo) {
+      updateParseCache(item.id, task.decodedDir, task.apkInfo);
+    }
+  } catch (error) {
+    console.warn('[APK-REBUILDER] standard package metadata parse failed', {
+      itemId: item.id,
+      name: item.name,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  return getApkItem(item.id) || item;
+}
+
+async function listApkItemsWithInfo(): Promise<ApkLibraryItem[]> {
+  const items = listApkItems();
+  const withInfo: ApkLibraryItem[] = [];
+  for (const item of items) {
+    withInfo.push(await ensureApkInfo(item));
+  }
+  return withInfo;
 }
 
 export function createPluginRouter(): Router {
@@ -240,7 +275,7 @@ export function createPluginRouter(): Router {
       await requireHostPermission(req, 'apk.rebuilder.admin');
       const config = readStandardPackageConfig();
       ok(res, {
-        items: listApkItems(),
+        items: await listApkItemsWithInfo(),
         standard: {
           activeStandardId: config.activeStandardId,
           previousStandardId: config.previousStandardId,
@@ -267,7 +302,7 @@ export function createPluginRouter(): Router {
           file.originalname || 'uploaded.apk',
           file.path,
         );
-        ok(res, { item, deduplicatedUpload: !created });
+        ok(res, { item: await ensureApkInfo(item), deduplicatedUpload: !created });
       } finally {
         // addOrGetApkItemFromFile moves or cleans up the temp file,
         // but ensure cleanup if it still exists
