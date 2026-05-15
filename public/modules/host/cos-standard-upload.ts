@@ -81,16 +81,10 @@ function contentTypeFor(file: File): string {
 }
 
 function safeDispositionFilename(name: string): string {
-  const ascii = String(name || 'standard.apk')
+  return String(name || 'standard.apk')
     .replace(/[\r\n"]/g, '_')
     .replace(/[\/\\]/g, '-')
-    .replace(/[^\x20-\x7E]/g, '_')
-    .trim();
-  return ascii || 'standard.apk';
-}
-
-function encodeHeaderValue(value: string): string {
-  return encodeURIComponent(String(value || '')).slice(0, 512);
+    .trim() || 'standard.apk';
 }
 
 function getSignedUrl(cos: any, bucket: string, region: string, key: string): Promise<string> {
@@ -139,7 +133,7 @@ export async function uploadStandardApkToCos(
     ContentDisposition: `attachment; filename="${safeDispositionFilename(file.name)}"`,
     Metadata: {
       'x-apk-rebuilder-kind': 'standard-package',
-      'x-apk-rebuilder-original-name': encodeHeaderValue(file.name || 'standard.apk'),
+      'x-apk-rebuilder-original-name': safeDispositionFilename(file.name),
       'x-apk-rebuilder-size': String(file.size || 0),
     },
     onProgress: (progressData: { percent?: number }) => {
