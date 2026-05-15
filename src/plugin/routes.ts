@@ -21,7 +21,7 @@ import {
   buildModPayload,
 } from './helpers';
 import { mapProgress, ensureUploadedArtifact, createTaskFromLibraryItem, createTaskFromArtifact } from '../common/taskUtils';
-import { addOrGetApkItemFromFile, deleteApkItem, getApkItem, listApkItems, updateParseCache } from '../apkLibrary';
+import { addOrGetApkItemFromFile, addOrGetCosApkItem, deleteApkItem, getApkItem, listApkItems, updateParseCache, type ApkLibraryStorage } from '../apkLibrary';
 import { updateTask, logTask, getTask } from '../taskStore';
 import { fetchArtifactToLocal, getArtifact, uploadArtifact } from '../artifactService';
 import {
@@ -112,7 +112,7 @@ function validateImportUrl(rawUrl: unknown): string {
   return parsed.toString();
 }
 
-function readCosStorage(body: Record<string, unknown>, sourceUrl: string): ApkLibraryItem['storage'] {
+function readCosStorage(body: Record<string, unknown>, sourceUrl: string): ApkLibraryStorage {
   const cos = body['cos'];
   const mimeType = String(body['mimeType'] || '').trim() || undefined;
   if (!cos || typeof cos !== 'object' || Array.isArray(cos)) {
@@ -135,9 +135,9 @@ function readCosStorage(body: Record<string, unknown>, sourceUrl: string): ApkLi
   };
 }
 
-function expectedSizeFromBody(body: Record<string, unknown>): number | null {
+function expectedSizeFromBody(body: Record<string, unknown>): number {
   const raw = body['size'];
-  if (raw === undefined || raw === null || raw === '') return null;
+  if (raw === undefined || raw === null || raw === '') throw new Error('Missing standard APK size');
   const size = Number(raw);
   if (!Number.isFinite(size) || size <= 0) {
     throw new Error('Invalid standard APK size');
@@ -167,7 +167,8 @@ async function downloadUrlToFile(url: string, targetPath: string): Promise<{ siz
 async function importStandardFromUrlJob(params: {
   importUrl: string;
   originalName: string;
-  expectedSize: number | null;
+  expectedSize: number;
+  item: ApkLibraryItem;
   storage: ApkLibraryItem['storage'];
   source: unknown;
 }): Promise<void> {
@@ -180,20 +181,24 @@ async function importStandardFromUrlJob(params: {
       source: params.source || 'url',
     });
     const downloaded = await downloadUrlToFile(params.importUrl, tempPath);
-    if (params.expectedSize !== null && downloaded.size !== params.expectedSize) {
+    if (downloaded.size !== params.expectedSize) {
       throw new Error(`Imported APK size mismatch: expected ${params.expectedSize}, got ${downloaded.size}`);
     }
-    const { item, created } = await addOrGetApkItemFromFile(params.originalName, tempPath, {
-      storage: params.storage,
-    });
-    scheduleApkInfoParse(item);
+    fs.mkdirSync(path.dirname(params.item.filePath), { recursive: true });
+    try {
+      fs.renameSync(tempPath, params.item.filePath);
+    } catch (error: any) {
+      if (error?.code !== 'EXDEV') throw error;
+      fs.copyFileSync(tempPath, params.item.filePath);
+      fs.rmSync(tempPath, { force: true });
+    }
+    scheduleApkInfoParse(params.item);
     console.info('[APK-REBUILDER] standard apk async import complete', {
-      itemId: item.id,
-      fileName: item.name,
-      size: item.size,
+      itemId: params.item.id,
+      fileName: params.item.name,
+      size: params.item.size,
       downloadedSize: downloaded.size,
       expectedSize: params.expectedSize,
-      deduplicatedUpload: !created,
       durationMs: Date.now() - startedAt,
     });
   } catch (error) {
@@ -519,20 +524,28 @@ export function createPluginRouter(): Router {
         source: body['source'] || 'url',
       });
 
+      const storage = readCosStorage(body, importUrl);
+      const { item, created } = addOrGetCosApkItem(originalName, {
+        storage,
+        size: expectedSize,
+      });
+
       void importStandardFromUrlJob({
         importUrl,
         originalName,
         expectedSize,
-        storage: readCosStorage(body, importUrl),
+        item,
+        storage,
         source: body['source'] || 'url',
       });
 
       ok(res, {
-        queued: true,
-        fileName: originalName,
+        item,
+        deduplicatedUpload: !created,
+        cacheWarmQueued: true,
         expectedSize,
-        importMode: 'url-async',
-      }, 202);
+        importMode: 'cos-register',
+      });
     } catch (error) {
       const mapped = mapPluginError(error);
       fail(res, mapped.status, mapped.message, mapped.code);

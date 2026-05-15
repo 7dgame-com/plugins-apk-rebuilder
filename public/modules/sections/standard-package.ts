@@ -340,7 +340,7 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
 
     console.info('[APK-REBUILDER] call /plugin/admin/apk-library');
     const res = await host.authFetch('/plugin/admin/apk-library');
-    const json = await res.json();
+    const json = await res.json().catch(() => ({}));
     if (!res.ok) {
       throw new Error(normalizeHostErrorMessage(json?.error?.message || json?.message, t, 'standard.listFailed'));
     }
