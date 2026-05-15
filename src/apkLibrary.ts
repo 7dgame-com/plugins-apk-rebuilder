@@ -6,6 +6,8 @@ import { APK_LIBRARY_CACHE_ROOT, APK_LIBRARY_DIR, APK_LIBRARY_INDEX_PATH } from 
 import { ApkInfo, ApkLibraryItem } from './types';
 import { nowIso } from './taskStore';
 
+type ApkLibraryStorage = NonNullable<ApkLibraryItem['storage']>;
+
 function ensureLibraryStorage(): void {
   fs.mkdirSync(APK_LIBRARY_DIR, { recursive: true });
   fs.mkdirSync(APK_LIBRARY_CACHE_ROOT, { recursive: true });
@@ -118,6 +120,7 @@ export function addOrGetApkItem(
     name: displayName,
     storedName,
     filePath: storePath,
+    storage: { type: 'local' },
     size: data.length,
     sha256: digest,
     createdAt,
@@ -135,6 +138,7 @@ export function addOrGetApkItem(
 export async function addOrGetApkItemFromFile(
   originalName: string,
   tempPath: string,
+  options: { storage?: ApkLibraryStorage | null } = {},
 ): Promise<{ item: ApkLibraryItem; created: boolean }> {
   const startedAt = Date.now();
   const items = readItems();
@@ -150,6 +154,11 @@ export async function addOrGetApkItemFromFile(
     if (item.sha256 === digest) {
       item.lastUsedAt = createdAt;
       item.name = displayName;
+      if (options.storage?.type === 'cos') {
+        item.storage = options.storage;
+      } else if (!item.storage) {
+        item.storage = { type: 'local' };
+      }
       writeItems(items);
       try {
         fs.rmSync(tempPath, { force: true });
@@ -180,6 +189,7 @@ export async function addOrGetApkItemFromFile(
     name: displayName,
     storedName,
     filePath: storePath,
+    storage: options.storage || { type: 'local' },
     size,
     sha256: digest,
     createdAt,

@@ -3,6 +3,8 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { randomUUID } from 'node:crypto';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import multer from 'multer';
 import { modQueue } from '../taskQueue';
 import { getLoosePrincipal } from './auth';
@@ -87,6 +89,81 @@ function toInternalArtifactUri(localPath: string): string | null {
   return `/_protected_artifacts/${encodedPath}`;
 }
 
+function readJsonBody(req: Request): Record<string, unknown> {
+  const body = req.body;
+  return body && typeof body === 'object' && !Array.isArray(body) ? body as Record<string, unknown> : {};
+}
+
+function validateImportUrl(rawUrl: unknown): string {
+  const value = String(rawUrl || '').trim();
+  if (!value) throw new Error('Missing import URL');
+  const parsed = new URL(value);
+  if (parsed.protocol !== 'https:') {
+    throw new Error('Unsupported import URL protocol');
+  }
+  const host = parsed.hostname.toLowerCase();
+  const isTencentCosHost =
+    host === 'myqcloud.com' ||
+    host.endsWith('.myqcloud.com') ||
+    host.endsWith('.tencentcos.cn');
+  if (!isTencentCosHost) {
+    throw new Error('Unsupported import URL host');
+  }
+  return parsed.toString();
+}
+
+function readCosStorage(body: Record<string, unknown>, sourceUrl: string): ApkLibraryItem['storage'] {
+  const cos = body['cos'];
+  const mimeType = String(body['mimeType'] || '').trim() || undefined;
+  if (!cos || typeof cos !== 'object' || Array.isArray(cos)) {
+    return {
+      type: 'cos',
+      mimeType,
+      sourceUrl,
+      importedAt: new Date().toISOString(),
+    };
+  }
+  const value = cos as Record<string, unknown>;
+  return {
+    type: 'cos',
+    bucket: String(value['bucket'] || '').trim() || undefined,
+    region: String(value['region'] || '').trim() || undefined,
+    key: String(value['key'] || '').trim() || undefined,
+    mimeType,
+    sourceUrl,
+    importedAt: new Date().toISOString(),
+  };
+}
+
+function expectedSizeFromBody(body: Record<string, unknown>): number | null {
+  const raw = body['size'];
+  if (raw === undefined || raw === null || raw === '') return null;
+  const size = Number(raw);
+  if (!Number.isFinite(size) || size <= 0) {
+    throw new Error('Invalid standard APK size');
+  }
+  return Math.floor(size);
+}
+
+async function downloadUrlToFile(url: string, targetPath: string): Promise<{ size: number; contentLength: number | null }> {
+  const startedAt = Date.now();
+  const response = await fetch(url);
+  if (!response.ok || !response.body) {
+    throw new Error(`Import download failed: ${response.status}`);
+  }
+  const contentLengthRaw = response.headers.get('content-length');
+  const contentLength = contentLengthRaw ? Number.parseInt(contentLengthRaw, 10) : null;
+  const writeStream = fs.createWriteStream(targetPath);
+  await pipeline(Readable.fromWeb(response.body as any), writeStream);
+  const size = fs.statSync(targetPath).size;
+  console.info('[APK-REBUILDER] imported standard apk downloaded', {
+    size,
+    contentLength,
+    durationMs: Date.now() - startedAt,
+  });
+  return { size, contentLength };
+}
+
 function detectAuthSource(req: Request): 'authorization' | 'query-token' | 'none' {
   if (req.header('authorization')) return 'authorization';
   if (req.query?.token) return 'query-token';
@@ -120,7 +197,7 @@ function scheduleApkInfoParse(item: ApkLibraryItem): void {
         return;
       }
 
-      const { task, cacheHit } = createTaskFromLibraryItem(latest, null);
+      const { task, cacheHit } = await createTaskFromLibraryItem(latest, null);
       if (cacheHit && task.decodedDir && task.apkInfo) {
         updateParseCache(latest.id, task.decodedDir, task.apkInfo);
         return;
@@ -215,7 +292,7 @@ export function createPluginRouter(): Router {
           fail(res, 404, 'APK not found in library', 'NOT_FOUND');
           return;
         }
-        const result = createTaskFromLibraryItem(item, principal.userId);
+        const result = await createTaskFromLibraryItem(item, principal.userId);
         task = result.task;
         cacheHit = result.cacheHit;
       } else {
@@ -375,6 +452,51 @@ export function createPluginRouter(): Router {
         try { fs.rmSync(file.path, { force: true }); } catch { /* ignore */ }
       }
     } catch (error) {
+      const mapped = mapPluginError(error);
+      fail(res, mapped.status, mapped.message, mapped.code);
+    }
+  });
+
+  router.post('/admin/import-standard-from-url', async (req: Request, res: Response) => {
+    const startedAt = Date.now();
+    const tempPath = path.join(UPLOAD_DIR, `${randomUUID()}.apk`);
+    try {
+      getLoosePrincipal(req);
+      await requireHostPermission(req, 'apk.rebuilder.admin');
+      const body = readJsonBody(req);
+      const importUrl = validateImportUrl(body['url']);
+      const originalName = String(body['originalName'] || body['fileName'] || 'uploaded.apk');
+      if (!originalName.toLowerCase().endsWith('.apk')) {
+        fail(res, 400, 'Only APK files are supported', 'BAD_REQUEST');
+        return;
+      }
+      const expectedSize = expectedSizeFromBody(body);
+
+      console.info('[APK-REBUILDER] standard apk import requested', {
+        fileName: originalName,
+        expectedSize,
+        source: body['source'] || 'url',
+      });
+      const downloaded = await downloadUrlToFile(importUrl, tempPath);
+      if (expectedSize !== null && downloaded.size !== expectedSize) {
+        throw new Error(`Imported APK size mismatch: expected ${expectedSize}, got ${downloaded.size}`);
+      }
+      const { item, created } = await addOrGetApkItemFromFile(originalName, tempPath, {
+        storage: readCosStorage(body, importUrl),
+      });
+      scheduleApkInfoParse(item);
+      console.info('[APK-REBUILDER] standard apk import complete', {
+        itemId: item.id,
+        fileName: item.name,
+        size: item.size,
+        downloadedSize: downloaded.size,
+        expectedSize,
+        deduplicatedUpload: !created,
+        durationMs: Date.now() - startedAt,
+      });
+      ok(res, { item, deduplicatedUpload: !created, importMode: 'url' });
+    } catch (error) {
+      try { fs.rmSync(tempPath, { force: true }); } catch { /* ignore */ }
       const mapped = mapPluginError(error);
       fail(res, mapped.status, mapped.message, mapped.code);
     }

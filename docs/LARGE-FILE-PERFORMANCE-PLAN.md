@@ -431,14 +431,63 @@ Browser -> CDN/COS download
 
 ### 第二批：上传链路优化
 
-1. 标准包上传改为流式 hash。
-2. 增加上传中断后的临时文件清理。
-3. 增加上传大小、后缀、MIME 的明确错误信息。
+1. 标准包上传优先升级为主项目资源管理同款 COS 直传。
+2. COS 直传成功后，插件后端通过短期签名 URL 从 COS 导入到本地标准包库。
+3. 保留原 `/plugin/admin/upload-standard` 作为回退，避免 COS CORS、STS 或网络问题阻断管理员上传。
+4. 回退链路再考虑改为流式 hash，减少普通上传时的二次读盘成本。
+5. 增加上传中断后的临时文件清理。
+6. 增加上传大小、后缀、MIME 的明确错误信息。
+
+吸收其他插件的成熟做法：
+
+- 参考 `ar-slam-localization`：对象 key 必须有业务前缀，上传对象带上 Content-Type、原始文件名、size 等元数据，并将进度拆成“准备 COS、上传、导入本地缓存”几个阶段。
+- 参考 `ai-3d-generator-v3`：COS 只作为平台级存储能力借用，插件自己的任务状态和业务元数据仍留在插件内。
+- 不照搬 `/files`、`/spaces`、`/resources` 注册流程。标准包是 apk-rebuilder 内部构建资产，不进入主框架资源管理。
+
+当前执行形态：
+
+```text
+Browser -> Host /api/v1/tencent-clouds/cloud
+Browser -> Host /api/v1/tencent-clouds/token
+Browser -> COS uploadFile
+Browser -> Plugin /plugin/admin/import-standard-from-url
+Plugin  -> COS signed URL download -> data/apk-library
+```
+
+标准包库记录会保存 COS 存储信息：
+
+```json
+{
+  "storage": {
+    "type": "cos",
+    "bucket": "...",
+    "region": "...",
+    "key": "apk-rebuilder/standard-packages/...",
+    "mimeType": "application/vnd.android.package-archive"
+  }
+}
+```
+
+其中 COS 是主存储信息来源，`data/apk-library` 内的 APK 文件作为本地构建缓存保留。当前 apktool 解析和构建仍需要本地文件，因此上传完成后会立即导入一份本地缓存。若缓存文件丢失，并且运行时配置了 `COS_SECRET_ID/COS_SECRET_KEY` 或 `SECRET_ID/SECRET_KEY`，插件会按 bucket/region/key 从 COS 自动恢复缓存后再构建。
+
+导入接口会校验前端声明的文件 size 和实际从 COS 下载到的 size，避免签名 URL 指错对象或中途下载异常后污染标准包库。
+
+收益：
+
+- 用户电脑不再把 300MB APK 直接上传到插件 Node 服务。
+- VPN 下大请求经过 Traefik/Nginx/Node 的 502 风险显著降低。
+- 上传速度对齐主项目资源管理的 COS 直传模式。
+- 后端导入接口只接受腾讯云 COS 签名 URL，避免变成任意 URL 抓取入口。
+
+注意：
+
+- 删除标准包记录时先删除插件本地缓存和解析缓存，不主动删除 COS 对象，避免误删主存储资源。
+- 要支持本地缓存丢失后的自动恢复，部署环境需要给插件容器注入 `COS_SECRET_ID/COS_SECRET_KEY`，或复用 `SECRET_ID/SECRET_KEY`。
 
 ### 第三批：减少重复上传
 
 1. 增加 `apk-library/check` 接口。
-2. 前端选择文件后计算 SHA-256。
+2. 前端选择文件后计算 SHA-256。该步骤会让 300MB 文件在上传前多读一遍，因此只放入第三批，避免影响当前直传提速目标。
 3. 已存在标准包时直接复用。
 
 ### 第四批：生产级演进
