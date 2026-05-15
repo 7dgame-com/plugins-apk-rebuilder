@@ -38,6 +38,18 @@ type StandardPackageListData = {
   };
 };
 
+function formatDuration(ms: number): string {
+  const seconds = Math.max(0, Math.floor(ms / 1000));
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+}
+
+function formatSpeed(bytes: number, elapsedMs: number): string {
+  if (elapsedMs <= 0 || bytes <= 0) return '-';
+  return `${formatBytes((bytes / elapsedMs) * 1000)}/s`;
+}
+
 export function renderStandardPackageSection(
   container: HTMLElement,
   { canManage = true }: { canManage?: boolean } = {}
@@ -122,6 +134,52 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
       btn.disabled = state.uploading;
     }
     if (spinner) spinner.style.display = state.uploading ? 'inline-block' : 'none';
+  }
+
+  function setUploadText(text: string): void {
+    const uploadName = document.getElementById('standardUploadName');
+    if (uploadName) uploadName.textContent = text;
+  }
+
+  function uploadStandardWithProgress(file: File, form: FormData): Promise<{ json: any; elapsedMs: number }> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      const startedAt = Date.now();
+      xhr.open('POST', host.buildUrl('/plugin/admin/upload-standard'));
+      if (host.state.token) {
+        xhr.setRequestHeader('authorization', `Bearer ${host.state.token}`);
+      }
+      xhr.upload.onprogress = (event) => {
+        const elapsedMs = Date.now() - startedAt;
+        const loaded = event.loaded || 0;
+        const total = event.lengthComputable ? event.total : file.size;
+        const percent = total > 0 ? Math.max(0, Math.min(100, Math.round((loaded / total) * 100))) : 0;
+        setUploadText(t('standard.uploadProgress', {
+          percent,
+          elapsed: formatDuration(elapsedMs),
+          speed: formatSpeed(loaded, elapsedMs),
+        }));
+      };
+      xhr.onerror = () => reject(new Error(t('standard.uploadFailed')));
+      xhr.ontimeout = () => reject(new Error(t('standard.uploadFailed')));
+      xhr.onload = () => {
+        const raw = xhr.responseText || '{}';
+        let json: any = {};
+        try {
+          json = JSON.parse(raw);
+        } catch {
+          json = {};
+        }
+        if (xhr.status < 200 || xhr.status >= 300) {
+          reject(new Error(
+            normalizeHostErrorMessage(json?.error?.message || json?.message || `上传失败(${xhr.status})`, t, 'standard.uploadFailed')
+          ));
+          return;
+        }
+        resolve({ json, elapsedMs: Date.now() - startedAt });
+      };
+      xhr.send(form);
+    });
   }
 
   function normalizeDisplayName(name: string | undefined): string {
@@ -364,13 +422,9 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     console.info('[APK-REBUILDER] call /plugin/admin/upload-standard');
     setUploadBusy(true);
     try {
-      const res = await host.authFetch('/plugin/admin/upload-standard', { method: 'POST', body: form });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(
-          normalizeHostErrorMessage(json?.error?.message || json?.message || `上传失败(${res.status})`, t, 'standard.uploadFailed')
-        );
-      }
+      await host.ensureInit();
+      const result = await uploadStandardWithProgress(file, form);
+      setUploadText(t('standard.uploadDone', { elapsed: formatDuration(result.elapsedMs) }));
       setUploadBusy(false);
       await load();
     } finally {
