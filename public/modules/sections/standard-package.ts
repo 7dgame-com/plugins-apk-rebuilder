@@ -2,7 +2,6 @@ import { escapeHtml, formatBytes } from '../state';
 import { t } from '../i18n';
 import { showAlert, showConfirm } from '../host/notify';
 import { normalizeHostErrorMessage } from '../host/errors';
-import { uploadStandardApkToCos } from '../host/cos-standard-upload';
 import type { HostBridgeApi } from '../types';
 
 type StandardPackageItem = {
@@ -123,11 +122,6 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
       btn.disabled = state.uploading;
     }
     if (spinner) spinner.style.display = state.uploading ? 'inline-block' : 'none';
-  }
-
-  function setUploadText(text: string): void {
-    const uploadName = document.getElementById('standardUploadName');
-    if (uploadName) uploadName.textContent = text;
   }
 
   function normalizeDisplayName(name: string | undefined): string {
@@ -365,49 +359,11 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
       await showAlert(t('standard.onlyApk'));
       return;
     }
+    const form = new FormData();
+    form.append('apk', file);
+    console.info('[APK-REBUILDER] call /plugin/admin/upload-standard');
     setUploadBusy(true);
     try {
-      try {
-        console.info('[APK-REBUILDER] upload standard apk via COS');
-        setUploadText(t('standard.cosPreparing'));
-        const cosResult = await uploadStandardApkToCos(host, file, (percent) => {
-          setUploadText(t('standard.cosUploading', { percent: `${Math.round(percent * 100)}` }));
-        });
-        setUploadText(t('standard.importing'));
-        const res = await host.authFetch('/plugin/admin/import-standard-from-url', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            url: cosResult.url,
-            originalName: file.name,
-            size: file.size,
-            mimeType: cosResult.mimeType,
-            source: 'cos',
-            cos: {
-              bucket: cosResult.bucket,
-              region: cosResult.region,
-              key: cosResult.key,
-            },
-          }),
-        });
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(
-            normalizeHostErrorMessage(json?.error?.message || json?.message || `导入失败(${res.status})`, t, 'standard.importFailed')
-          );
-        }
-        setUploadBusy(false);
-        setUploadText(file.name || t('standard.noFile'));
-        await load();
-        return;
-      } catch (cosError) {
-        console.warn('[APK-REBUILDER] COS standard upload failed, fallback to plugin upload', cosError);
-        setUploadText(t('standard.fallbackUploading'));
-      }
-
-      const form = new FormData();
-      form.append('apk', file);
-      console.info('[APK-REBUILDER] call /plugin/admin/upload-standard');
       const res = await host.authFetch('/plugin/admin/upload-standard', { method: 'POST', body: form });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -416,7 +372,6 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
         );
       }
       setUploadBusy(false);
-      setUploadText(file.name || t('standard.noFile'));
       await load();
     } finally {
       setUploadBusy(false);

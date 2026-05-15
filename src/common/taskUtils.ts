@@ -5,7 +5,6 @@ import { getApkItem, touchApkItem } from '../apkLibrary';
 import { createTask, updateTask, logTask } from '../taskStore';
 import { parseApkInfo } from '../manifestService';
 import { fetchArtifactToLocal, uploadArtifact } from '../artifactService';
-import { restoreCosItemToLocal } from '../cosStorage';
 import { isValidPackageName, isValidVersionCode, normalizeRelPath, toSafeFileStem } from '../validators';
 
 // helpers that are shared between the main API and the plugin router
@@ -65,16 +64,12 @@ export function attachCachedIconForTask(task: Task): Task {
   return updateTask(task);
 }
 
-export async function createTaskFromLibraryItem(
+export function createTaskFromLibraryItem(
   item: ApkLibraryItem,
   userId?: string | null,
-): Promise<{ task: Task; cacheHit: boolean }> {
+): { task: Task; cacheHit: boolean } {
   if (!fs.existsSync(item.filePath)) {
-    if (item.storage?.type === 'cos') {
-      await restoreCosItemToLocal(item);
-    } else {
-      throw new Error('APK file is missing from storage');
-    }
+    throw new Error('APK file is missing from storage');
   }
   const task = createTask(item.filePath, item.name || path.basename(item.filePath), item.id, userId);
   logTask(task, `Using APK from library: ${item.name || path.basename(item.filePath)} (id=${item.id})`);
