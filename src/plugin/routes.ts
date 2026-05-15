@@ -164,49 +164,6 @@ async function downloadUrlToFile(url: string, targetPath: string): Promise<{ siz
   return { size, contentLength };
 }
 
-async function importStandardFromUrlJob(params: {
-  importUrl: string;
-  originalName: string;
-  expectedSize: number | null;
-  storage: ApkLibraryItem['storage'];
-  source: unknown;
-}): Promise<void> {
-  const startedAt = Date.now();
-  const tempPath = path.join(UPLOAD_DIR, `${randomUUID()}.apk`);
-  try {
-    console.info('[APK-REBUILDER] standard apk async import started', {
-      fileName: params.originalName,
-      expectedSize: params.expectedSize,
-      source: params.source || 'url',
-    });
-    const downloaded = await downloadUrlToFile(params.importUrl, tempPath);
-    if (params.expectedSize !== null && downloaded.size !== params.expectedSize) {
-      throw new Error(`Imported APK size mismatch: expected ${params.expectedSize}, got ${downloaded.size}`);
-    }
-    const { item, created } = await addOrGetApkItemFromFile(params.originalName, tempPath, {
-      storage: params.storage,
-    });
-    scheduleApkInfoParse(item);
-    console.info('[APK-REBUILDER] standard apk async import complete', {
-      itemId: item.id,
-      fileName: item.name,
-      size: item.size,
-      downloadedSize: downloaded.size,
-      expectedSize: params.expectedSize,
-      deduplicatedUpload: !created,
-      durationMs: Date.now() - startedAt,
-    });
-  } catch (error) {
-    try { fs.rmSync(tempPath, { force: true }); } catch { /* ignore */ }
-    console.error('[APK-REBUILDER] standard apk async import failed', {
-      fileName: params.originalName,
-      expectedSize: params.expectedSize,
-      durationMs: Date.now() - startedAt,
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
-}
-
 function detectAuthSource(req: Request): 'authorization' | 'query-token' | 'none' {
   if (req.header('authorization')) return 'authorization';
   if (req.query?.token) return 'query-token';
@@ -501,6 +458,8 @@ export function createPluginRouter(): Router {
   });
 
   router.post('/admin/import-standard-from-url', async (req: Request, res: Response) => {
+    const startedAt = Date.now();
+    const tempPath = path.join(UPLOAD_DIR, `${randomUUID()}.apk`);
     try {
       getLoosePrincipal(req);
       await requireHostPermission(req, 'apk.rebuilder.admin');
@@ -518,22 +477,26 @@ export function createPluginRouter(): Router {
         expectedSize,
         source: body['source'] || 'url',
       });
-
-      void importStandardFromUrlJob({
-        importUrl,
-        originalName,
-        expectedSize,
+      const downloaded = await downloadUrlToFile(importUrl, tempPath);
+      if (expectedSize !== null && downloaded.size !== expectedSize) {
+        throw new Error(`Imported APK size mismatch: expected ${expectedSize}, got ${downloaded.size}`);
+      }
+      const { item, created } = await addOrGetApkItemFromFile(originalName, tempPath, {
         storage: readCosStorage(body, importUrl),
-        source: body['source'] || 'url',
       });
-
-      ok(res, {
-        queued: true,
-        fileName: originalName,
+      scheduleApkInfoParse(item);
+      console.info('[APK-REBUILDER] standard apk import complete', {
+        itemId: item.id,
+        fileName: item.name,
+        size: item.size,
+        downloadedSize: downloaded.size,
         expectedSize,
-        importMode: 'url-async',
-      }, 202);
+        deduplicatedUpload: !created,
+        durationMs: Date.now() - startedAt,
+      });
+      ok(res, { item, deduplicatedUpload: !created, importMode: 'url' });
     } catch (error) {
+      try { fs.rmSync(tempPath, { force: true }); } catch { /* ignore */ }
       const mapped = mapPluginError(error);
       fail(res, mapped.status, mapped.message, mapped.code);
     }
