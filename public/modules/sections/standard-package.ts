@@ -86,6 +86,9 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
   let refreshTimer: ReturnType<typeof setTimeout> | null = null;
   let refreshAttempts = 0;
   const maxRefreshAttempts = 20;
+  let importRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+  let importRefreshAttempts = 0;
+  const maxImportRefreshAttempts = 40;
 
   function hasPendingInfo(): boolean {
     return state.items.some((item) => !item.apkInfo);
@@ -95,6 +98,12 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     if (!refreshTimer) return;
     clearTimeout(refreshTimer);
     refreshTimer = null;
+  }
+
+  function clearImportRefreshTimer(): void {
+    if (!importRefreshTimer) return;
+    clearTimeout(importRefreshTimer);
+    importRefreshTimer = null;
   }
 
   function scheduleInfoRefresh(): void {
@@ -110,6 +119,23 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     refreshTimer = setTimeout(() => {
       refreshTimer = null;
       void load().catch((error) => showAlert(normalizeHostErrorMessage(error, t, 'standard.listLoadFailed')));
+    }, 3000);
+  }
+
+  function scheduleImportRefresh(): void {
+    if (!state.canManage || state.uploading || importRefreshTimer || importRefreshAttempts >= maxImportRefreshAttempts) {
+      return;
+    }
+    importRefreshAttempts += 1;
+    importRefreshTimer = setTimeout(() => {
+      importRefreshTimer = null;
+      void load()
+        .then(() => {
+          if (hasPendingInfo() || importRefreshAttempts < maxImportRefreshAttempts) {
+            scheduleImportRefresh();
+          }
+        })
+        .catch((error) => showAlert(normalizeHostErrorMessage(error, t, 'standard.listLoadFailed')));
     }, 3000);
   }
 
@@ -397,8 +423,11 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
           );
         }
         setUploadBusy(false);
-        setUploadText(file.name || t('standard.noFile'));
+        setUploadText(t('standard.importQueued'));
         await load();
+        importRefreshAttempts = 0;
+        clearImportRefreshTimer();
+        scheduleImportRefresh();
         return;
       } catch (cosError) {
         console.warn('[APK-REBUILDER] COS standard upload failed, fallback to plugin upload', cosError);
