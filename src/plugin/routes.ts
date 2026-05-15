@@ -19,7 +19,7 @@ import {
   buildModPayload,
 } from './helpers';
 import { mapProgress, ensureUploadedArtifact, createTaskFromLibraryItem, createTaskFromArtifact } from '../common/taskUtils';
-import { addOrGetApkItemFromFile, deleteApkItem, getApkItem, listApkItems, updateParseCache } from '../apkLibrary';
+import { addOrGetApkItemFromFile, addOrGetCosApkItem, deleteApkItem, getApkItem, listApkItems, updateParseCache, type ApkLibraryStorage } from '../apkLibrary';
 import { updateTask, logTask, getTask } from '../taskStore';
 import { fetchArtifactToLocal, getArtifact, uploadArtifact } from '../artifactService';
 import {
@@ -101,6 +101,36 @@ function principalPreview(principal: { userId: string | null; pluginId: string; 
   };
 }
 
+function readCosStorage(body: Record<string, unknown>): ApkLibraryStorage {
+  const cos = body['cos'];
+  if (!cos || typeof cos !== 'object' || Array.isArray(cos)) {
+    throw new Error('Missing COS storage info');
+  }
+  const value = cos as Record<string, unknown>;
+  const bucket = String(value['bucket'] || '').trim();
+  const region = String(value['region'] || '').trim();
+  const key = String(value['key'] || '').trim();
+  if (!bucket || !region || !key) {
+    throw new Error('Invalid COS storage info');
+  }
+  return {
+    type: 'cos',
+    bucket,
+    region,
+    key,
+    mimeType: String(body['mimeType'] || '').trim() || undefined,
+    importedAt: new Date().toISOString(),
+  };
+}
+
+function expectedSizeFromBody(body: Record<string, unknown>): number {
+  const size = Number(body['size']);
+  if (!Number.isFinite(size) || size <= 0) {
+    throw new Error('Invalid standard APK size');
+  }
+  return Math.floor(size);
+}
+
 const metadataParseItemIds = new Set<string>();
 const METADATA_PARSE_DEDUPE_MS = 120_000;
 
@@ -120,7 +150,11 @@ function scheduleApkInfoParse(item: ApkLibraryItem): void {
         return;
       }
 
-      const { task, cacheHit } = createTaskFromLibraryItem(latest, null);
+      if (!fs.existsSync(latest.filePath) && latest.storage?.type === 'cos') {
+        return;
+      }
+
+      const { task, cacheHit } = await createTaskFromLibraryItem(latest, null);
       if (cacheHit && task.decodedDir && task.apkInfo) {
         updateParseCache(latest.id, task.decodedDir, task.apkInfo);
         return;
@@ -215,7 +249,7 @@ export function createPluginRouter(): Router {
           fail(res, 404, 'APK not found in library', 'NOT_FOUND');
           return;
         }
-        const result = createTaskFromLibraryItem(item, principal.userId);
+        const result = await createTaskFromLibraryItem(item, principal.userId);
         task = result.task;
         cacheHit = result.cacheHit;
       } else {
@@ -385,6 +419,33 @@ export function createPluginRouter(): Router {
       getLoosePrincipal(req);
       await requireHostPermission(req, 'apk.rebuilder.admin');
       ok(res, getToolchainStatus());
+    } catch (error) {
+      const mapped = mapPluginError(error);
+      fail(res, mapped.status, mapped.message, mapped.code);
+    }
+  });
+
+  router.post('/admin/register-standard-cos', async (req: Request, res: Response) => {
+    try {
+      getLoosePrincipal(req);
+      await requireHostPermission(req, 'apk.rebuilder.admin');
+      const body = (req.body || {}) as Record<string, unknown>;
+      const originalName = String(body['originalName'] || body['fileName'] || 'uploaded.apk');
+      if (!originalName.toLowerCase().endsWith('.apk')) {
+        fail(res, 400, 'Only APK files are supported', 'BAD_REQUEST');
+        return;
+      }
+      const size = expectedSizeFromBody(body);
+      const storage = readCosStorage(body);
+      const { item, created } = addOrGetCosApkItem(originalName, { storage, size });
+      console.info('[APK-REBUILDER] standard apk cos upload registered', {
+        itemId: item.id,
+        fileName: item.name,
+        size: item.size,
+        key: storage.key,
+        deduplicatedUpload: !created,
+      });
+      ok(res, { item, deduplicatedUpload: !created, importMode: 'cos-key' });
     } catch (error) {
       const mapped = mapPluginError(error);
       fail(res, mapped.status, mapped.message, mapped.code);

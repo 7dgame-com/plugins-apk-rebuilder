@@ -123,6 +123,8 @@ export const PLUGIN_NAME = PLUGIN_ID;
 export const PLUGIN_TOKEN_SECRET = process.env['PLUGIN_TOKEN_SECRET'] || '';
 export const MAIN_API_URL = process.env['MAIN_API_URL'] || process.env['HOST_API_BASE'] || '';
 export const HOST_API_BASE = MAIN_API_URL;
+export const COS_SECRET_ID = process.env['COS_SECRET_ID'] || process.env['SECRET_ID'] || '';
+export const COS_SECRET_KEY = process.env['COS_SECRET_KEY'] || process.env['SECRET_KEY'] || '';
 export const HOST_AUTH_TIMEOUT_MS = Number.parseInt(
   process.env['HOST_AUTH_TIMEOUT_MS'] || '5000',
   10,

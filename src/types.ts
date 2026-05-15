@@ -78,6 +78,14 @@ export interface ApkLibraryItem {
   name: string;
   storedName: string;
   filePath: string;
+  storage?: {
+    type: 'local' | 'cos';
+    bucket?: string;
+    region?: string;
+    key?: string;
+    mimeType?: string;
+    importedAt?: string;
+  } | null;
   size: number;
   sha256: string;
   createdAt: string;

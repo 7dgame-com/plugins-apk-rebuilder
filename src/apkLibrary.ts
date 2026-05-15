@@ -6,6 +6,8 @@ import { APK_LIBRARY_CACHE_ROOT, APK_LIBRARY_DIR, APK_LIBRARY_INDEX_PATH } from 
 import { ApkInfo, ApkLibraryItem } from './types';
 import { nowIso } from './taskStore';
 
+export type ApkLibraryStorage = NonNullable<ApkLibraryItem['storage']>;
+
 function ensureLibraryStorage(): void {
   fs.mkdirSync(APK_LIBRARY_DIR, { recursive: true });
   fs.mkdirSync(APK_LIBRARY_CACHE_ROOT, { recursive: true });
@@ -118,6 +120,7 @@ export function addOrGetApkItem(
     name: displayName,
     storedName,
     filePath: storePath,
+    storage: { type: 'local' },
     size: data.length,
     sha256: digest,
     createdAt,
@@ -180,6 +183,7 @@ export async function addOrGetApkItemFromFile(
     name: displayName,
     storedName,
     filePath: storePath,
+    storage: { type: 'local' },
     size,
     sha256: digest,
     createdAt,
@@ -198,6 +202,60 @@ export async function addOrGetApkItemFromFile(
     hashDurationMs,
     moveDurationMs,
     durationMs: Date.now() - startedAt,
+  });
+  return { item, created: true };
+}
+
+export function addOrGetCosApkItem(
+  originalName: string,
+  options: {
+    storage: ApkLibraryStorage;
+    size: number;
+  },
+): { item: ApkLibraryItem; created: boolean } {
+  const items = readItems();
+  const displayName = safeFilename(normalizeOriginalName(originalName || 'uploaded.apk'));
+  const createdAt = nowIso();
+  const key = options.storage.key || randomUUID();
+  const digest = `cos:${key}`;
+
+  for (const item of items) {
+    if (item.sha256 === digest) {
+      item.lastUsedAt = createdAt;
+      item.name = displayName;
+      item.size = options.size;
+      item.storage = options.storage;
+      writeItems(items);
+      return { item, created: false };
+    }
+  }
+
+  const fileId = randomUUID();
+  const suffix = path.extname(displayName) || '.apk';
+  const storedName = `${fileId}${suffix.toLowerCase()}`;
+  const storePath = path.join(APK_LIBRARY_DIR, storedName);
+  const item: ApkLibraryItem = {
+    id: fileId,
+    name: displayName,
+    storedName,
+    filePath: storePath,
+    storage: options.storage,
+    size: options.size,
+    sha256: digest,
+    createdAt,
+    lastUsedAt: createdAt,
+    parsedReady: false,
+    decodeCachePath: null,
+    apkInfo: null,
+  };
+
+  items.push(item);
+  writeItems(items);
+  console.info('[APK-REBUILDER] standard apk registered from cos', {
+    itemId: item.id,
+    fileName: displayName,
+    size: options.size,
+    key,
   });
   return { item, created: true };
 }

@@ -2,6 +2,7 @@ import { escapeHtml, formatBytes } from '../state';
 import { t } from '../i18n';
 import { showAlert, showConfirm } from '../host/notify';
 import { normalizeHostErrorMessage } from '../host/errors';
+import { uploadStandardApkToCos } from '../host/cos-standard-upload';
 import type { HostBridgeApi } from '../types';
 
 type StandardPackageItem = {
@@ -419,12 +420,49 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     }
     const form = new FormData();
     form.append('apk', file);
-    console.info('[APK-REBUILDER] call /plugin/admin/upload-standard');
     setUploadBusy(true);
     try {
-      await host.ensureInit();
-      const result = await uploadStandardWithProgress(file, form);
-      setUploadText(t('standard.uploadDone', { elapsed: formatDuration(result.elapsedMs) }));
+      try {
+        const startedAt = Date.now();
+        console.info('[APK-REBUILDER] upload standard apk via COS');
+        setUploadText(t('standard.cosPreparing'));
+        const cosResult = await uploadStandardApkToCos(host, file, (percent) => {
+          const elapsedMs = Date.now() - startedAt;
+          setUploadText(t('standard.cosUploading', {
+            percent: Math.round(percent * 100),
+            elapsed: formatDuration(elapsedMs),
+            speed: formatSpeed(file.size * percent, elapsedMs),
+          }));
+        });
+        setUploadText(t('standard.cosRegistering'));
+        const res = await host.authFetch('/plugin/admin/register-standard-cos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            originalName: file.name,
+            size: file.size,
+            mimeType: cosResult.mimeType,
+            cos: {
+              bucket: cosResult.bucket,
+              region: cosResult.region,
+              key: cosResult.key,
+            },
+          }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(
+            normalizeHostErrorMessage(json?.error?.message || json?.message || `登记失败(${res.status})`, t, 'standard.uploadFailed')
+          );
+        }
+        setUploadText(t('standard.uploadDone', { elapsed: formatDuration(Date.now() - startedAt) }));
+      } catch (cosError) {
+        console.warn('[APK-REBUILDER] COS standard upload failed, fallback to plugin upload', cosError);
+        console.info('[APK-REBUILDER] call /plugin/admin/upload-standard');
+        await host.ensureInit();
+        const result = await uploadStandardWithProgress(file, form);
+        setUploadText(t('standard.uploadDone', { elapsed: formatDuration(result.elapsedMs) }));
+      }
       setUploadBusy(false);
       await load();
     } finally {
