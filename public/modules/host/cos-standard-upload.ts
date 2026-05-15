@@ -135,10 +135,6 @@ export async function uploadStandardApkToCos(
     Region: region,
     Key: key,
     Body: file,
-    SliceSize: 8 * 1024 * 1024,
-    ChunkSize: 8 * 1024 * 1024,
-    AsyncLimit: 3,
-    UploadCheckContentMd5: false,
     ContentType: mimeType,
     ContentDisposition: `attachment; filename="${safeDispositionFilename(file.name)}"`,
     Metadata: {
