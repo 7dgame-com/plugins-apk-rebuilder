@@ -131,35 +131,48 @@ function expectedSizeFromBody(body: Record<string, unknown>): number {
   return Math.floor(size);
 }
 
-const metadataParseItemIds = new Set<string>();
-const METADATA_PARSE_DEDUPE_MS = 120_000;
+type MetadataParseState = NonNullable<ApkLibraryItem['parseStatus']>;
+
+const metadataParseStates = new Map<string, MetadataParseState>();
+const metadataParseTaskIds = new Map<string, string>();
+
+function setMetadataParseState(itemId: string, state: MetadataParseState['state'], message?: string): void {
+  metadataParseStates.set(itemId, {
+    state,
+    message,
+    updatedAt: new Date().toISOString(),
+  });
+}
 
 function scheduleApkInfoParse(item: ApkLibraryItem): void {
-  if (item.apkInfo || metadataParseItemIds.has(item.id)) {
+  if (item.apkInfo || metadataParseStates.has(item.id)) {
     return;
   }
 
-  metadataParseItemIds.add(item.id);
-  const releaseTimer = setTimeout(() => metadataParseItemIds.delete(item.id), METADATA_PARSE_DEDUPE_MS);
-  releaseTimer.unref?.();
+  setMetadataParseState(item.id, 'queued');
 
   void Promise.resolve()
     .then(async () => {
       const latest = getApkItem(item.id);
       if (!latest || latest.apkInfo) {
+        metadataParseStates.delete(item.id);
         return;
       }
 
       if (!fs.existsSync(latest.filePath) && latest.storage?.type === 'cos') {
-        return;
+        setMetadataParseState(latest.id, 'restoring');
       }
 
       const { task, cacheHit } = await createTaskFromLibraryItem(latest, null);
+      metadataParseTaskIds.set(latest.id, task.id);
       if (cacheHit && task.decodedDir && task.apkInfo) {
         updateParseCache(latest.id, task.decodedDir, task.apkInfo);
+        metadataParseStates.delete(latest.id);
+        metadataParseTaskIds.delete(latest.id);
         return;
       }
 
+      setMetadataParseState(latest.id, 'parsing');
       await modQueue.add(
         'apk-metadata',
         { type: 'decompile', taskId: task.id },
@@ -167,8 +180,7 @@ function scheduleApkInfoParse(item: ApkLibraryItem): void {
       );
     })
     .catch((error) => {
-      metadataParseItemIds.delete(item.id);
-      clearTimeout(releaseTimer);
+      setMetadataParseState(item.id, 'failed', error instanceof Error ? error.message : String(error));
       console.warn('[APK-REBUILDER] standard package metadata parse enqueue failed', {
         itemId: item.id,
         name: item.name,
@@ -180,7 +192,20 @@ function scheduleApkInfoParse(item: ApkLibraryItem): void {
 function listApkItemsWithInfo(): ApkLibraryItem[] {
   const items = listApkItems();
   for (const item of items) {
+    const parseTaskId = metadataParseTaskIds.get(item.id);
+    const parseTask = parseTaskId ? getTask(parseTaskId) : null;
+    if (!item.apkInfo && parseTask?.status === 'failed') {
+      setMetadataParseState(item.id, 'failed', parseTask.error || 'Metadata parse failed');
+      metadataParseTaskIds.delete(item.id);
+    }
     scheduleApkInfoParse(item);
+    if (item.apkInfo) {
+      item.parseStatus = { state: 'ready', updatedAt: item.lastUsedAt };
+      metadataParseStates.delete(item.id);
+      metadataParseTaskIds.delete(item.id);
+    } else {
+      item.parseStatus = metadataParseStates.get(item.id) || { state: 'idle' };
+    }
   }
   return items;
 }
@@ -438,6 +463,7 @@ export function createPluginRouter(): Router {
       const size = expectedSizeFromBody(body);
       const storage = readCosStorage(body);
       const { item, created } = addOrGetCosApkItem(originalName, { storage, size });
+      scheduleApkInfoParse(item);
       console.info('[APK-REBUILDER] standard apk cos upload registered', {
         itemId: item.id,
         fileName: item.name,

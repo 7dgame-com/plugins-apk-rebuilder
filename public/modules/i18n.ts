@@ -206,6 +206,10 @@ const DICTIONARY = {
     'standard.originalInfo': '选中包原包信息',
     'standard.noOriginalInfo': '暂无原包信息',
     'standard.infoPending': '正在解析原包信息，请稍候...',
+    'standard.infoQueued': '原包信息已进入后台解析队列...',
+    'standard.infoRestoring': '正在从云端缓存标准包，完成后自动解析...',
+    'standard.infoParsing': '正在后台解析原包信息...',
+    'standard.infoFailed': '原包信息解析失败',
 
     'workflow.info': '先改应用显示信息',
     'workflow.scene': '再选择要打开的场景',
@@ -433,6 +437,10 @@ const DICTIONARY = {
     'standard.originalInfo': 'Selected package original info',
     'standard.noOriginalInfo': 'No original info yet',
     'standard.infoPending': 'Parsing original package info...',
+    'standard.infoQueued': 'Original info is queued for background parsing...',
+    'standard.infoRestoring': 'Caching the cloud package before parsing...',
+    'standard.infoParsing': 'Parsing original package info in the background...',
+    'standard.infoFailed': 'Failed to parse original package info',
 
     'workflow.info': 'Edit app display info',
     'workflow.scene': 'Choose the scene to open',

@@ -12,6 +12,11 @@ type StandardPackageItem = {
   size?: string | number;
   createdAt?: string;
   parsedReady?: boolean;
+  parseStatus?: {
+    state?: 'idle' | 'restoring' | 'queued' | 'parsing' | 'ready' | 'failed';
+    message?: string;
+    updatedAt?: string;
+  } | null;
   apkInfo?: {
     appName?: string | null;
     packageName?: string | null;
@@ -100,7 +105,7 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
   const maxRefreshAttempts = 20;
 
   function hasPendingInfo(): boolean {
-    return state.items.some((item) => !item.apkInfo);
+    return state.items.some((item) => !item.apkInfo && item.parseStatus?.state !== 'failed');
   }
 
   function clearRefreshTimer(): void {
@@ -262,9 +267,22 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     const apkInfo = selected.apkInfo || null;
     info.style.display = 'block';
     if (!apkInfo) {
+      const parseState = selected.parseStatus?.state || 'idle';
+      const statusKey = parseState === 'restoring'
+        ? 'standard.infoRestoring'
+        : parseState === 'queued'
+          ? 'standard.infoQueued'
+          : parseState === 'parsing'
+            ? 'standard.infoParsing'
+            : parseState === 'failed'
+              ? 'standard.infoFailed'
+              : 'standard.infoPending';
+      const message = parseState === 'failed' && selected.parseStatus?.message
+        ? `${t(statusKey)}: ${selected.parseStatus.message}`
+        : t(statusKey);
       info.innerHTML = `
         <div class="standard-package-info-title">${t('standard.originalInfo')}</div>
-        <div class="standard-package-info-empty">${t('standard.infoPending')}</div>
+        <div class="standard-package-info-empty">${escapeHtml(message)}</div>
       `;
       return;
     }

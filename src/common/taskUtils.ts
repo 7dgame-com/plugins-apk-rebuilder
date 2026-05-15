@@ -71,7 +71,17 @@ export async function createTaskFromLibraryItem(
 ): Promise<{ task: Task; cacheHit: boolean }> {
   if (!fs.existsSync(item.filePath)) {
     if (item.storage?.type === 'cos') {
+      const startedAt = Date.now();
+      console.info('[APK-REBUILDER] restoring standard apk before task creation', {
+        itemId: item.id,
+        name: item.name,
+        key: item.storage.key,
+      });
       await restoreCosItemToLocal(item);
+      console.info('[APK-REBUILDER] restored standard apk before task creation', {
+        itemId: item.id,
+        durationMs: Date.now() - startedAt,
+      });
     } else {
       throw new Error('APK file is missing from storage');
     }

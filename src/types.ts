@@ -91,6 +91,11 @@ export interface ApkLibraryItem {
   createdAt: string;
   lastUsedAt: string;
   parsedReady: boolean;
+  parseStatus?: {
+    state: 'idle' | 'restoring' | 'queued' | 'parsing' | 'ready' | 'failed';
+    message?: string;
+    updatedAt?: string;
+  } | null;
   decodeCachePath?: string | null;
   apkInfo?: ApkInfo | null;
 }
