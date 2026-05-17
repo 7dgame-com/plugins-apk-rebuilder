@@ -34,6 +34,8 @@
       "order": 10,
       "allowedOrigin": "http://localhost:3007",
       "allowedHostOrigins": [
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
         "http://127.0.0.1:5173",
         "http://localhost:5173",
         "http://127.0.0.1:3000",

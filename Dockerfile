@@ -25,10 +25,21 @@ ARG ANDROID_BUILD_TOOLS_URL=https://dl.google.com/android/repository/build-tools
 COPY package.json package-lock.json tsconfig.json tsconfig.frontend.json vite.config.mjs ./
 RUN npm ci
 
+COPY tooling-cache/ /opt/tooling-cache/
 RUN set -eux; \
   mkdir -p /opt/tooling; \
-  curl -fsSL --connect-timeout 20 --max-time 300 --retry 3 --retry-delay 2 "${APKTOOL_JAR_URL}" -o /opt/tooling/apktool.jar; \
-  curl -fsSL --connect-timeout 20 --max-time 600 --retry 3 --retry-delay 2 "${ANDROID_BUILD_TOOLS_URL}" -o /opt/tooling/build-tools.zip
+  if [ -s /opt/tooling-cache/apktool.jar ]; then \
+    cp /opt/tooling-cache/apktool.jar /opt/tooling/apktool.jar; \
+  else \
+    curl -fsSL --connect-timeout 20 --max-time 300 --retry 5 --retry-delay 2 --retry-all-errors "${APKTOOL_JAR_URL}" -o /opt/tooling/apktool.jar; \
+  fi; \
+  if [ -s /opt/tooling-cache/build-tools.zip ]; then \
+    cp /opt/tooling-cache/build-tools.zip /opt/tooling/build-tools.zip; \
+  else \
+    curl -fsSL --connect-timeout 20 --max-time 600 --retry 5 --retry-delay 2 --retry-all-errors "${ANDROID_BUILD_TOOLS_URL}" -o /opt/tooling/build-tools.zip; \
+  fi; \
+  test -s /opt/tooling/apktool.jar; \
+  test -s /opt/tooling/build-tools.zip
 
 COPY src ./src
 COPY public ./public
