@@ -147,7 +147,7 @@ function buildUi(): void {
       showChangeCount: false,
       title: t('pkg.title'),
     });
-    renderSceneConfigSection(sceneLane);
+    renderSceneConfigSection(sceneLane, { allowManualSceneId: permissions.canAdmin() });
     renderSubmitSection(submitLane);
   }
   renderIconEditorModal(document.body);
@@ -155,7 +155,7 @@ function buildUi(): void {
   const standardSection = canManageStandardPackage ? createStandardPackageSection({ host, canManage: canManageStandardPackage }) : null;
   const tools = canCheckTools ? createToolsCheck({ state, host }) : null;
   const iconModal = createIconEditor({ state, onIconChanged: () => setIcon('newIcon', 'newIconEmpty', state.iconPreviewUrl) });
-  const sceneSection = canRun ? createSceneConfigSection({ host, perPage: 10 }) : null;
+  const sceneSection = canRun ? createSceneConfigSection({ host, perPage: 10, allowManualSceneId: permissions.canAdmin() }) : null;
   const submitFlow = useSubmitFlow({
     host,
     getAppName: () => getAppNameInput()?.value.trim() || '',

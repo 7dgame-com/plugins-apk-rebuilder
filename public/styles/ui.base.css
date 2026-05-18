@@ -1116,6 +1116,88 @@ body.apk-entry .standard-package-actions button.btn-danger-soft:focus-visible {
   box-shadow: var(--btn-focus-ring);
 }
 
+.scene-manual {
+  display: grid;
+  gap: var(--spacing-xs);
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+}
+
+.scene-manual-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--spacing-sm);
+}
+
+.scene-manual label {
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+}
+
+.scene-manual-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--text-secondary) 10%, var(--bg-card));
+  color: var(--text-secondary);
+}
+
+.scene-manual-badge svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+}
+
+.scene-manual-control {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  min-height: 38px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.scene-manual-control:focus-within {
+  border-color: var(--primary-color);
+  box-shadow: var(--btn-focus-ring);
+}
+
+.scene-manual-control > span {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-bold);
+  border-right: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.scene-manual input[type="text"] {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.scene-manual input[type="text"]:focus {
+  box-shadow: none;
+}
+
 .scene-list {
   display: grid;
   gap: var(--spacing-xs);

@@ -2,13 +2,33 @@ import { t } from '../i18n';
 import { useSceneConfig } from '../composables/useSceneConfig';
 import type { HostBridgeApi, SceneListItem } from '../types';
 
-export function renderSceneConfigSection(container: HTMLElement): void {
+export function renderSceneConfigSection(
+  container: HTMLElement,
+  { allowManualSceneId = false }: { allowManualSceneId?: boolean } = {},
+): void {
   container.insertAdjacentHTML(
     'beforeend',
     `
     <div class="card" id="sectionSceneConfig">
       <div class="toolbar scene-toolbar">
         <strong>${t('scene.title')}</strong>
+        ${allowManualSceneId ? `
+        <div class="scene-manual">
+          <div class="scene-manual-head">
+            <label for="sceneManualId">${t('scene.manualLabel')}</label>
+            <span class="scene-manual-badge" title="${t('scene.manualBadge')}" aria-label="${t('scene.manualBadge')}">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="5" y="11" width="14" height="10" rx="2" />
+                <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+              </svg>
+            </span>
+          </div>
+          <div class="scene-manual-control">
+            <span aria-hidden="true">#</span>
+            <input id="sceneManualId" type="text" inputmode="numeric" placeholder="${t('scene.manualPlaceholder')}" />
+          </div>
+        </div>
+        ` : ''}
         <div class="scene-search">
           <input id="sceneSearch" type="text" placeholder="${t('scene.searchPlaceholder')}" />
           <button id="sceneSearchBtn" class="secondary">${t('scene.search')}</button>
@@ -28,7 +48,7 @@ export function renderSceneConfigSection(container: HTMLElement): void {
 }
 
 export function createSceneConfigSection(
-  { host, perPage = 10 }: { host?: HostBridgeApi; perPage?: number } = {}
+  { host, perPage = 10, allowManualSceneId = false }: { host?: HostBridgeApi; perPage?: number; allowManualSceneId?: boolean } = {}
 ) {
   const sceneConfig = useSceneConfig({ host, perPage });
   const { viewState } = sceneConfig;
@@ -46,6 +66,8 @@ export function createSceneConfigSection(
     document.getElementById('sceneNext') as HTMLButtonElement | null;
   const searchButtonEl = (): HTMLButtonElement | null =>
     document.getElementById('sceneSearchBtn') as HTMLButtonElement | null;
+  const manualInputEl = (): HTMLInputElement | null =>
+    document.getElementById('sceneManualId') as HTMLInputElement | null;
 
   function setPageInfo(): void {
     const el = pageInfoEl();
@@ -86,6 +108,19 @@ export function createSceneConfigSection(
       .join('');
   }
 
+  function setScene(id: string, name: string): void {
+    const input = sceneInput();
+    const nameInput = sceneNameInput();
+    if (input) {
+      input.value = id;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    if (nameInput) {
+      nameInput.value = name;
+      nameInput.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }
+
   async function load(page = viewState.currentPage, search = viewState.currentSearch): Promise<void> {
     if (!host?.hostFetch) {
       renderList([]);
@@ -112,17 +147,10 @@ export function createSceneConfigSection(
         const action = row.getAttribute('data-action');
         if (action !== 'select') return;
         const id = row.getAttribute('data-id') || '';
-        const input = sceneInput();
-        const nameInput = sceneNameInput();
         const item = viewState.lastItems.find((scene) => String(scene?.id ?? '') === String(id));
-        if (input) {
-          input.value = id;
-          input.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-        if (nameInput) {
-          nameInput.value = item?.name || t('scene.unnamed', { id });
-          nameInput.dispatchEvent(new Event('change', { bubbles: true }));
-        }
+        setScene(id, item?.name || t('scene.unnamed', { id }));
+        const manualInput = manualInputEl();
+        if (manualInput) manualInput.value = '';
         renderList(viewState.lastItems);
       });
     }
@@ -164,6 +192,30 @@ export function createSceneConfigSection(
         if (value === '' && viewState.currentSearch !== '') {
           void load(1, '');
         }
+      });
+    }
+
+    const manualInput = manualInputEl();
+    if (allowManualSceneId && manualInput) {
+      manualInput.addEventListener('input', () => {
+        const id = manualInput.value.trim();
+        if (!id) {
+          setScene('', '');
+          renderList(viewState.lastItems);
+          return;
+        }
+        setScene(id, t('scene.manualName', { id }));
+        renderList(viewState.lastItems);
+      });
+      manualInput.addEventListener('change', () => {
+        const id = manualInput.value.trim();
+        if (!id) {
+          setScene('', '');
+          renderList(viewState.lastItems);
+          return;
+        }
+        setScene(id, t('scene.manualName', { id }));
+        renderList(viewState.lastItems);
       });
     }
   }

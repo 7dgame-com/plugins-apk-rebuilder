@@ -40,6 +40,10 @@ export default defineComponent({
       type: Boolean,
       default: false,
     },
+    allowManualSceneId: {
+      type: Boolean,
+      default: false,
+    },
   },
   template: `
     <div class="apk-workflow" :data-lang-tick="langTick">
@@ -120,7 +124,7 @@ export default defineComponent({
         showChangeCount: false,
         title: t('pkg.title'),
       });
-      renderSceneConfigSection(sceneLane);
+      renderSceneConfigSection(sceneLane, { allowManualSceneId: props.allowManualSceneId });
       renderSubmitSection(submitLane);
       renderIconEditorModal(document.body);
       markSectionTitles();
@@ -130,7 +134,11 @@ export default defineComponent({
         state,
         onIconChanged: () => setIcon('newIcon', 'newIconEmpty', state.iconPreviewUrl),
       });
-      const sceneSection = createSceneConfigSection({ host: props.host, perPage: 10 });
+      const sceneSection = createSceneConfigSection({
+        host: props.host,
+        perPage: 10,
+        allowManualSceneId: props.allowManualSceneId,
+      });
       const submitFlow = useSubmitFlow({
         host: props.host,
         getAppName: () => getInput('appName')?.value.trim() || '',

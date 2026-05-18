@@ -110,6 +110,7 @@ const App = defineComponent({
             :key="currentRoute + '-' + langTick"
             :host="host"
             :can-manage-standard-package="canManage"
+            :allow-manual-scene-id="canManage"
           />
           <StandardPackagesView
             v-else
