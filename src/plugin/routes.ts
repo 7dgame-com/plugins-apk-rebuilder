@@ -1,6 +1,5 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response, NextFunction, raw } from 'express';
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
 import { randomUUID } from 'node:crypto';
 import multer from 'multer';
@@ -19,7 +18,16 @@ import {
   buildModPayload,
 } from './helpers';
 import { mapProgress, ensureUploadedArtifact, createTaskFromLibraryItem, createTaskFromArtifact } from '../common/taskUtils';
-import { addOrGetApkItemFromFile, addOrGetCosApkItem, deleteApkItem, getApkItem, listApkItems, updateParseCache, type ApkLibraryStorage } from '../apkLibrary';
+import {
+  addOrGetApkItemFromFile,
+  addPendingApkItemFromFile,
+  deleteApkItem,
+  finalizeApkItemHash,
+  getApkItem,
+  isApkItemHashPending,
+  listApkItems,
+  updateParseCache,
+} from '../apkLibrary';
 import { updateTask, logTask, getTask } from '../taskStore';
 import { fetchArtifactToLocal, getArtifact, uploadArtifact } from '../artifactService';
 import {
@@ -30,6 +38,14 @@ import {
 import { ARTIFACTS_DIR, MOD_UPLOAD_DIR, UPLOAD_DIR, X_ACCEL_REDIRECT_ENABLED } from '../config';
 import { getToolchainStatus } from '../toolchain';
 import type { ApkLibraryItem } from '../types';
+import {
+  cleanupExpiredUploadSessions,
+  completeUploadSession,
+  createUploadSession,
+  deleteUploadSession,
+  getUploadSession,
+  writeUploadChunk,
+} from '../uploadSessions';
 
 const upload = multer({ storage: multer.memoryStorage() });
 const uploadStandardApk = multer({
@@ -101,40 +117,11 @@ function principalPreview(principal: { userId: string | null; pluginId: string; 
   };
 }
 
-function readCosStorage(body: Record<string, unknown>): ApkLibraryStorage {
-  const cos = body['cos'];
-  if (!cos || typeof cos !== 'object' || Array.isArray(cos)) {
-    throw new Error('Missing COS storage info');
-  }
-  const value = cos as Record<string, unknown>;
-  const bucket = String(value['bucket'] || '').trim();
-  const region = String(value['region'] || '').trim();
-  const key = String(value['key'] || '').trim();
-  if (!bucket || !region || !key) {
-    throw new Error('Invalid COS storage info');
-  }
-  return {
-    type: 'cos',
-    bucket,
-    region,
-    key,
-    mimeType: String(body['mimeType'] || '').trim() || undefined,
-    importedAt: new Date().toISOString(),
-  };
-}
-
-function expectedSizeFromBody(body: Record<string, unknown>): number {
-  const size = Number(body['size']);
-  if (!Number.isFinite(size) || size <= 0) {
-    throw new Error('Invalid standard APK size');
-  }
-  return Math.floor(size);
-}
-
 type MetadataParseState = NonNullable<ApkLibraryItem['parseStatus']>;
 
 const metadataParseStates = new Map<string, MetadataParseState>();
 const metadataParseTaskIds = new Map<string, string>();
+const metadataHashingItems = new Set<string>();
 
 function setMetadataParseState(itemId: string, state: MetadataParseState['state'], message?: string): void {
   metadataParseStates.set(itemId, {
@@ -145,7 +132,7 @@ function setMetadataParseState(itemId: string, state: MetadataParseState['state'
 }
 
 function scheduleApkInfoParse(item: ApkLibraryItem): void {
-  if (item.apkInfo || metadataParseStates.has(item.id)) {
+  if (item.apkInfo || isApkItemHashPending(item) || metadataParseStates.has(item.id)) {
     return;
   }
 
@@ -157,10 +144,6 @@ function scheduleApkInfoParse(item: ApkLibraryItem): void {
       if (!latest || latest.apkInfo) {
         metadataParseStates.delete(item.id);
         return;
-      }
-
-      if (!fs.existsSync(latest.filePath) && latest.storage?.type === 'cos') {
-        setMetadataParseState(latest.id, 'restoring');
       }
 
       const { task, cacheHit } = await createTaskFromLibraryItem(latest, null);
@@ -189,6 +172,35 @@ function scheduleApkInfoParse(item: ApkLibraryItem): void {
     });
 }
 
+function scheduleApkHashAndInfo(item: ApkLibraryItem): void {
+  if (!isApkItemHashPending(item)) {
+    scheduleApkInfoParse(item);
+    return;
+  }
+  if (metadataHashingItems.has(item.id)) {
+    setMetadataParseState(item.id, 'checking');
+    return;
+  }
+
+  metadataHashingItems.add(item.id);
+  setMetadataParseState(item.id, 'checking');
+  void finalizeApkItemHash(item.id)
+    .then((latest) => {
+      metadataHashingItems.delete(item.id);
+      metadataParseStates.delete(item.id);
+      scheduleApkInfoParse(latest);
+    })
+    .catch((error) => {
+      metadataHashingItems.delete(item.id);
+      setMetadataParseState(item.id, 'failed', error instanceof Error ? error.message : String(error));
+      console.warn('[APK-REBUILDER] standard package hash failed', {
+        itemId: item.id,
+        name: item.name,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+}
+
 function listApkItemsWithInfo(): ApkLibraryItem[] {
   const items = listApkItems();
   for (const item of items) {
@@ -198,7 +210,7 @@ function listApkItemsWithInfo(): ApkLibraryItem[] {
       setMetadataParseState(item.id, 'failed', parseTask.error || 'Metadata parse failed');
       metadataParseTaskIds.delete(item.id);
     }
-    scheduleApkInfoParse(item);
+    scheduleApkHashAndInfo(item);
     if (item.apkInfo) {
       item.parseStatus = { state: 'ready', updatedAt: item.lastUsedAt };
       metadataParseStates.delete(item.id);
@@ -439,39 +451,117 @@ export function createPluginRouter(): Router {
     }
   });
 
-  router.get('/admin/tools', async (req: Request, res: Response) => {
+  router.post('/admin/upload-standard/sessions', async (req: Request, res: Response) => {
     try {
       getLoosePrincipal(req);
       await requireHostPermission(req, 'apk.rebuilder.admin');
-      ok(res, getToolchainStatus());
+      const body = (req.body || {}) as Record<string, unknown>;
+      const session = createUploadSession({
+        fileName: String(body['fileName'] || body['originalName'] || 'uploaded.apk'),
+        size: Number(body['size']),
+        mimeType: String(body['mimeType'] || '').trim() || undefined,
+        lastModified: Number(body['lastModified']),
+        chunkSize: Number(body['chunkSize']),
+      });
+      console.info('[APK-REBUILDER] standard apk upload session created', {
+        sessionId: session.sessionId,
+        fileName: session.fileName,
+        size: session.size,
+        chunkSize: session.chunkSize,
+        totalChunks: session.totalChunks,
+      });
+      ok(res, session);
     } catch (error) {
       const mapped = mapPluginError(error);
       fail(res, mapped.status, mapped.message, mapped.code);
     }
   });
 
-  router.post('/admin/register-standard-cos', async (req: Request, res: Response) => {
+  router.get('/admin/upload-standard/sessions/:sessionId', async (req: Request, res: Response) => {
     try {
       getLoosePrincipal(req);
       await requireHostPermission(req, 'apk.rebuilder.admin');
-      const body = (req.body || {}) as Record<string, unknown>;
-      const originalName = String(body['originalName'] || body['fileName'] || 'uploaded.apk');
-      if (!originalName.toLowerCase().endsWith('.apk')) {
-        fail(res, 400, 'Only APK files are supported', 'BAD_REQUEST');
-        return;
+      ok(res, getUploadSession(String(req.params.sessionId || '')));
+    } catch (error) {
+      const mapped = mapPluginError(error);
+      fail(res, mapped.status, mapped.message, mapped.code);
+    }
+  });
+
+  router.put(
+    '/admin/upload-standard/sessions/:sessionId/chunks/:index',
+    raw({ type: '*/*', limit: '32mb' }),
+    async (req: Request, res: Response) => {
+      try {
+        getLoosePrincipal(req);
+        await requireHostPermission(req, 'apk.rebuilder.admin');
+        const data = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+        if (!data.length) {
+          fail(res, 400, 'Missing upload chunk body', 'BAD_REQUEST');
+          return;
+        }
+        const session = writeUploadChunk(
+          String(req.params.sessionId || ''),
+          Number(req.params.index),
+          data,
+        );
+        ok(res, {
+          sessionId: session.sessionId,
+          uploadedChunks: session.uploadedChunks,
+        });
+      } catch (error) {
+        const mapped = mapPluginError(error);
+        fail(res, mapped.status, mapped.message, mapped.code);
       }
-      const size = expectedSizeFromBody(body);
-      const storage = readCosStorage(body);
-      const { item, created } = addOrGetCosApkItem(originalName, { storage, size });
-      scheduleApkInfoParse(item);
-      console.info('[APK-REBUILDER] standard apk cos upload registered', {
+    },
+  );
+
+  router.post('/admin/upload-standard/sessions/:sessionId/complete', async (req: Request, res: Response) => {
+    let tempPath = '';
+    try {
+      const handlerStartedAt = Date.now();
+      getLoosePrincipal(req);
+      await requireHostPermission(req, 'apk.rebuilder.admin');
+      const result = completeUploadSession(String(req.params.sessionId || ''));
+      tempPath = result.tempPath;
+      const item = addPendingApkItemFromFile(result.session.fileName, result.tempPath);
+      tempPath = '';
+      scheduleApkHashAndInfo(item);
+      deleteUploadSession(result.session.sessionId);
+      console.info('[APK-REBUILDER] standard apk chunk upload complete', {
+        sessionId: result.session.sessionId,
         itemId: item.id,
         fileName: item.name,
         size: item.size,
-        key: storage.key,
-        deduplicatedUpload: !created,
+        handlerDurationMs: Date.now() - handlerStartedAt,
       });
-      ok(res, { item, deduplicatedUpload: !created, importMode: 'cos-key' });
+      ok(res, { item, deduplicatedUpload: false, parseStatus: { state: 'checking' } });
+    } catch (error) {
+      if (tempPath) {
+        try { fs.rmSync(tempPath, { force: true }); } catch { /* ignore */ }
+      }
+      const mapped = mapPluginError(error);
+      fail(res, mapped.status, mapped.message, mapped.code);
+    }
+  });
+
+  router.delete('/admin/upload-standard/sessions/:sessionId', async (req: Request, res: Response) => {
+    try {
+      getLoosePrincipal(req);
+      await requireHostPermission(req, 'apk.rebuilder.admin');
+      deleteUploadSession(String(req.params.sessionId || ''));
+      ok(res, { deleted: true });
+    } catch (error) {
+      const mapped = mapPluginError(error);
+      fail(res, mapped.status, mapped.message, mapped.code);
+    }
+  });
+
+  router.get('/admin/tools', async (req: Request, res: Response) => {
+    try {
+      getLoosePrincipal(req);
+      await requireHostPermission(req, 'apk.rebuilder.admin');
+      ok(res, getToolchainStatus());
     } catch (error) {
       const mapped = mapPluginError(error);
       fail(res, mapped.status, mapped.message, mapped.code);
@@ -697,6 +787,8 @@ export function createPluginRouter(): Router {
     applyCors(req, res);
     res.status(204).end();
   });
+
+  cleanupExpiredUploadSessions();
 
   return router;
 }

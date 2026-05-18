@@ -13,6 +13,7 @@ import {
 } from './config';
 import { createPluginRouter } from './plugin/routes';
 import { ok, fail } from './common/response';
+import { cleanupGeneratedHistory } from './historyCleanup';
 
 import './taskQueue'; // Initialize BullMQ worker
 
@@ -34,6 +35,7 @@ const apiLimiter = rateLimit({
 app.use('/plugin', apiLimiter);
 
 ensureRuntimeDirs();
+cleanupGeneratedHistory();
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));

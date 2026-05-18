@@ -23,6 +23,12 @@ function buildArtifactUrl(host: HostBridgeApi, artifactId: string): string {
   return host.buildUrl(`/plugin/artifacts/${encodeURIComponent(artifactId)}?${params.toString()}`);
 }
 
+function getHistoryUserKey(host: HostBridgeApi): string {
+  const user = host.state.user || {};
+  const raw = user.id ?? user.userId ?? user.user_id ?? user.username ?? user.nickname ?? 'anonymous';
+  return String(raw || 'anonymous').trim() || 'anonymous';
+}
+
 export default defineComponent({
   name: 'WorkbenchView',
   props: {
@@ -139,6 +145,7 @@ export default defineComponent({
       });
       const submitSection = createSubmitSection({
         buildDownloadUrl: (artifactId: string) => buildArtifactUrl(props.host, artifactId),
+        getUserKey: () => getHistoryUserKey(props.host),
         onSubmit: (ui) => submitFlow.submit(ui),
       });
 

@@ -67,6 +67,11 @@ export function listTasks(): Task[] {
   return readTasks().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+export function replaceTasks(tasks: Task[]): Task[] {
+  writeTasks(tasks);
+  return tasks;
+}
+
 export function updateTask(task: Task): Task {
   task.updatedAt = nowIso();
   return saveTask(task);

@@ -79,10 +79,7 @@ export interface ApkLibraryItem {
   storedName: string;
   filePath: string;
   storage?: {
-    type: 'local' | 'cos';
-    bucket?: string;
-    region?: string;
-    key?: string;
+    type: 'local';
     mimeType?: string;
     importedAt?: string;
   } | null;
@@ -92,7 +89,7 @@ export interface ApkLibraryItem {
   lastUsedAt: string;
   parsedReady: boolean;
   parseStatus?: {
-    state: 'idle' | 'restoring' | 'queued' | 'parsing' | 'ready' | 'failed';
+    state: 'idle' | 'checking' | 'queued' | 'parsing' | 'ready' | 'failed';
     message?: string;
     updatedAt?: string;
   } | null;

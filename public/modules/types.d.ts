@@ -132,6 +132,7 @@ export interface SubmitRecord {
 
 export interface SubmitSectionDeps {
   buildDownloadUrl(artifactId: string): string;
+  getUserKey(): string;
   onSubmit(ui: {
     setStatus(text: string): void;
     setSubmitting(value: boolean): void;

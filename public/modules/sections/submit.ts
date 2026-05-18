@@ -5,6 +5,12 @@ import type { SubmitRecord, SubmitSectionDeps } from '../types';
 
 const STORAGE_KEY = 'apk-rebuilder-submit-records-v1';
 const RECORD_LIMIT = 3;
+const RECORD_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+type SubmitRecordStore = {
+  version: 2;
+  users: Record<string, SubmitRecord[]>;
+};
 
 export function renderSubmitSection(container: HTMLElement): void {
   container.insertAdjacentHTML(
@@ -58,10 +64,18 @@ function safeJsonParse(text: string | null): unknown {
   }
 }
 
-function readRecords(): SubmitRecord[] {
-  const raw = safeJsonParse(localStorage.getItem(STORAGE_KEY));
-  if (!Array.isArray(raw)) return [];
-  return raw
+function normalizeUserKey(value: string): string {
+  return String(value || 'anonymous').trim() || 'anonymous';
+}
+
+function isFreshRecord(record: SubmitRecord, now = Date.now()): boolean {
+  const createdAt = Date.parse(record.createdAt);
+  return Number.isFinite(createdAt) && now - createdAt <= RECORD_TTL_MS;
+}
+
+function normalizeRecords(value: unknown, now = Date.now()): SubmitRecord[] {
+  if (!Array.isArray(value)) return [];
+  return value
     .map((item): SubmitRecord | null => {
       if (!item || typeof item !== 'object') return null;
       const record = item as Record<string, unknown>;
@@ -73,11 +87,56 @@ function readRecords(): SubmitRecord[] {
       return { runId, artifactId, fileName, createdAt };
     })
     .filter((item): item is SubmitRecord => Boolean(item))
+    .filter((item) => isFreshRecord(item, now))
     .slice(0, RECORD_LIMIT);
 }
 
-function writeRecords(records: SubmitRecord[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records.slice(0, RECORD_LIMIT)));
+function readRecordStore(currentUserKey: string): SubmitRecordStore {
+  const userKey = normalizeUserKey(currentUserKey);
+  const now = Date.now();
+  const raw = safeJsonParse(localStorage.getItem(STORAGE_KEY));
+  if (Array.isArray(raw)) {
+    return {
+      version: 2,
+      users: {
+        [userKey]: normalizeRecords(raw, now),
+      },
+    };
+  }
+  const users: Record<string, SubmitRecord[]> = {};
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    const store = raw as Record<string, unknown>;
+    const rawUsers = store.users;
+    if (rawUsers && typeof rawUsers === 'object' && !Array.isArray(rawUsers)) {
+      Object.entries(rawUsers as Record<string, unknown>).forEach(([key, value]) => {
+        const records = normalizeRecords(value, now);
+        if (records.length) users[normalizeUserKey(key)] = records;
+      });
+    }
+  }
+  return { version: 2, users };
+}
+
+function writeRecordStore(store: SubmitRecordStore): void {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+}
+
+function readRecords(userKey: string): SubmitRecord[] {
+  const store = readRecordStore(userKey);
+  writeRecordStore(store);
+  return store.users[normalizeUserKey(userKey)] || [];
+}
+
+function writeRecords(userKey: string, records: SubmitRecord[]): void {
+  const store = readRecordStore(userKey);
+  const normalizedKey = normalizeUserKey(userKey);
+  const nextRecords = normalizeRecords(records);
+  if (nextRecords.length) {
+    store.users[normalizedKey] = nextRecords;
+  } else {
+    delete store.users[normalizedKey];
+  }
+  writeRecordStore(store);
 }
 
 function formatTime(value: string): string {
@@ -91,8 +150,12 @@ function formatTime(value: string): string {
   });
 }
 
-export function createSubmitSection({ buildDownloadUrl, onSubmit }: SubmitSectionDeps) {
+export function createSubmitSection({ buildDownloadUrl, getUserKey, onSubmit }: SubmitSectionDeps) {
   let currentResultArtifactId = '';
+
+  function currentUserKey(): string {
+    return normalizeUserKey(getUserKey());
+  }
 
   function getInputValue(id: string): string {
     return (document.getElementById(id) as HTMLInputElement | null)?.value.trim() || '';
@@ -149,7 +212,7 @@ export function createSubmitSection({ buildDownloadUrl, onSubmit }: SubmitSectio
   }
 
   function renderRecords(): void {
-    const records = readRecords().filter((record) => record.artifactId !== currentResultArtifactId);
+    const records = readRecords(currentUserKey()).filter((record) => record.artifactId !== currentResultArtifactId);
     const block = document.getElementById('submitRecordBlock');
     const list = document.getElementById('submitRecordList');
     if (!block || !list) return;
@@ -179,8 +242,9 @@ export function createSubmitSection({ buildDownloadUrl, onSubmit }: SubmitSectio
   }
 
   function addRecord(record: SubmitRecord): void {
-    const records = readRecords().filter((item) => item.artifactId !== record.artifactId && item.runId !== record.runId);
-    writeRecords([record, ...records]);
+    const userKey = currentUserKey();
+    const records = readRecords(userKey).filter((item) => item.artifactId !== record.artifactId && item.runId !== record.runId);
+    writeRecords(userKey, [record, ...records]);
     showResult(record);
     renderRecords();
   }

@@ -82,6 +82,7 @@ export const REDIS_PASSWORD = process.env['REDIS_PASSWORD'] || '';
 
 export const DATA_ROOT = path.join(process.cwd(), 'data');
 export const UPLOAD_DIR = path.join(DATA_ROOT, 'uploads');
+export const CHUNK_UPLOAD_DIR = path.join(UPLOAD_DIR, 'chunks');
 export const MOD_UPLOAD_DIR = path.join(DATA_ROOT, 'mod-uploads');
 export const WORK_DIR_ROOT = path.join(DATA_ROOT, 'work');
 export const APK_LIBRARY_DIR = path.join(DATA_ROOT, 'apk-library');
@@ -123,8 +124,6 @@ export const PLUGIN_NAME = PLUGIN_ID;
 export const PLUGIN_TOKEN_SECRET = process.env['PLUGIN_TOKEN_SECRET'] || '';
 export const MAIN_API_URL = process.env['MAIN_API_URL'] || process.env['HOST_API_BASE'] || '';
 export const HOST_API_BASE = MAIN_API_URL;
-export const COS_SECRET_ID = process.env['COS_SECRET_ID'] || process.env['SECRET_ID'] || '';
-export const COS_SECRET_KEY = process.env['COS_SECRET_KEY'] || process.env['SECRET_KEY'] || '';
 export const HOST_AUTH_TIMEOUT_MS = Number.parseInt(
   process.env['HOST_AUTH_TIMEOUT_MS'] || '5000',
   10,
@@ -163,6 +162,7 @@ export function ensureRuntimeDirs(): void {
   [
     DATA_ROOT,
     UPLOAD_DIR,
+    CHUNK_UPLOAD_DIR,
     MOD_UPLOAD_DIR,
     WORK_DIR_ROOT,
     APK_LIBRARY_DIR,

@@ -72,6 +72,12 @@ function buildArtifactUrl(artifactId: string): string {
   return host.buildUrl(`/plugin/artifacts/${encodeURIComponent(artifactId)}?${params.toString()}`);
 }
 
+function getSubmitHistoryUserKey(): string {
+  const user = host.state.user || {};
+  const raw = user.id ?? user.userId ?? user.user_id ?? user.username ?? user.nickname ?? 'anonymous';
+  return String(raw || 'anonymous').trim() || 'anonymous';
+}
+
 function getSceneIdInput(): HTMLInputElement | null {
   return document.getElementById('sceneId') as HTMLInputElement | null;
 }
@@ -166,6 +172,7 @@ function buildUi(): void {
   const submitSection = canRun
     ? createSubmitSection({
         buildDownloadUrl: buildArtifactUrl,
+        getUserKey: getSubmitHistoryUserKey,
         onSubmit: (ui) => submitFlow.submit(ui),
       })
     : null;

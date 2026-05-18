@@ -5,7 +5,7 @@ import { getApkItem, touchApkItem } from '../apkLibrary';
 import { createTask, updateTask, logTask } from '../taskStore';
 import { parseApkInfo } from '../manifestService';
 import { fetchArtifactToLocal, uploadArtifact } from '../artifactService';
-import { restoreCosItemToLocal } from '../cosStorage';
+import { cleanupGeneratedHistory } from '../historyCleanup';
 import { isValidPackageName, isValidVersionCode, normalizeRelPath, toSafeFileStem } from '../validators';
 
 // helpers that are shared between the main API and the plugin router
@@ -70,21 +70,7 @@ export async function createTaskFromLibraryItem(
   userId?: string | null,
 ): Promise<{ task: Task; cacheHit: boolean }> {
   if (!fs.existsSync(item.filePath)) {
-    if (item.storage?.type === 'cos') {
-      const startedAt = Date.now();
-      console.info('[APK-REBUILDER] restoring standard apk before task creation', {
-        itemId: item.id,
-        name: item.name,
-        key: item.storage.key,
-      });
-      await restoreCosItemToLocal(item);
-      console.info('[APK-REBUILDER] restored standard apk before task creation', {
-        itemId: item.id,
-        durationMs: Date.now() - startedAt,
-      });
-    } else {
-      throw new Error('APK file is missing from storage');
-    }
+    throw new Error('APK file is missing from storage');
   }
   const task = createTask(item.filePath, item.name || path.basename(item.filePath), item.id, userId);
   logTask(task, `Using APK from library: ${item.name || path.basename(item.filePath)} (id=${item.id})`);
@@ -133,7 +119,9 @@ export function ensureUploadedArtifact(task: Task): Task {
   });
   task.outputArtifactId = artifact.id;
   task.outputArtifactName = artifact.name;
-  return updateTask(task);
+  const updated = updateTask(task);
+  cleanupGeneratedHistory();
+  return updated;
 }
 
 export function mapProgress(task: Task): { stage: string; message: string } {

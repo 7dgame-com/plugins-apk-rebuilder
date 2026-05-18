@@ -2,7 +2,6 @@ import { escapeHtml, formatBytes } from '../state';
 import { t } from '../i18n';
 import { showAlert, showConfirm } from '../host/notify';
 import { normalizeHostErrorMessage } from '../host/errors';
-import { uploadStandardApkToCos } from '../host/cos-standard-upload';
 import type { HostBridgeApi } from '../types';
 
 type StandardPackageItem = {
@@ -13,7 +12,7 @@ type StandardPackageItem = {
   createdAt?: string;
   parsedReady?: boolean;
   parseStatus?: {
-    state?: 'idle' | 'restoring' | 'queued' | 'parsing' | 'ready' | 'failed';
+    state?: 'idle' | 'checking' | 'queued' | 'parsing' | 'ready' | 'failed';
     message?: string;
     updatedAt?: string;
   } | null;
@@ -43,6 +42,19 @@ type StandardPackageListData = {
     disabledIds?: string[];
   };
 };
+
+type UploadSession = {
+  sessionId: string;
+  fileName: string;
+  size: number;
+  chunkSize: number;
+  totalChunks: number;
+  uploadedChunks?: number[];
+};
+
+const fallbackChunkSize = 8 * 1024 * 1024;
+const uploadConcurrency = 3;
+const maxChunkRetries = 3;
 
 function formatDuration(ms: number): string {
   const seconds = Math.max(0, Math.floor(ms / 1000));
@@ -188,6 +200,173 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     });
   }
 
+  function uploadSessionKey(file: File): string {
+    return `apk-rebuilder:standard-upload:${file.name}:${file.size}:${file.lastModified}`;
+  }
+
+  function chunkByteSize(file: File, chunkSize: number, index: number): number {
+    const start = index * chunkSize;
+    return Math.max(0, Math.min(chunkSize, file.size - start));
+  }
+
+  function sumProgress(progress: number[]): number {
+    return progress.reduce((total, value) => total + Math.max(0, value || 0), 0);
+  }
+
+  async function parseSessionResponse(res: Response): Promise<UploadSession> {
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(normalizeHostErrorMessage(json?.error?.message || json?.message || `上传失败(${res.status})`, t, 'standard.uploadFailed'));
+    }
+    return (json?.data || json) as UploadSession;
+  }
+
+  async function loadStoredSession(file: File): Promise<UploadSession | null> {
+    const key = uploadSessionKey(file);
+    const sessionId = window.localStorage.getItem(key);
+    if (!sessionId) return null;
+    const res = await host.authFetch(`/plugin/admin/upload-standard/sessions/${encodeURIComponent(sessionId)}`);
+    if (res.status === 404 || res.status === 410) {
+      window.localStorage.removeItem(key);
+      return null;
+    }
+    return parseSessionResponse(res);
+  }
+
+  async function createSession(file: File): Promise<UploadSession> {
+    const restored = await loadStoredSession(file).catch(() => null);
+    if (restored && restored.size === file.size) {
+      return restored;
+    }
+    const res = await host.authFetch('/plugin/admin/upload-standard/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fileName: file.name,
+        size: file.size,
+        mimeType: file.type || 'application/vnd.android.package-archive',
+        lastModified: file.lastModified,
+        chunkSize: fallbackChunkSize,
+      }),
+    });
+    const session = await parseSessionResponse(res);
+    window.localStorage.setItem(uploadSessionKey(file), session.sessionId);
+    return session;
+  }
+
+  function uploadChunk(
+    session: UploadSession,
+    file: File,
+    index: number,
+    progress: number[],
+    startedAt: number,
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      const start = index * session.chunkSize;
+      const end = Math.min(file.size, start + session.chunkSize);
+      const blob = file.slice(start, end);
+      xhr.open('PUT', host.buildUrl(`/plugin/admin/upload-standard/sessions/${encodeURIComponent(session.sessionId)}/chunks/${index}`));
+      xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+      if (host.state.token) {
+        xhr.setRequestHeader('authorization', `Bearer ${host.state.token}`);
+      }
+      xhr.upload.onprogress = (event) => {
+        progress[index] = event.loaded || 0;
+        const elapsedMs = Date.now() - startedAt;
+        const loaded = sumProgress(progress);
+        const percent = file.size > 0 ? Math.max(0, Math.min(100, Math.round((loaded / file.size) * 100))) : 0;
+        setUploadText(t('standard.uploadProgress', {
+          percent,
+          elapsed: formatDuration(elapsedMs),
+          speed: formatSpeed(loaded, elapsedMs),
+        }));
+      };
+      xhr.onerror = () => reject(new Error(t('standard.uploadFailed')));
+      xhr.ontimeout = () => reject(new Error(t('standard.uploadFailed')));
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          progress[index] = blob.size;
+          resolve();
+          return;
+        }
+        let json: any = {};
+        try {
+          json = JSON.parse(xhr.responseText || '{}');
+        } catch {
+          json = {};
+        }
+        reject(new Error(normalizeHostErrorMessage(json?.error?.message || json?.message || `上传失败(${xhr.status})`, t, 'standard.uploadFailed')));
+      };
+      xhr.send(blob);
+    });
+  }
+
+  async function uploadChunkWithRetry(
+    session: UploadSession,
+    file: File,
+    index: number,
+    progress: number[],
+    startedAt: number,
+  ): Promise<void> {
+    let lastError: unknown = null;
+    for (let attempt = 1; attempt <= maxChunkRetries; attempt += 1) {
+      try {
+        await uploadChunk(session, file, index, progress, startedAt);
+        return;
+      } catch (error) {
+        lastError = error;
+        progress[index] = 0;
+        if (attempt < maxChunkRetries) {
+          await new Promise(resolve => setTimeout(resolve, attempt * 800));
+        }
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error(t('standard.uploadFailed'));
+  }
+
+  async function uploadStandardChunked(file: File): Promise<{ elapsedMs: number }> {
+    await host.ensureInit();
+    const startedAt = Date.now();
+    const session = await createSession(file);
+    const uploaded = new Set(session.uploadedChunks || []);
+    const progress = Array.from({ length: session.totalChunks }, (_value, index) => (
+      uploaded.has(index) ? chunkByteSize(file, session.chunkSize, index) : 0
+    ));
+    const pending = Array.from({ length: session.totalChunks }, (_value, index) => index)
+      .filter((index) => !uploaded.has(index));
+
+    if (uploaded.size > 0) {
+      const loaded = sumProgress(progress);
+      setUploadText(t('standard.uploadProgress', {
+        percent: file.size > 0 ? Math.round((loaded / file.size) * 100) : 0,
+        elapsed: formatDuration(Date.now() - startedAt),
+        speed: formatSpeed(loaded, Date.now() - startedAt),
+      }));
+    }
+
+    let cursor = 0;
+    const worker = async (): Promise<void> => {
+      while (cursor < pending.length) {
+        const index = pending[cursor];
+        cursor += 1;
+        await uploadChunkWithRetry(session, file, index, progress, startedAt);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(uploadConcurrency, pending.length) }, () => worker()));
+
+    setUploadText(t('standard.uploadCompleting'));
+    const res = await host.authFetch(`/plugin/admin/upload-standard/sessions/${encodeURIComponent(session.sessionId)}/complete`, {
+      method: 'POST',
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(normalizeHostErrorMessage(json?.error?.message || json?.message || `上传失败(${res.status})`, t, 'standard.uploadFailed'));
+    }
+    window.localStorage.removeItem(uploadSessionKey(file));
+    return { elapsedMs: Date.now() - startedAt };
+  }
+
   function normalizeDisplayName(name: string | undefined): string {
     if (!name) return '';
     const value = String(name);
@@ -268,8 +447,8 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     info.style.display = 'block';
     if (!apkInfo) {
       const parseState = selected.parseStatus?.state || 'idle';
-      const statusKey = parseState === 'restoring'
-        ? 'standard.infoRestoring'
+      const statusKey = parseState === 'checking'
+        ? 'standard.infoChecking'
         : parseState === 'queued'
           ? 'standard.infoQueued'
           : parseState === 'parsing'
@@ -436,48 +615,18 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
       await showAlert(t('standard.onlyApk'));
       return;
     }
-    const form = new FormData();
-    form.append('apk', file);
     setUploadBusy(true);
     try {
       try {
-        const startedAt = Date.now();
-        console.info('[APK-REBUILDER] upload standard apk via COS');
-        setUploadText(t('standard.cosPreparing'));
-        const cosResult = await uploadStandardApkToCos(host, file, (percent) => {
-          const elapsedMs = Date.now() - startedAt;
-          setUploadText(t('standard.cosUploading', {
-            percent: Math.round(percent * 100),
-            elapsed: formatDuration(elapsedMs),
-            speed: formatSpeed(file.size * percent, elapsedMs),
-          }));
-        });
-        setUploadText(t('standard.cosRegistering'));
-        const res = await host.authFetch('/plugin/admin/register-standard-cos', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            originalName: file.name,
-            size: file.size,
-            mimeType: cosResult.mimeType,
-            cos: {
-              bucket: cosResult.bucket,
-              region: cosResult.region,
-              key: cosResult.key,
-            },
-          }),
-        });
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(
-            normalizeHostErrorMessage(json?.error?.message || json?.message || `登记失败(${res.status})`, t, 'standard.uploadFailed')
-          );
-        }
-        setUploadText(t('standard.uploadDone', { elapsed: formatDuration(Date.now() - startedAt) }));
-      } catch (cosError) {
-        console.warn('[APK-REBUILDER] COS standard upload failed, fallback to plugin upload', cosError);
+        console.info('[APK-REBUILDER] upload standard apk via chunk session');
+        const result = await uploadStandardChunked(file);
+        setUploadText(t('standard.uploadDone', { elapsed: formatDuration(result.elapsedMs) }));
+      } catch (chunkError) {
+        console.warn('[APK-REBUILDER] chunk standard upload failed, fallback to plugin upload', chunkError);
         console.info('[APK-REBUILDER] call /plugin/admin/upload-standard');
         await host.ensureInit();
+        const form = new FormData();
+        form.append('apk', file);
         const result = await uploadStandardWithProgress(file, form);
         setUploadText(t('standard.uploadDone', { elapsed: formatDuration(result.elapsedMs) }));
       }

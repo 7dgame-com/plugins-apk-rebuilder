@@ -13,6 +13,10 @@ type ArtifactRecord = {
   mimeType: string;
   createdAt: string;
   sourceRunId?: string | null;
+  storage?: {
+    type: 'local';
+    uploadError?: string;
+  } | null;
 };
 
 type UploadArtifactOptions = {
@@ -50,6 +54,22 @@ function saveArtifact(record: ArtifactRecord): ArtifactRecord {
 export function getArtifact(artifactId: string): ArtifactRecord | undefined {
   const records = readArtifactIndex();
   return records.find(item => item.id === artifactId);
+}
+
+export function deleteArtifact(artifactId: string): boolean {
+  const records = readArtifactIndex();
+  const index = records.findIndex(item => item.id === artifactId);
+  if (index < 0) return false;
+  const [artifact] = records.splice(index, 1);
+  writeArtifactIndex(records);
+  try {
+    if (artifact.filePath && fs.existsSync(artifact.filePath)) {
+      fs.rmSync(artifact.filePath, { force: true });
+    }
+  } catch {
+    // ignore artifact cleanup errors
+  }
+  return true;
 }
 
 export function fetchArtifactToLocal(artifactId: string): string {
@@ -94,6 +114,7 @@ export function uploadArtifact(localPath: string, options: UploadArtifactOptions
     mimeType: options.mimeType || 'application/octet-stream',
     createdAt: nowIso(),
     sourceRunId: options.sourceRunId || null,
+    storage: { type: 'local' },
   };
   const saved = saveArtifact(record);
   console.info('[APK-REBUILDER] artifact stored', {
