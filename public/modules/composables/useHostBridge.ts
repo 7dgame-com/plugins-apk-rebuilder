@@ -13,7 +13,6 @@ export function useHostBridge(): HostBridgeApi {
   const log = (...args: unknown[]) => {
     if (debug) console.info('[APK-REBUILDER]', ...args);
   };
-  const logAlways = (...args: unknown[]) => console.info('[APK-REBUILDER]', ...args);
 
   const state: HostBridgeState = {
     token: '',
@@ -60,13 +59,13 @@ export function useHostBridge(): HostBridgeApi {
     return new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => {
         if (initResolved) return;
-          state.lastInitError = 'INIT_TIMEOUT';
-          logAlways('INIT wait timeout (blocked)', {
-            timeout,
-            parentOrigin,
-            hasToken: Boolean(state.token),
-          });
-          reject(createHostError('INIT_TIMEOUT', 'Host INIT timeout'));
+        state.lastInitError = 'INIT_TIMEOUT';
+        log('INIT wait timeout (blocked)', {
+          timeout,
+          parentOrigin,
+          hasToken: Boolean(state.token),
+        });
+        reject(createHostError('INIT_TIMEOUT', 'Host INIT timeout'));
       }, timeout);
 
       initReady.then(
@@ -89,7 +88,7 @@ export function useHostBridge(): HostBridgeApi {
     await ensureInit(timeout);
     if (!state.token) {
       state.lastInitError = 'MISSING_HOST_TOKEN';
-      logAlways('INIT completed without host token', {
+      log('INIT completed without host token', {
         parentOrigin,
         roles: state.roles,
       });
@@ -125,14 +124,14 @@ export function useHostBridge(): HostBridgeApi {
       }
     }
 
-    logAlways('INIT received', {
+    log('INIT received', {
       token: state.token ? `${state.token.slice(0, 6)}...` : '',
       roles: state.roles,
       user: state.user,
       hostApiBase: HOST_API_BASE,
     });
     if (!state.token) {
-      logAlways('WARN: INIT token is empty');
+      log('WARN: INIT token is empty');
     }
     if (!initResolved) {
       initResolved = true;
@@ -141,7 +140,7 @@ export function useHostBridge(): HostBridgeApi {
   }
 
   function sendPluginReady(): void {
-    logAlways('postMessage -> PLUGIN_READY', { origin: parentOrigin });
+    log('postMessage -> PLUGIN_READY', { origin: parentOrigin });
     postToParent('PLUGIN_READY');
   }
 
@@ -166,9 +165,8 @@ export function useHostBridge(): HostBridgeApi {
     };
     const contentType = res.headers?.get?.('content-type') || '';
     if (contentType) info.contentType = contentType;
-    logAlways(`${label} response`, info);
-
     if (!debug) return;
+    log(`${label} response`, info);
     try {
       const clone = res.clone();
       const text = await clone.text();
@@ -190,7 +188,7 @@ export function useHostBridge(): HostBridgeApi {
           settled = true;
           clearTimeout(timer);
           window.removeEventListener('message', onMessage);
-          logAlways('TOKEN_UPDATE received (refresh)', {
+          log('TOKEN_UPDATE received (refresh)', {
             token: payload.token ? `${String(payload.token).slice(0, 6)}...` : '',
           });
           resolve({ token: payload.token });
@@ -201,7 +199,7 @@ export function useHostBridge(): HostBridgeApi {
         if (settled) return;
         settled = true;
         window.removeEventListener('message', onMessage);
-        logAlways('TOKEN_REFRESH_REQUEST timeout', {
+        log('TOKEN_REFRESH_REQUEST timeout', {
           timeout,
           parentOrigin,
         });
@@ -209,7 +207,7 @@ export function useHostBridge(): HostBridgeApi {
       }, timeout);
 
       window.addEventListener('message', onMessage);
-      logAlways('TOKEN_REFRESH_REQUEST -> parent');
+      log('TOKEN_REFRESH_REQUEST -> parent');
       postToParent('TOKEN_REFRESH_REQUEST');
     });
   }
@@ -218,7 +216,7 @@ export function useHostBridge(): HostBridgeApi {
     await ensureInit();
     const headers = new Headers(options.headers || {});
     if (state.token) headers.set('authorization', `Bearer ${state.token}`);
-    logAlways('authFetch', {
+    log('authFetch', {
       method: String(options.method || 'GET').toUpperCase(),
       path: String(path),
       token: !!state.token,
@@ -229,7 +227,7 @@ export function useHostBridge(): HostBridgeApi {
       res = await fetch(buildUrl(path), { ...options, headers });
       await logResponse('authFetch', res);
     } catch (err) {
-      logAlways('authFetch error', { path: String(path), error: String(err) });
+      log('authFetch error', { path: String(path), error: String(err) });
       throw err;
     }
     if (res.status !== 401) return res;
@@ -248,7 +246,7 @@ export function useHostBridge(): HostBridgeApi {
       await logResponse('authFetch retry', retryRes);
       return retryRes;
     } catch (err) {
-      logAlways('authFetch retry error', { path: String(path), error: String(err) });
+      log('authFetch retry error', { path: String(path), error: String(err) });
       throw err;
     }
   }
@@ -257,7 +255,7 @@ export function useHostBridge(): HostBridgeApi {
     await ensureInit();
     const headers = new Headers(options.headers || {});
     if (state.token) headers.set('authorization', `Bearer ${state.token}`);
-    logAlways('hostFetch', {
+    log('hostFetch', {
       method: String(options.method || 'GET').toUpperCase(),
       path: String(path),
       token: !!state.token,
@@ -269,7 +267,7 @@ export function useHostBridge(): HostBridgeApi {
       res = await fetch(buildHostUrl(path), { ...options, headers });
       await logResponse('hostFetch', res);
     } catch (err) {
-      logAlways('hostFetch error', { path: String(path), error: String(err) });
+      log('hostFetch error', { path: String(path), error: String(err) });
       throw err;
     }
     if (res.status !== 401) return res;
@@ -288,7 +286,7 @@ export function useHostBridge(): HostBridgeApi {
       await logResponse('hostFetch retry', retryRes);
       return retryRes;
     } catch (err) {
-      logAlways('hostFetch retry error', { path: String(path), error: String(err) });
+      log('hostFetch retry error', { path: String(path), error: String(err) });
       throw err;
     }
   }
@@ -308,7 +306,7 @@ export function useHostBridge(): HostBridgeApi {
     if (event.origin) parentOrigin = event.origin;
 
     if (msg.type === 'INIT' && msg.payload) {
-      logAlways('postMessage <- INIT', { origin: event.origin });
+      log('postMessage <- INIT', { origin: event.origin });
       applyInit(msg.payload);
       applyThemeSettings({
         theme: msg.payload.config?.theme,
@@ -320,23 +318,23 @@ export function useHostBridge(): HostBridgeApi {
     }
     if (msg.type === 'TOKEN_UPDATE' && msg.payload) {
       if (msg.payload.token) state.token = String(msg.payload.token).trim();
-      logAlways('TOKEN_UPDATE', { token: state.token ? `${state.token.slice(0, 6)}...` : '' });
+      log('TOKEN_UPDATE', { token: state.token ? `${state.token.slice(0, 6)}...` : '' });
     }
     if (msg.type === 'LANG_CHANGE' && msg.payload) {
       applyThemeSettings({
         language: msg.payload.language || msg.payload.config?.language,
         lang: msg.payload.lang || msg.payload.config?.lang,
       });
-      logAlways('LANG_CHANGE', {
+      log('LANG_CHANGE', {
         lang: msg.payload.lang || msg.payload.language || msg.payload.config?.lang || msg.payload.config?.language,
       });
     }
     if (msg.type === 'THEME_CHANGE' && msg.payload) {
       applyThemeSettings(msg.payload);
-      logAlways('THEME_CHANGE');
+      log('THEME_CHANGE');
     }
     if (msg.type === 'DESTROY') {
-      logAlways('DESTROY received');
+      log('DESTROY received');
       state.token = '';
     }
   });

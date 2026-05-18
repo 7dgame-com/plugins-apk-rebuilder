@@ -46,7 +46,6 @@ export function useSubmitFlow({
 
   async function getStandardPackageId(): Promise<string> {
     if (!canRead()) return '';
-    console.info('[APK-REBUILDER] call /plugin/standard-package');
     const res = await host.authFetch('/plugin/standard-package');
     const json = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(json?.error?.message || t('standard.fetchFailed'));
@@ -59,7 +58,6 @@ export function useSubmitFlow({
     if (!icon) return null;
     const form = new FormData();
     form.append('icon', icon);
-    console.info('[APK-REBUILDER] call /plugin/icon-upload');
     const res = await host.authFetch('/plugin/icon-upload', { method: 'POST', body: form });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(json?.error?.message || t('standard.iconUploadFailed'));
@@ -119,7 +117,6 @@ export function useSubmitFlow({
   async function pollRun(runId: string, ui: SubmitUiBridge): Promise<boolean | void> {
     if (!runId || pollInFlight) return;
     pollInFlight = true;
-    console.info('[APK-REBUILDER] call /plugin/runs/:runId', { runId });
     try {
       const res = await host.authFetch(`/plugin/runs/${encodeURIComponent(runId)}`);
       const json = await res.json().catch(() => ({}));
@@ -147,13 +144,6 @@ export function useSubmitFlow({
             params.set('token', host.state.token);
           }
           const directUrl = host.buildUrl(`${artifactUrlBase}?${params.toString()}`);
-          console.info('[APK-REBUILDER] download ready', {
-            runId,
-            artifactId: artifact.artifactId,
-            fileName,
-            hasToken: Boolean(host.state.token),
-            directUrl,
-          });
           ui.setDownload(directUrl, fileName);
           ui.addRecord({
             runId,
@@ -202,7 +192,6 @@ export function useSubmitFlow({
     if (isSubmitting) return;
     const payload = await buildSubmitPayload();
     if (!payload) return;
-    console.info('[APK-REBUILDER] call /plugin/execute');
     isSubmitting = true;
     ui.setSubmitting(true);
     ui.setStatus(t('submit.submitting'));

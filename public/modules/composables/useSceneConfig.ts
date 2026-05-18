@@ -34,7 +34,6 @@ export function useSceneConfig({ host, perPage = 10 }: { host?: HostBridgeApi; p
         if (mode === 'id') params.set('VerseSearch[id]', search);
         if (mode === 'name') params.set('VerseSearch[name]', search);
       }
-      console.info('[APK-REBUILDER] call /v1/verses', { page, perPage: currentPerPage, search, mode });
       const res = await host.hostFetch(`/v1/verses?${params.toString()}`);
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {

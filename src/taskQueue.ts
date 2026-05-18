@@ -4,6 +4,7 @@ import { REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_CONNECT_RETRY_DELAY_MS, R
 import { runDecompileTask, runModTask } from './buildService';
 import { getTask, setTaskError } from './taskStore';
 import { ModPayload } from './types';
+import { debugLog } from './logger';
 
 const connection = new Redis({
     host: REDIS_HOST,
@@ -72,7 +73,7 @@ export const modWorker = new Worker(
 );
 
 modWorker.on('completed', (job) => {
-    console.log(`[BullMQ] Job ${job.id} has completed!`);
+    debugLog(`[BullMQ] Job ${job.id} has completed!`);
 });
 
 modWorker.on('failed', (job, err) => {

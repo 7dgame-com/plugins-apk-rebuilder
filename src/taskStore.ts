@@ -79,8 +79,6 @@ export function updateTask(task: Task): Task {
 
 export function logTask(task: Task, message: string): Task {
   const entry = `[${nowIso()}] ${message}`;
-  // also echo to console for easier debugging during development
-  console.log(`task ${task.id}: ${message}`);
   task.logs.push(entry);
   return updateTask(task);
 }

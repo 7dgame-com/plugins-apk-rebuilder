@@ -552,7 +552,6 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
 
   async function load(): Promise<void> {
     if (!state.canManage) {
-      console.info('[APK-REBUILDER] call /plugin/standard-package (readonly)');
       const res = await host.authFetch('/plugin/standard-package');
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -562,7 +561,6 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
       return;
     }
 
-    console.info('[APK-REBUILDER] call /plugin/admin/apk-library');
     const res = await host.authFetch('/plugin/admin/apk-library');
     const json = await res.json();
     if (!res.ok) {
@@ -583,7 +581,6 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
   }
 
   async function setStandard(itemId: string): Promise<void> {
-    console.info('[APK-REBUILDER] call /plugin/admin/standard-package', { itemId });
     const res = await host.authFetch('/plugin/admin/standard-package', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -599,7 +596,6 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
   async function deleteItem(itemId: string): Promise<void> {
     const ok = await showConfirm(t('standard.confirmDelete'));
     if (!ok) return;
-    console.info('[APK-REBUILDER] call /plugin/admin/apk-library/:itemId', { itemId });
     const res = await host.authFetch(`/plugin/admin/apk-library/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -618,12 +614,10 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     setUploadBusy(true);
     try {
       try {
-        console.info('[APK-REBUILDER] upload standard apk via chunk session');
         const result = await uploadStandardChunked(file);
         setUploadText(t('standard.uploadDone', { elapsed: formatDuration(result.elapsedMs) }));
       } catch (chunkError) {
         console.warn('[APK-REBUILDER] chunk standard upload failed, fallback to plugin upload', chunkError);
-        console.info('[APK-REBUILDER] call /plugin/admin/upload-standard');
         await host.ensureInit();
         const form = new FormData();
         form.append('apk', file);

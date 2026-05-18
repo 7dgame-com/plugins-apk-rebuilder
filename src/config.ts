@@ -133,6 +133,7 @@ export const HOST_PERMISSION_CACHE_TTL_MS = Number.parseInt(
   10,
 );
 export const HOST_AUTH_DEBUG = process.env['HOST_AUTH_DEBUG'] === 'true';
+export const APK_REBUILDER_DEBUG = readBooleanEnv('APK_REBUILDER_DEBUG', false);
 export const REDIS_CONNECT_TIMEOUT_MS = Number.parseInt(
   process.env['REDIS_CONNECT_TIMEOUT_MS'] || '8000',
   10,

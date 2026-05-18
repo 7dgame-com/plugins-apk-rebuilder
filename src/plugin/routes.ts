@@ -28,7 +28,7 @@ import {
   listApkItems,
   updateParseCache,
 } from '../apkLibrary';
-import { updateTask, logTask, getTask } from '../taskStore';
+import { updateTask, getTask } from '../taskStore';
 import { fetchArtifactToLocal, getArtifact, uploadArtifact } from '../artifactService';
 import {
   readStandardPackageConfig,
@@ -38,6 +38,7 @@ import {
 import { ARTIFACTS_DIR, MOD_UPLOAD_DIR, UPLOAD_DIR, X_ACCEL_REDIRECT_ENABLED } from '../config';
 import { getToolchainStatus } from '../toolchain';
 import type { ApkLibraryItem } from '../types';
+import { debugLog } from '../logger';
 import {
   cleanupExpiredUploadSessions,
   completeUploadSession,
@@ -252,7 +253,7 @@ export function createPluginRouter(): Router {
         return;
       }
 
-      console.info('[APK-REBUILDER] /plugin/execute accepted', {
+      debugLog('[APK-REBUILDER] /plugin/execute accepted', {
         principal: principalPreview(principal),
         authSource: detectAuthSource(req),
         source: {
@@ -293,9 +294,6 @@ export function createPluginRouter(): Router {
         task = createTaskFromArtifact(artifactId, principal.userId);
       }
 
-      // Now we have a task, we can log the host interaction that just happened
-      logTask(task, `[Host] Permission verified: apk.rebuilder.run`);
-
       // Build payload with task context for communication logging
       const payload = await buildModPayload(modifications, task);
       if (!hasAnyModification(payload)) {
@@ -312,11 +310,10 @@ export function createPluginRouter(): Router {
       task.error = null;
       task.errorCode = null;
       updateTask(task);
-      logTask(task, `Plugin execute requested (async=${options.async !== false}, reuseDecodedCache=${options.reuseDecodedCache !== false})`);
       void modQueue.add('apk-mod', { type: 'plugin-run', taskId: task.id, payload });
 
       ok(res, { runId: task.id, status: task.status, cacheHit });
-      console.info('[APK-REBUILDER] /plugin/execute queued', {
+      debugLog('[APK-REBUILDER] /plugin/execute queued', {
         runId: task.id,
         status: task.status,
         cacheHit,
@@ -421,7 +418,7 @@ export function createPluginRouter(): Router {
         return;
       }
       try {
-        console.info('[APK-REBUILDER] standard apk multipart received', {
+        debugLog('[APK-REBUILDER] standard apk multipart received', {
           fileName: file.originalname || 'uploaded.apk',
           size: file.size,
           receiveDurationMs: handlerStartedAt - uploadStartedAt,
@@ -431,7 +428,7 @@ export function createPluginRouter(): Router {
           file.path,
         );
         scheduleApkInfoParse(item);
-        console.info('[APK-REBUILDER] standard apk upload complete', {
+        debugLog('[APK-REBUILDER] standard apk upload complete', {
           itemId: item.id,
           fileName: item.name,
           size: item.size,
@@ -463,7 +460,7 @@ export function createPluginRouter(): Router {
         lastModified: Number(body['lastModified']),
         chunkSize: Number(body['chunkSize']),
       });
-      console.info('[APK-REBUILDER] standard apk upload session created', {
+      debugLog('[APK-REBUILDER] standard apk upload session created', {
         sessionId: session.sessionId,
         fileName: session.fileName,
         size: session.size,
@@ -528,7 +525,7 @@ export function createPluginRouter(): Router {
       tempPath = '';
       scheduleApkHashAndInfo(item);
       deleteUploadSession(result.session.sessionId);
-      console.info('[APK-REBUILDER] standard apk chunk upload complete', {
+      debugLog('[APK-REBUILDER] standard apk chunk upload complete', {
         sessionId: result.session.sessionId,
         itemId: item.id,
         fileName: item.name,
@@ -639,7 +636,7 @@ export function createPluginRouter(): Router {
       await requireHostPermission(req, 'apk.rebuilder.read');
 
       const runId = String(req.params['runId']);
-      console.info('[APK-REBUILDER] /plugin/runs/:runId', {
+      debugLog('[APK-REBUILDER] /plugin/runs/:runId', {
         runId,
         principal: principalPreview(principal),
         authSource: detectAuthSource(req),
@@ -671,7 +668,7 @@ export function createPluginRouter(): Router {
             }
           : null,
       });
-      console.info('[APK-REBUILDER] /plugin/runs/:runId result', {
+      debugLog('[APK-REBUILDER] /plugin/runs/:runId result', {
         runId: updatedTask.id,
         status: updatedTask.status,
         outputArtifactId: updatedTask.outputArtifactId || null,
@@ -694,7 +691,7 @@ export function createPluginRouter(): Router {
           ...req.headers,
           authorization: `Bearer ${token}`,
         };
-        console.info('[APK-REBUILDER] /plugin/artifacts/:artifactId token injected from query', {
+        debugLog('[APK-REBUILDER] /plugin/artifacts/:artifactId token injected from query', {
           artifactId: String(req.params['artifactId']),
         });
       }
@@ -710,7 +707,7 @@ export function createPluginRouter(): Router {
       const artifactName = artifact?.name || path.basename(localPath);
       const artifactSize = fs.statSync(localPath).size;
 
-      console.info('[APK-REBUILDER] /plugin/artifacts/:artifactId authorized', {
+      debugLog('[APK-REBUILDER] /plugin/artifacts/:artifactId authorized', {
         artifactId,
         principal: principalPreview(principal),
         authSource: authSourceBeforeRewrite === 'none' ? detectAuthSource(req) : authSourceBeforeRewrite,
@@ -728,7 +725,7 @@ export function createPluginRouter(): Router {
         res.setHeader('Content-Disposition', contentDisposition(dispositionKind, artifactName));
         res.setHeader('X-Accel-Redirect', internalUri);
         res.end();
-        console.info('[APK-REBUILDER] artifact download delegated to nginx', {
+        debugLog('[APK-REBUILDER] artifact download delegated to nginx', {
           artifactId,
           artifactName,
           size: artifactSize,
@@ -745,7 +742,7 @@ export function createPluginRouter(): Router {
           if (sendError) {
             console.error('[APK-REBUILDER] artifact inline stream failed', sendError);
           } else {
-            console.info('[APK-REBUILDER] artifact inline stream complete', {
+            debugLog('[APK-REBUILDER] artifact inline stream complete', {
               artifactId,
               artifactName,
               size: artifactSize,
@@ -765,7 +762,7 @@ export function createPluginRouter(): Router {
             console.error('[APK-REBUILDER] artifact download streaming failed', downloadError);
           }
         } else {
-          console.info('[APK-REBUILDER] artifact download complete', {
+          debugLog('[APK-REBUILDER] artifact download complete', {
             artifactId,
             artifactName,
             size: artifactSize,

@@ -3,7 +3,6 @@ import path from 'path';
 import { Task, FilePatch, ModPayload, WhiteLabelProfilePatch } from '../types';
 import { isValidPackageName, isValidVersionCode } from '../validators';
 import { fetchArtifactToLocal } from '../artifactService';
-import { updateTask, logTask } from '../taskStore';
 import { normalizeRelPath } from '../validators';
 import { toSafeFileStem } from '../validators';
 import { PLUGIN_MANIFEST_PATH } from '../config';
@@ -114,19 +113,15 @@ export async function buildModPayload(
       replacementArtifactId: patch.replacementArtifactId || null,
     };
     if (normalizedPatch.mode === 'file_replace' && normalizedPatch.replacementArtifactId && !normalizedPatch.replacementBase64) {
-      if (task) logTask(task, `[Host] Fetching replacement artifact from host: ${normalizedPatch.replacementArtifactId}`);
       const replacementPath = fetchArtifactToLocal(normalizedPatch.replacementArtifactId);
       normalizedPatch.replacementBase64 = fs.readFileSync(replacementPath).toString('base64');
-      if (task) logTask(task, `[Host] Fetched and encoded artifact: ${normalizedPatch.replacementArtifactId}`);
     }
     normalizedFilePatches.push(normalizedPatch);
   }
 
   let iconUploadPath: string | null = null;
   if (modifications?.iconArtifactId) {
-    if (task) logTask(task, `[Host] Fetching icon artifact from host: ${modifications.iconArtifactId}`);
     iconUploadPath = fetchArtifactToLocal(modifications.iconArtifactId);
-    if (task) logTask(task, `[Host] Fetched icon path: ${iconUploadPath}`);
   }
 
   return {

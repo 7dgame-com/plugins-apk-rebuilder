@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { ARTIFACT_INDEX_PATH, ARTIFACTS_DIR } from './config';
 import { nowIso } from './taskStore';
 import { toSafeFileStem } from './validators';
+import { debugLog } from './logger';
 
 type ArtifactRecord = {
   id: string;
@@ -99,7 +100,7 @@ export function uploadArtifact(localPath: string, options: UploadArtifactOptions
   } catch (error: any) {
     storageMode = 'copy';
     fs.copyFileSync(localPath, targetPath);
-    console.info('[APK-REBUILDER] artifact hardlink fallback to copy', {
+    debugLog('[APK-REBUILDER] artifact hardlink fallback to copy', {
       artifactId,
       sourceRunId: options.sourceRunId || null,
       reason: error?.code || String(error?.message || error),
@@ -117,7 +118,7 @@ export function uploadArtifact(localPath: string, options: UploadArtifactOptions
     storage: { type: 'local' },
   };
   const saved = saveArtifact(record);
-  console.info('[APK-REBUILDER] artifact stored', {
+  debugLog('[APK-REBUILDER] artifact stored', {
     artifactId,
     sourceRunId: options.sourceRunId || null,
     size: sourceSize,

@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { APK_LIBRARY_CACHE_ROOT, APK_LIBRARY_DIR, APK_LIBRARY_INDEX_PATH } from './config';
 import { ApkInfo, ApkLibraryItem } from './types';
 import { nowIso } from './taskStore';
+import { debugLog } from './logger';
 
 export type ApkLibraryStorage = NonNullable<ApkLibraryItem['storage']>;
 
@@ -171,7 +172,7 @@ export function addPendingApkItemFromFile(
 
   items.push(item);
   writeItems(items);
-  console.info('[APK-REBUILDER] standard apk stored before hash', {
+  debugLog('[APK-REBUILDER] standard apk stored before hash', {
     itemId: item.id,
     fileName: displayName,
     size,
@@ -204,7 +205,7 @@ export async function addOrGetApkItemFromFile(
       } catch {
         // ignore temp cleanup errors
       }
-      console.info('[APK-REBUILDER] standard apk deduplicated', {
+      debugLog('[APK-REBUILDER] standard apk deduplicated', {
         itemId: item.id,
         fileName: displayName,
         size,
@@ -240,7 +241,7 @@ export async function addOrGetApkItemFromFile(
 
   items.push(item);
   writeItems(items);
-  console.info('[APK-REBUILDER] standard apk stored', {
+  debugLog('[APK-REBUILDER] standard apk stored', {
     itemId: item.id,
     fileName: displayName,
     size,
@@ -266,7 +267,7 @@ export async function finalizeApkItemHash(itemId: string): Promise<ApkLibraryIte
   item.lastUsedAt = nowIso();
   const duplicate = items.find(entry => entry.id !== item.id && entry.sha256 === digest);
   writeItems(items);
-  console.info('[APK-REBUILDER] standard apk hash complete', {
+  debugLog('[APK-REBUILDER] standard apk hash complete', {
     itemId: item.id,
     duplicateOf: duplicate?.id || null,
     size: item.size,

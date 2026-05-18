@@ -4,6 +4,7 @@ import { WORK_DIR_ROOT } from './config';
 import { deleteArtifact } from './artifactService';
 import { listTasks, replaceTasks } from './taskStore';
 import type { Task } from './types';
+import { debugLog } from './logger';
 
 const HISTORY_LIMIT_PER_USER = 3;
 const HISTORY_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -76,7 +77,7 @@ export function cleanupGeneratedHistory(): void {
     return false;
   });
   replaceTasks(keptTasks);
-  console.info('[APK-REBUILDER] generated history cleanup complete', {
+  debugLog('[APK-REBUILDER] generated history cleanup complete', {
     tasksDeleted: deleteIds.size,
     artifactsDeleted: artifactCount,
     workDirsDeleted: workDirCount,

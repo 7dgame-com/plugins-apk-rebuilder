@@ -15,8 +15,6 @@ import { usePermissions } from './composables/usePermissions';
 import { useSubmitFlow } from './composables/useSubmitFlow';
 import { normalizeHostErrorMessage } from './host/errors';
 
-type HostEntryError = Error & { code?: string };
-
 initThemeSync();
 document.title = t('app.titleHost');
 
@@ -38,13 +36,6 @@ function renderBlockedAccess(message: string): void {
       ${appVersion ? `<div style="margin-top:10px;font-size:12px;color:#b0b0b0;">${appVersion}</div>` : ''}
     </section>
   `;
-}
-
-function getHostEntryErrorCode(error: unknown): string {
-  if (error && typeof error === 'object' && 'code' in error) {
-    return (error as HostEntryError).code || '';
-  }
-  return '';
 }
 
 function getAppNameInput(): HTMLInputElement | null {
@@ -209,45 +200,20 @@ function rerenderUi(): void {
 }
 
 async function main(): Promise<void> {
-  console.info('[APK-REBUILDER] boot start');
   try {
     await host.ensureHostEntry();
   } catch (error) {
-    console.info('[APK-REBUILDER] host entry blocked', {
-      code: getHostEntryErrorCode(error),
-      error: String(error),
-      hostState: {
-        hasToken: Boolean(host.state?.token),
-        roles: host.state?.roles || [],
-      },
-    });
     renderBlockedAccess(permissions.getBlockedMessageForError(error));
     return;
   }
 
-  console.info('[APK-REBUILDER] host entry ready', {
-    hasToken: Boolean(host.state?.token),
-    roles: host.state?.roles || [],
-  });
-
   await permissions.loadPermissions();
 
   if (!permissions.hasAccess()) {
-    console.info('[APK-REBUILDER] role access blocked', {
-      roles: permissions.state.roles,
-      canRead: permissions.canRead(),
-      canRun: permissions.canRun(),
-      canAdmin: permissions.canAdmin(),
-    });
     renderBlockedAccess(t('host.roleNotAllowed'));
     return;
   }
 
-  console.info('[APK-REBUILDER] ui build start', {
-    canRead: permissions.canRead(),
-    canRun: permissions.canRun(),
-    canAdmin: permissions.canAdmin(),
-  });
   buildUi();
 }
 

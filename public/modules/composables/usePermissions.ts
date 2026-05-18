@@ -70,11 +70,6 @@ export function usePermissions(host: HostBridgeApi) {
 
   async function loadPermissions(): Promise<PermissionSnapshot> {
     let roles = readRoles(host.state?.roles) ?? [];
-    console.info('[APK-REBUILDER] init payload', {
-      token: host.state?.token ? `${String(host.state.token).slice(0, 6)}...` : '',
-      roles: host.state?.roles,
-      config: host.state?.config,
-    });
 
     try {
       const res = await host.hostFetch('/v1/plugin/verify-token');
@@ -92,25 +87,11 @@ export function usePermissions(host: HostBridgeApi) {
         nickname: readText(userPayload.nickname) ?? host.state.user.nickname,
         roles,
       };
-      console.info('[APK-REBUILDER] verify-token', {
-        status: res.status,
-        ok: res.ok,
-        roles: fetchedRoles,
-        data: json,
-      });
-      console.info('[APK-REBUILDER] roles after verify-token', roles);
-    } catch (error) {
-      console.info('[APK-REBUILDER] verify-token failed', String(error));
+    } catch {
+      // Keep host-provided roles when verify-token cannot be reached.
     }
 
     Object.assign(state, getPermissionSnapshot(roles));
-
-    console.info('[APK-REBUILDER] permission snapshot', {
-      roles: state.roles,
-      canRead: state.canRead,
-      canRun: state.canRun,
-      canAdmin: state.canAdmin,
-    });
 
     return state;
   }
