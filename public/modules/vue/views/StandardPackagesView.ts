@@ -1,11 +1,8 @@
 import { defineComponent, nextTick, onBeforeUnmount, onMounted, type PropType } from 'vue';
-import { state } from '../../state';
 import { t } from '../../i18n';
 import type { HostBridgeApi } from '../../types';
-import { renderStandardPackageSection, createStandardPackageSection } from '../../sections/standard-package';
-import { renderToolsCheck, createToolsCheck } from '../../tools/check-tools';
-import { showAlert } from '../../host/notify';
-import { normalizeHostErrorMessage } from '../../host/errors';
+import { mountStandardPackages } from '../legacy/standardPackagesMount';
+import type { LegacyMountHandle } from '../legacy/workbenchMount';
 
 export default defineComponent({
   name: 'StandardPackagesView',
@@ -28,32 +25,19 @@ export default defineComponent({
   `,
   setup(props) {
     let root: HTMLElement | null = null;
-    let standardSection: ReturnType<typeof createStandardPackageSection> | null = null;
+    let mountHandle: LegacyMountHandle | null = null;
 
     onMounted(async () => {
       await nextTick();
       if (!props.canManage) return;
       root = document.querySelector('.legacy-view');
       if (!root) return;
-
-      const toolsSlot = document.createElement('div');
-      toolsSlot.className = 'standard-tools-row';
-      root.appendChild(toolsSlot);
-      renderToolsCheck(toolsSlot);
-      renderStandardPackageSection(root, { canManage: true });
-
-      const tools = createToolsCheck({ state, host: props.host });
-      standardSection = createStandardPackageSection({ host: props.host, canManage: true });
-      tools.bind();
-      standardSection.bind();
-      tools.refreshTools?.();
-      standardSection.load().catch((error) => showAlert(normalizeHostErrorMessage(error, t, 'standard.listLoadFailed')));
+      mountHandle = mountStandardPackages(root, props.host);
     });
 
     onBeforeUnmount(() => {
-      standardSection?.destroy?.();
-      standardSection = null;
-      if (root) root.innerHTML = '';
+      mountHandle?.destroy();
+      mountHandle = null;
     });
 
     return { t };
