@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { CHUNK_UPLOAD_DIR, UPLOAD_DIR } from './config';
 
 const DEFAULT_CHUNK_SIZE = 8 * 1024 * 1024;
@@ -47,6 +47,7 @@ type CreateUploadSessionOptions = {
 type CompleteUploadSessionResult = {
   session: UploadSessionView;
   tempPath: string;
+  sha256: string;
 };
 
 function nowIso(): string {
@@ -205,9 +206,11 @@ export function completeUploadSession(sessionId: string): CompleteUploadSessionR
   const tempPath = path.join(UPLOAD_DIR, `${manifest.sessionId}${suffix}`);
   fs.rmSync(tempPath, { force: true });
   const fd = fs.openSync(tempPath, 'w');
+  const hash = createHash('sha256');
   try {
     for (let index = 0; index < manifest.totalChunks; index += 1) {
       const chunk = fs.readFileSync(chunkPath(sessionId, index));
+      hash.update(chunk);
       fs.writeSync(fd, chunk);
     }
   } finally {
@@ -218,7 +221,7 @@ export function completeUploadSession(sessionId: string): CompleteUploadSessionR
     fs.rmSync(tempPath, { force: true });
     throw new Error(`Upload size mismatch: expected ${manifest.size}, got ${actualSize}`);
   }
-  return { session: toView(manifest), tempPath };
+  return { session: toView(manifest), tempPath, sha256: hash.digest('hex') };
 }
 
 export function deleteUploadSession(sessionId: string): void {

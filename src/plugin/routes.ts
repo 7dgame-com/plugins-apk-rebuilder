@@ -27,7 +27,6 @@ import {
 import { isTaskUsingLibraryItem } from '../common/taskPolicy';
 import {
   addOrGetApkItemFromFile,
-  addPendingApkItemFromFile,
   deleteApkItem,
   finalizeApkItemHash,
   getApkItem,
@@ -209,7 +208,13 @@ function scheduleApkHashAndInfo(item: ApkLibraryItem): void {
     });
 }
 
-function listApkItemsWithInfo(): ApkLibraryItem[] {
+function isMetadataWorkActive(itemId: string): boolean {
+  return metadataHashingItems.has(itemId) ||
+    metadataParseStates.has(itemId) ||
+    metadataParseTaskIds.has(itemId);
+}
+
+function listApkItemsWithInfo(scheduleIds = new Set<string>()): ApkLibraryItem[] {
   const items = listApkItems();
   for (const item of items) {
     const parseTaskId = metadataParseTaskIds.get(item.id);
@@ -218,7 +223,9 @@ function listApkItemsWithInfo(): ApkLibraryItem[] {
       setMetadataParseState(item.id, 'failed', parseTask.error || 'Metadata parse failed');
       metadataParseTaskIds.delete(item.id);
     }
-    scheduleApkHashAndInfo(item);
+    if (scheduleIds.has(item.id) || isMetadataWorkActive(item.id)) {
+      scheduleApkHashAndInfo(item);
+    }
     if (item.apkInfo) {
       item.parseStatus = { state: 'ready', updatedAt: item.lastUsedAt };
       metadataParseStates.delete(item.id);
@@ -416,8 +423,11 @@ export function createPluginRouter(): Router {
       const principal = getLoosePrincipal(req);
       await requireHostPermission(req, 'apk.rebuilder.admin');
       const config = readStandardPackageConfig();
+      const scheduleIds = new Set(
+        [config.activeStandardId, config.previousStandardId].filter((id): id is string => Boolean(id)),
+      );
       ok(res, {
-        items: listApkItemsWithInfo(),
+        items: listApkItemsWithInfo(scheduleIds),
         standard: {
           activeStandardId: config.activeStandardId,
           previousStandardId: config.previousStandardId,
@@ -545,18 +555,25 @@ export function createPluginRouter(): Router {
       await requireHostPermission(req, 'apk.rebuilder.admin');
       const result = completeUploadSession(String(req.params.sessionId || ''));
       tempPath = result.tempPath;
-      const item = addPendingApkItemFromFile(result.session.fileName, result.tempPath);
+      const { item, created } = await addOrGetApkItemFromFile(
+        result.session.fileName,
+        result.tempPath,
+        result.sha256,
+      );
       tempPath = '';
-      scheduleApkHashAndInfo(item);
+      scheduleApkInfoParse(item);
       deleteUploadSession(result.session.sessionId);
       debugLog('[APK-REBUILDER] standard apk chunk upload complete', {
         sessionId: result.session.sessionId,
         itemId: item.id,
         fileName: item.name,
         size: item.size,
+        deduplicatedUpload: !created,
+        hashSource: 'upload-session',
         handlerDurationMs: Date.now() - handlerStartedAt,
       });
-      ok(res, { item, deduplicatedUpload: false, parseStatus: { state: 'checking' } });
+      const parseStatus = item.apkInfo ? { state: 'ready' } : { state: 'queued' };
+      ok(res, { item: { ...item, parseStatus }, deduplicatedUpload: !created, parseStatus });
     } catch (error) {
       if (tempPath) {
         try { fs.rmSync(tempPath, { force: true }); } catch { /* ignore */ }
@@ -651,7 +668,12 @@ export function createPluginRouter(): Router {
         next.disabledIds = req.body.disabledIds.filter((x: unknown) => typeof x === 'string');
       }
 
-      ok(res, updateStandardPackageConfig(next));
+      const updated = updateStandardPackageConfig(next);
+      if (activeStandardId) {
+        const item = getApkItem(activeStandardId);
+        if (item) scheduleApkHashAndInfo(item);
+      }
+      ok(res, updated);
     } catch (error) {
       const mapped = mapPluginError(error);
       fail(res, mapped.status, mapped.message, mapped.code);

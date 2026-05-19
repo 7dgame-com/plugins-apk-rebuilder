@@ -188,6 +188,7 @@ export function addPendingApkItemFromFile(
 export async function addOrGetApkItemFromFile(
   originalName: string,
   tempPath: string,
+  knownSha256?: string | null,
 ): Promise<{ item: ApkLibraryItem; created: boolean }> {
   const startedAt = Date.now();
   const items = readItems();
@@ -196,8 +197,11 @@ export async function addOrGetApkItemFromFile(
   const createdAt = nowIso();
   const size = fs.statSync(tempPath).size;
   const hashStartedAt = Date.now();
-  const digest = await sha256File(tempPath);
-  const hashDurationMs = Date.now() - hashStartedAt;
+  const precomputedDigest = /^[a-f0-9]{64}$/i.test(String(knownSha256 || ''))
+    ? String(knownSha256).toLowerCase()
+    : null;
+  const digest = precomputedDigest || await sha256File(tempPath);
+  const hashDurationMs = precomputedDigest ? 0 : Date.now() - hashStartedAt;
 
   for (const item of items) {
     if (item.sha256 === digest) {
@@ -214,6 +218,7 @@ export async function addOrGetApkItemFromFile(
         fileName: displayName,
         size,
         hashDurationMs,
+        hashSource: precomputedDigest ? 'upload-session' : 'file',
         durationMs: Date.now() - startedAt,
       });
       return { item, created: false };
@@ -252,6 +257,7 @@ export async function addOrGetApkItemFromFile(
     fileName: displayName,
     size,
     hashDurationMs,
+    hashSource: precomputedDigest ? 'upload-session' : 'file',
     moveDurationMs,
     durationMs: Date.now() - startedAt,
   });
