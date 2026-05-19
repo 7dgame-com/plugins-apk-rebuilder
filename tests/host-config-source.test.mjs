@@ -40,11 +40,13 @@ test('host bridge api types only expose host api helpers', () => {
 
 test('frontend session reads verify-token through the host api and preserves user identity fields', () => {
   const source = readSource('public/modules/composables/usePermissions.ts');
-  const shellSource = readSource('public/modules/vue/main.ts');
+  const layoutSource = readSource('public/modules/vue/layout/AppLayout.ts');
+  const artifactsSource = readSource('public/modules/vue/api/artifacts.ts');
 
   assert.match(source, /host\.hostFetch\('\/v1\/plugin\/verify-token'\)/);
   assert.match(source, /userPayload\.id \?\? userPayload\.userId \?\? userPayload\.user_id/);
   assert.match(source, /readText\(userPayload\.username\) \?\? host\.state\.user\.username/);
   assert.match(source, /readText\(userPayload\.nickname\) \?\? host\.state\.user\.nickname/);
-  assert.match(shellSource, /host\.state\.user\.id \?\? host\.state\.user\.userId \?\? host\.state\.user\.user_id/);
+  assert.match(layoutSource, /props\.host\.state\.user\.id \?\? props\.host\.state\.user\.userId \?\? props\.host\.state\.user\.user_id/);
+  assert.match(artifactsSource, /user\.id \?\? user\.userId \?\? user\.user_id \?\? user\.username \?\? user\.nickname/);
 });
