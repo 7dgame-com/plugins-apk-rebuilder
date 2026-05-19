@@ -244,7 +244,9 @@ export default defineComponent({
     const readonlyText = ref('');
     let refreshTimer: ReturnType<typeof setTimeout> | null = null;
     let refreshAttempts = 0;
-    const maxRefreshAttempts = 20;
+    const fastRefreshAttempts = 20;
+    const fastRefreshDelayMs = 3000;
+    const slowRefreshDelayMs = 10000;
 
     const selectedItem = computed(() => items.value.find((item) => item.id === selectedId.value) || null);
     const selectedName = computed(() => displayName(selectedItem.value));
@@ -265,8 +267,14 @@ export default defineComponent({
         : t(statusKey);
     });
 
+    function isInfoRefreshPending(item: StandardPackageItem): boolean {
+      if (item.apkInfo || item.parseStatus?.state === 'failed') return false;
+      const state = item.parseStatus?.state || 'idle';
+      return state === 'checking' || state === 'queued' || state === 'parsing';
+    }
+
     function hasPendingInfo(): boolean {
-      return items.value.some((item) => !item.apkInfo && item.parseStatus?.state !== 'failed');
+      return items.value.some(isInfoRefreshPending);
     }
 
     function clearRefreshTimer(): void {
@@ -281,14 +289,15 @@ export default defineComponent({
         refreshAttempts = 0;
         return;
       }
-      if (refreshTimer || refreshAttempts >= maxRefreshAttempts) {
+      if (refreshTimer) {
         return;
       }
       refreshAttempts += 1;
+      const delayMs = refreshAttempts <= fastRefreshAttempts ? fastRefreshDelayMs : slowRefreshDelayMs;
       refreshTimer = setTimeout(() => {
         refreshTimer = null;
         void load().catch((error) => showAlert(normalizeHostErrorMessage(error, t, 'standard.listLoadFailed')));
-      }, 3000);
+      }, delayMs);
     }
 
     function uploadSessionKey(file: File): string {
@@ -579,11 +588,11 @@ export default defineComponent({
           const result = await uploadStandardWithProgress(file, form);
           uploadText.value = t('standard.uploadDone', { elapsed: formatDuration(result.elapsedMs) });
         }
-        await load();
       } finally {
         uploading.value = false;
         if (uploadInputRef.value) uploadInputRef.value.value = '';
       }
+      await load();
     }
 
     async function load(): Promise<void> {
@@ -656,6 +665,10 @@ export default defineComponent({
 
     function selectItem(itemId: string): void {
       selectedId.value = itemId;
+      const selected = items.value.find((item) => item.id === itemId);
+      if (!selected?.apkInfo) {
+        void load().catch((error) => showAlert(normalizeHostErrorMessage(error, t, 'standard.listLoadFailed')));
+      }
     }
 
     function onItemKeydown(event: KeyboardEvent, itemId: string): void {
