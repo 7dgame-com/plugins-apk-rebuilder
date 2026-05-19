@@ -82,6 +82,7 @@ export const REDIS_PASSWORD = process.env['REDIS_PASSWORD'] || '';
 
 export const DATA_ROOT = path.join(process.cwd(), 'data');
 export const UPLOAD_DIR = path.join(DATA_ROOT, 'uploads');
+export const CHUNK_UPLOAD_DIR = path.join(UPLOAD_DIR, 'chunks');
 export const MOD_UPLOAD_DIR = path.join(DATA_ROOT, 'mod-uploads');
 export const WORK_DIR_ROOT = path.join(DATA_ROOT, 'work');
 export const APK_LIBRARY_DIR = path.join(DATA_ROOT, 'apk-library');
@@ -107,6 +108,10 @@ export const DEBUG_PASS = process.env['DEBUG_KEY_PASS'] || 'android';
 export const API_KEY = process.env['API_KEY'] || process.env['AUTH_TOKEN'] || '';
 export const AUTH_ENABLED = process.env['AUTH_ENABLED'] !== 'false';
 export const APK_REBUILDER_MODE = process.env['APK_REBUILDER_MODE'] || 'prod';
+export const X_ACCEL_REDIRECT_ENABLED = readBooleanEnv(
+  'X_ACCEL_REDIRECT_ENABLED',
+  APK_REBUILDER_MODE !== 'dev',
+);
 export const FRONTEND_SOURCE_DIR = path.join(process.cwd(), 'public');
 export const FRONTEND_DIST_DIR = path.join(process.cwd(), 'frontend-dist');
 export const FRONTEND_DIST_READY = fs.existsSync(FRONTEND_DIST_DIR) && fs.statSync(FRONTEND_DIST_DIR).isDirectory();
@@ -128,6 +133,7 @@ export const HOST_PERMISSION_CACHE_TTL_MS = Number.parseInt(
   10,
 );
 export const HOST_AUTH_DEBUG = process.env['HOST_AUTH_DEBUG'] === 'true';
+export const APK_REBUILDER_DEBUG = readBooleanEnv('APK_REBUILDER_DEBUG', false);
 export const REDIS_CONNECT_TIMEOUT_MS = Number.parseInt(
   process.env['REDIS_CONNECT_TIMEOUT_MS'] || '8000',
   10,
@@ -157,6 +163,7 @@ export function ensureRuntimeDirs(): void {
   [
     DATA_ROOT,
     UPLOAD_DIR,
+    CHUNK_UPLOAD_DIR,
     MOD_UPLOAD_DIR,
     WORK_DIR_ROOT,
     APK_LIBRARY_DIR,

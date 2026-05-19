@@ -5,6 +5,7 @@ import { getApkItem, touchApkItem } from '../apkLibrary';
 import { createTask, updateTask, logTask } from '../taskStore';
 import { parseApkInfo } from '../manifestService';
 import { fetchArtifactToLocal, uploadArtifact } from '../artifactService';
+import { cleanupGeneratedHistory } from '../historyCleanup';
 import { isValidPackageName, isValidVersionCode, normalizeRelPath, toSafeFileStem } from '../validators';
 
 // helpers that are shared between the main API and the plugin router
@@ -64,10 +65,10 @@ export function attachCachedIconForTask(task: Task): Task {
   return updateTask(task);
 }
 
-export function createTaskFromLibraryItem(
+export async function createTaskFromLibraryItem(
   item: ApkLibraryItem,
   userId?: string | null,
-): { task: Task; cacheHit: boolean } {
+): Promise<{ task: Task; cacheHit: boolean }> {
   if (!fs.existsSync(item.filePath)) {
     throw new Error('APK file is missing from storage');
   }
@@ -118,7 +119,9 @@ export function ensureUploadedArtifact(task: Task): Task {
   });
   task.outputArtifactId = artifact.id;
   task.outputArtifactName = artifact.name;
-  return updateTask(task);
+  const updated = updateTask(task);
+  cleanupGeneratedHistory();
+  return updated;
 }
 
 export function mapProgress(task: Task): { stage: string; message: string } {

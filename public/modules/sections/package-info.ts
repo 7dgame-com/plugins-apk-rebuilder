@@ -31,9 +31,17 @@ export function renderPackageInfoSection(container: HTMLElement, options: Packag
     versionCode: t('pkg.versionCode'),
   };
 
+  const fieldPlaceholderMap: Record<PackageInfoField, string> = {
+    appName: 'XR UGC Demo',
+    packageName: 'com.xrugc.demo',
+    versionName: '1.0.0',
+    versionCode: '100',
+  };
+
   const renderField = (field: PackageInfoField): string => {
     const label = fieldLabelMap[field] || field;
-    return `<div class="field"><label>${label}</label><input id="${field}" type="text" /></div>`;
+    const placeholder = fieldPlaceholderMap[field] || '';
+    return `<div class="field"><label>${label}</label><input id="${field}" type="text" placeholder="${placeholder}" autocomplete="off" spellcheck="false" /></div>`;
   };
 
   const fieldsHtml = fields.map(renderField).join('');

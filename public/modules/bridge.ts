@@ -43,8 +43,6 @@ function handleMessage(event: MessageEvent): void {
     const msg = event.data as BridgeMessage;
     if (!msg || typeof msg.type !== 'string') return;
 
-    console.log(`[Bridge] Received message type="${msg.type}"`, msg.payload);
-
     if (msg.type === 'REQUEST') {
       lastRequestId = msg.id;
     }
@@ -111,7 +109,6 @@ export function initBridge(): void {
   });
 
   postToHost('PLUGIN_READY');
-  console.log('[Bridge] Handshake sent: PLUGIN_READY');
 }
 
 export function requestHostTokenRefresh(timeout = 3000): Promise<string | null> {

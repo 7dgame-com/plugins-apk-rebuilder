@@ -26,6 +26,18 @@ export interface FilePatch {
   replacementArtifactId?: string | null;
 }
 
+export interface WhiteLabelProfilePatch {
+  key?: string | null;
+  appName?: string | null;
+  packageName?: string | null;
+  versionName?: string | null;
+  versionCode?: string | null;
+  sceneId?: string | null;
+  title?: string | null;
+  description?: string | null;
+  tenantId?: string | null;
+}
+
 export interface ModPayload {
   appName?: string | null;
   packageName?: string | null;
@@ -34,6 +46,7 @@ export interface ModPayload {
   iconUploadPath?: string | null;
   unityConfigPath?: string | null;
   unityPatches: UnityPatch[];
+  whiteLabelProfile?: WhiteLabelProfilePatch | null;
   filePatches: FilePatch[];
 }
 
@@ -65,11 +78,21 @@ export interface ApkLibraryItem {
   name: string;
   storedName: string;
   filePath: string;
+  storage?: {
+    type: 'local';
+    mimeType?: string;
+    importedAt?: string;
+  } | null;
   size: number;
   sha256: string;
   createdAt: string;
   lastUsedAt: string;
   parsedReady: boolean;
+  parseStatus?: {
+    state: 'idle' | 'checking' | 'queued' | 'parsing' | 'ready' | 'failed';
+    message?: string;
+    updatedAt?: string;
+  } | null;
   decodeCachePath?: string | null;
   apkInfo?: ApkInfo | null;
 }

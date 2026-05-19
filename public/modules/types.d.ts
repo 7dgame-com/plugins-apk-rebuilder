@@ -74,6 +74,14 @@ export interface HostBridgeState {
   token: string;
   config: HostBridgeConfig;
   roles: string[];
+  user: {
+    id?: number | string;
+    userId?: number | string;
+    user_id?: number | string;
+    username?: string;
+    nickname?: string;
+    roles?: string[] | string;
+  };
   lastInitError: string;
 }
 
@@ -82,7 +90,14 @@ export interface HostBridgePayload {
   config?: HostBridgeConfig;
   roles?: string[] | string;
   role?: string[] | string;
-  user?: { roles?: string[] | string };
+  user?: {
+    id?: number | string;
+    userId?: number | string;
+    user_id?: number | string;
+    username?: string;
+    nickname?: string;
+    roles?: string[] | string;
+  };
 }
 
 export interface HostBridgeApi {
@@ -104,14 +119,25 @@ export interface SubmitArtifact {
 export interface SubmitRunData {
   runId?: string;
   status?: string;
+  updatedAt?: string;
   artifacts?: SubmitArtifact[];
 }
 
+export interface SubmitRecord {
+  runId: string;
+  artifactId: string;
+  fileName: string;
+  createdAt: string;
+}
+
 export interface SubmitSectionDeps {
+  buildDownloadUrl(artifactId: string): string;
+  getUserKey(): string;
   onSubmit(ui: {
     setStatus(text: string): void;
     setSubmitting(value: boolean): void;
     setDownload(url: string, label?: string): void;
+    addRecord(record: SubmitRecord): void;
   }): Promise<void>;
 }
 

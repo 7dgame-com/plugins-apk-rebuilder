@@ -18,12 +18,12 @@ function tokenPreview(header: string): string {
 }
 
 async function logResponse(label: string, response: Response, startedAt: number) {
+  if (!HOST_AUTH_DEBUG) return;
   const elapsedMs = Date.now() - startedAt;
   const contentType = response.headers?.get?.('content-type') || '';
   console.info(
     `[HOST_AUTH] ${label} status=${response.status} ok=${response.ok} elapsedMs=${elapsedMs} contentType=${contentType}`
   );
-  if (!HOST_AUTH_DEBUG) return;
   try {
     const text = await response.clone().text();
     const preview = text.length > 500 ? `${text.slice(0, 500)}...` : text;
@@ -82,7 +82,9 @@ async function fetchRoles(token: string): Promise<string[]> {
   const base = getHostBase();
   const url = new URL(`${base}/v1/plugin/verify-token`);
   const startedAt = Date.now();
-  console.info(`[HOST_AUTH] verify-token request url=${url.toString()} token=${tokenPreview(token)}`);
+  if (HOST_AUTH_DEBUG) {
+    console.info(`[HOST_AUTH] verify-token request url=${url.toString()} token=${tokenPreview(token)}`);
+  }
 
   let response: Response;
   const controller = new AbortController();
@@ -116,10 +118,14 @@ export async function checkHostPermission(req: Request, action: string): Promise
   try {
     const roles = await fetchRoles(token);
     const allowed = isRoleAllowed(roles, action as Parameters<typeof isRoleAllowed>[1]);
-    console.info(`[HOST_AUTH] roles=${roles.join(',') || 'none'} action=${action} allowed=${allowed}`);
+    if (HOST_AUTH_DEBUG) {
+      console.info(`[HOST_AUTH] roles=${roles.join(',') || 'none'} action=${action} allowed=${allowed}`);
+    }
     return allowed;
   } catch (error) {
-    console.info('[HOST_AUTH] role verification failed', error);
+    if (HOST_AUTH_DEBUG) {
+      console.info('[HOST_AUTH] role verification failed', error);
+    }
     throw new Error('Host auth unavailable');
   }
 }

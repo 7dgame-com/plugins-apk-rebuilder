@@ -203,7 +203,6 @@ export async function api(url: string, options: RequestInit = {}): Promise<any> 
 
     isRefreshing = true;
     try {
-      console.log('[API] 401 Unauthorized, requesting token refresh from host...');
       const newToken = await requestHostTokenRefresh();
 
       if (newToken) {

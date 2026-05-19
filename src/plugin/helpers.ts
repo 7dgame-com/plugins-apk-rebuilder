@@ -1,9 +1,8 @@
 import fs from 'fs';
 import path from 'path';
-import { Task, FilePatch, ModPayload } from '../types';
+import { Task, FilePatch, ModPayload, WhiteLabelProfilePatch } from '../types';
 import { isValidPackageName, isValidVersionCode } from '../validators';
 import { fetchArtifactToLocal } from '../artifactService';
-import { updateTask, logTask } from '../taskStore';
 import { normalizeRelPath } from '../validators';
 import { toSafeFileStem } from '../validators';
 import { PLUGIN_MANIFEST_PATH } from '../config';
@@ -13,6 +12,15 @@ export function getPluginManifest(): unknown {
 }
 
 export function mapPluginError(err: unknown): { status: number; code: string; message: string } {
+  if (err && typeof err === 'object') {
+    const maybeMapped = err as { status?: unknown; code?: unknown; message?: unknown };
+    const status = Number(maybeMapped.status);
+    const code = String(maybeMapped.code || '').trim();
+    const message = String(maybeMapped.message || '').trim();
+    if (Number.isInteger(status) && status >= 400 && status <= 599 && code && message) {
+      return { status, code, message };
+    }
+  }
   const message = String(err instanceof Error ? err.message : err);
   if (message.includes('Host auth unauthorized')) {
     return { status: 401, code: 'HOST_UNAUTHORIZED', message: 'Host token unauthorized' };
@@ -53,6 +61,10 @@ export function validateModifications(modifications: unknown): void {
   if (m.unityConfigPath) {
     normalizeRelPath(String(m.unityConfigPath));
   }
+  const whiteLabelProfile = m.whiteLabelProfile || m.whiteLabel;
+  if (whiteLabelProfile && typeof whiteLabelProfile !== 'object') {
+    throw new Error('whiteLabelProfile must be an object');
+  }
   for (const patch of m.filePatches || []) {
     normalizeRelPath(String(patch.path || ''));
   }
@@ -65,9 +77,29 @@ export function hasAnyModification(payload: ModPayload): boolean {
       payload.versionName ||
       payload.versionCode ||
       payload.iconUploadPath ||
+      payload.whiteLabelProfile ||
       payload.unityPatches.length ||
       payload.filePatches.length,
   );
+}
+
+function buildWhiteLabelProfile(modifications: Record<string, any>): WhiteLabelProfilePatch | null {
+  const raw = modifications?.whiteLabelProfile || modifications?.whiteLabel;
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+  const profile = raw as Record<string, unknown>;
+  return {
+    key: typeof profile.key === 'string' ? profile.key.trim() : null,
+    appName: typeof profile.appName === 'string' ? profile.appName.trim() : modifications?.appName?.trim() || null,
+    packageName: typeof profile.packageName === 'string' ? profile.packageName.trim() : modifications?.packageName?.trim() || null,
+    versionName: typeof profile.versionName === 'string' ? profile.versionName.trim() : modifications?.versionName?.trim() || null,
+    versionCode: typeof profile.versionCode === 'string' ? profile.versionCode.trim() : modifications?.versionCode?.trim() || null,
+    sceneId: typeof profile.sceneId === 'string' ? profile.sceneId.trim() : null,
+    title: typeof profile.title === 'string' ? profile.title.trim() : null,
+    description: typeof profile.description === 'string' ? profile.description.trim() : null,
+    tenantId: typeof profile.tenantId === 'string' ? profile.tenantId.trim() : null,
+  };
 }
 
 export async function buildModPayload(
@@ -90,19 +122,15 @@ export async function buildModPayload(
       replacementArtifactId: patch.replacementArtifactId || null,
     };
     if (normalizedPatch.mode === 'file_replace' && normalizedPatch.replacementArtifactId && !normalizedPatch.replacementBase64) {
-      if (task) logTask(task, `[Host] Fetching replacement artifact from host: ${normalizedPatch.replacementArtifactId}`);
       const replacementPath = fetchArtifactToLocal(normalizedPatch.replacementArtifactId);
       normalizedPatch.replacementBase64 = fs.readFileSync(replacementPath).toString('base64');
-      if (task) logTask(task, `[Host] Fetched and encoded artifact: ${normalizedPatch.replacementArtifactId}`);
     }
     normalizedFilePatches.push(normalizedPatch);
   }
 
   let iconUploadPath: string | null = null;
   if (modifications?.iconArtifactId) {
-    if (task) logTask(task, `[Host] Fetching icon artifact from host: ${modifications.iconArtifactId}`);
     iconUploadPath = fetchArtifactToLocal(modifications.iconArtifactId);
-    if (task) logTask(task, `[Host] Fetched icon path: ${iconUploadPath}`);
   }
 
   return {
@@ -113,6 +141,7 @@ export async function buildModPayload(
     iconUploadPath,
     unityConfigPath: modifications?.unityConfigPath?.trim() || null,
     unityPatches,
+    whiteLabelProfile: buildWhiteLabelProfile(modifications),
     filePatches: normalizedFilePatches,
   };
 }

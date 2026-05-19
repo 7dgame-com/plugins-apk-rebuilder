@@ -4,9 +4,10 @@
 
 ## 目标
 
-插件以前后端同域的方式独立部署，例如：
+插件以前后端同域的方式独立部署。当前 stack 默认提供两套入口：
 
-- `https://apk-rebuilder.plugins.xrugc.com/`
+- 开发环境：`https://apk-rebuilder-d.plugins.xrugc.com/` -> `api.d.xrteeth.com` / `api.d.tmrpp.com`
+- 正式环境：`https://apk-rebuilder.plugins.xrugc.com/` -> `api.xrteeth.com` / `api.tmrpp.com`
 
 同时在该域名下保证：
 
@@ -19,7 +20,14 @@
 
 - `APP_API_N_URL`：用于 `/api/*`
 
-最小示例：
+开发环境最小示例：
+
+```bash
+export APP_API_1_URL=https://api.d.xrteeth.com
+export APP_API_2_URL=https://api.d.tmrpp.com
+```
+
+正式环境最小示例：
 
 ```bash
 export APP_API_1_URL=https://api.xrteeth.com
@@ -44,13 +52,23 @@ export APP_API_2_URL=https://api.tmrpp.com
 
 ## 宿主注册
 
-宿主侧插件配置应指向：
+宿主侧插件配置按环境指向不同地址。开发主框架注册：
 
 ```json
 {
   "id": "apk-rebuilder",
-  "url": "https://apk-rebuilder.example.com/",
-  "allowedOrigin": "https://apk-rebuilder.example.com"
+  "url": "https://apk-rebuilder-d.plugins.xrugc.com/",
+  "allowedOrigin": "https://apk-rebuilder-d.plugins.xrugc.com"
+}
+```
+
+正式主框架注册：
+
+```json
+{
+  "id": "apk-rebuilder",
+  "url": "https://apk-rebuilder.plugins.xrugc.com/",
+  "allowedOrigin": "https://apk-rebuilder.plugins.xrugc.com"
 }
 ```
 

@@ -5,6 +5,9 @@ import { randomUUID } from 'node:crypto';
 import { APK_LIBRARY_CACHE_ROOT, APK_LIBRARY_DIR, APK_LIBRARY_INDEX_PATH } from './config';
 import { ApkInfo, ApkLibraryItem } from './types';
 import { nowIso } from './taskStore';
+import { debugLog } from './logger';
+
+export type ApkLibraryStorage = NonNullable<ApkLibraryItem['storage']>;
 
 function ensureLibraryStorage(): void {
   fs.mkdirSync(APK_LIBRARY_DIR, { recursive: true });
@@ -118,6 +121,7 @@ export function addOrGetApkItem(
     name: displayName,
     storedName,
     filePath: storePath,
+    storage: { type: 'local' },
     size: data.length,
     sha256: digest,
     createdAt,
@@ -132,15 +136,64 @@ export function addOrGetApkItem(
   return { item, created: true };
 }
 
+export function isApkItemHashPending(item: ApkLibraryItem): boolean {
+  return String(item.sha256 || '').startsWith('pending:');
+}
+
+export function addPendingApkItemFromFile(
+  originalName: string,
+  tempPath: string,
+): ApkLibraryItem {
+  const items = readItems();
+  const displayName = safeFilename(normalizeOriginalName(originalName || 'uploaded.apk'));
+  const createdAt = nowIso();
+  const size = fs.statSync(tempPath).size;
+  const fileId = randomUUID();
+  const suffix = path.extname(displayName) || '.apk';
+  const storedName = `${fileId}${suffix.toLowerCase()}`;
+  const storePath = path.join(APK_LIBRARY_DIR, storedName);
+  const moveStartedAt = Date.now();
+  moveFileSync(tempPath, storePath);
+
+  const item: ApkLibraryItem = {
+    id: fileId,
+    name: displayName,
+    storedName,
+    filePath: storePath,
+    storage: { type: 'local' },
+    size,
+    sha256: `pending:${fileId}`,
+    createdAt,
+    lastUsedAt: createdAt,
+    parsedReady: false,
+    decodeCachePath: null,
+    apkInfo: null,
+  };
+
+  items.push(item);
+  writeItems(items);
+  debugLog('[APK-REBUILDER] standard apk stored before hash', {
+    itemId: item.id,
+    fileName: displayName,
+    size,
+    moveDurationMs: Date.now() - moveStartedAt,
+  });
+  return item;
+}
+
 export async function addOrGetApkItemFromFile(
   originalName: string,
   tempPath: string,
 ): Promise<{ item: ApkLibraryItem; created: boolean }> {
+  const startedAt = Date.now();
   const items = readItems();
   const baseDir = APK_LIBRARY_DIR;
   const displayName = safeFilename(normalizeOriginalName(originalName || 'uploaded.apk'));
   const createdAt = nowIso();
+  const size = fs.statSync(tempPath).size;
+  const hashStartedAt = Date.now();
   const digest = await sha256File(tempPath);
+  const hashDurationMs = Date.now() - hashStartedAt;
 
   for (const item of items) {
     if (item.sha256 === digest) {
@@ -152,6 +205,13 @@ export async function addOrGetApkItemFromFile(
       } catch {
         // ignore temp cleanup errors
       }
+      debugLog('[APK-REBUILDER] standard apk deduplicated', {
+        itemId: item.id,
+        fileName: displayName,
+        size,
+        hashDurationMs,
+        durationMs: Date.now() - startedAt,
+      });
       return { item, created: false };
     }
   }
@@ -160,14 +220,16 @@ export async function addOrGetApkItemFromFile(
   const suffix = path.extname(displayName) || '.apk';
   const storedName = `${fileId}${suffix.toLowerCase()}`;
   const storePath = path.join(baseDir, storedName);
+  const moveStartedAt = Date.now();
   moveFileSync(tempPath, storePath);
-  const size = fs.statSync(storePath).size;
+  const moveDurationMs = Date.now() - moveStartedAt;
 
   const item: ApkLibraryItem = {
     id: fileId,
     name: displayName,
     storedName,
     filePath: storePath,
+    storage: { type: 'local' },
     size,
     sha256: digest,
     createdAt,
@@ -179,7 +241,39 @@ export async function addOrGetApkItemFromFile(
 
   items.push(item);
   writeItems(items);
+  debugLog('[APK-REBUILDER] standard apk stored', {
+    itemId: item.id,
+    fileName: displayName,
+    size,
+    hashDurationMs,
+    moveDurationMs,
+    durationMs: Date.now() - startedAt,
+  });
   return { item, created: true };
+}
+
+export async function finalizeApkItemHash(itemId: string): Promise<ApkLibraryItem> {
+  const items = readItems();
+  const item = items.find(entry => entry.id === itemId);
+  if (!item) {
+    throw new Error('APK not found in library');
+  }
+  if (!fs.existsSync(item.filePath)) {
+    throw new Error('APK file is missing from storage');
+  }
+  const startedAt = Date.now();
+  const digest = await sha256File(item.filePath);
+  item.sha256 = digest;
+  item.lastUsedAt = nowIso();
+  const duplicate = items.find(entry => entry.id !== item.id && entry.sha256 === digest);
+  writeItems(items);
+  debugLog('[APK-REBUILDER] standard apk hash complete', {
+    itemId: item.id,
+    duplicateOf: duplicate?.id || null,
+    size: item.size,
+    durationMs: Date.now() - startedAt,
+  });
+  return item;
 }
 
 export function touchApkItem(itemId: string): ApkLibraryItem | undefined {

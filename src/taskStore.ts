@@ -67,6 +67,11 @@ export function listTasks(): Task[] {
   return readTasks().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+export function replaceTasks(tasks: Task[]): Task[] {
+  writeTasks(tasks);
+  return tasks;
+}
+
 export function updateTask(task: Task): Task {
   task.updatedAt = nowIso();
   return saveTask(task);
@@ -74,8 +79,6 @@ export function updateTask(task: Task): Task {
 
 export function logTask(task: Task, message: string): Task {
   const entry = `[${nowIso()}] ${message}`;
-  // also echo to console for easier debugging during development
-  console.log(`task ${task.id}: ${message}`);
   task.logs.push(entry);
   return updateTask(task);
 }
