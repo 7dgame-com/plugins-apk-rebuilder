@@ -12,6 +12,15 @@ export function getPluginManifest(): unknown {
 }
 
 export function mapPluginError(err: unknown): { status: number; code: string; message: string } {
+  if (err && typeof err === 'object') {
+    const maybeMapped = err as { status?: unknown; code?: unknown; message?: unknown };
+    const status = Number(maybeMapped.status);
+    const code = String(maybeMapped.code || '').trim();
+    const message = String(maybeMapped.message || '').trim();
+    if (Number.isInteger(status) && status >= 400 && status <= 599 && code && message) {
+      return { status, code, message };
+    }
+  }
   const message = String(err instanceof Error ? err.message : err);
   if (message.includes('Host auth unauthorized')) {
     return { status: 401, code: 'HOST_UNAUTHORIZED', message: 'Host token unauthorized' };

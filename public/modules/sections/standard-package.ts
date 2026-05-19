@@ -52,9 +52,15 @@ type UploadSession = {
   uploadedChunks?: number[];
 };
 
+type UploadRequestError = Error & {
+  status?: number;
+  code?: string;
+};
+
 const fallbackChunkSize = 8 * 1024 * 1024;
 const uploadConcurrency = 3;
 const maxChunkRetries = 3;
+const maxSessionRetries = 2;
 
 function formatDuration(ms: number): string {
   const seconds = Math.max(0, Math.floor(ms / 1000));
@@ -213,10 +219,44 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     return progress.reduce((total, value) => total + Math.max(0, value || 0), 0);
   }
 
+  function makeUploadError(message: string, status?: number, code?: string): UploadRequestError {
+    const error = new Error(message) as UploadRequestError;
+    if (status) error.status = status;
+    if (code) error.code = code;
+    return error;
+  }
+
+  function isValidSession(session: UploadSession, file: File): boolean {
+    return /^[a-f0-9-]{36}$/i.test(String(session.sessionId || '')) &&
+      Number(session.size) === file.size &&
+      Number.isFinite(session.chunkSize) &&
+      session.chunkSize > 0 &&
+      Number.isInteger(session.totalChunks) &&
+      session.totalChunks > 0;
+  }
+
+  function isRecoverableSessionError(error: unknown): boolean {
+    const requestError = error as UploadRequestError;
+    const code = String(requestError?.code || '').trim();
+    const message = String(requestError?.message || '').toLowerCase();
+    return requestError?.status === 404 ||
+      requestError?.status === 410 ||
+      code === 'UPLOAD_SESSION_NOT_FOUND' ||
+      code === 'UPLOAD_SESSION_EXPIRED' ||
+      code === 'UPLOAD_SESSION_INVALID' ||
+      message.includes('upload session not found') ||
+      message.includes('upload session expired') ||
+      message.includes('invalid upload session');
+  }
+
   async function parseSessionResponse(res: Response): Promise<UploadSession> {
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error(normalizeHostErrorMessage(json?.error?.message || json?.message || `上传失败(${res.status})`, t, 'standard.uploadFailed'));
+      throw makeUploadError(
+        normalizeHostErrorMessage(json?.error?.message || json?.message || `上传失败(${res.status})`, t, 'standard.uploadFailed'),
+        res.status,
+        String(json?.error?.code || json?.code || ''),
+      );
     }
     return (json?.data || json) as UploadSession;
   }
@@ -233,10 +273,18 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     return parseSessionResponse(res);
   }
 
-  async function createSession(file: File): Promise<UploadSession> {
-    const restored = await loadStoredSession(file).catch(() => null);
+  async function createSession(file: File, forceNew = false): Promise<UploadSession> {
+    const key = uploadSessionKey(file);
+    if (forceNew) {
+      window.localStorage.removeItem(key);
+    }
+    const restored = forceNew ? null : await loadStoredSession(file).catch(() => null);
     if (restored && restored.size === file.size) {
-      return restored;
+      if (!isValidSession(restored, file)) {
+        window.localStorage.removeItem(key);
+      } else {
+        return restored;
+      }
     }
     const res = await host.authFetch('/plugin/admin/upload-standard/sessions', {
       method: 'POST',
@@ -250,7 +298,11 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
       }),
     });
     const session = await parseSessionResponse(res);
-    window.localStorage.setItem(uploadSessionKey(file), session.sessionId);
+    if (!isValidSession(session, file)) {
+      window.localStorage.removeItem(key);
+      throw makeUploadError(t('standard.uploadFailed'), 400, 'UPLOAD_SESSION_INVALID');
+    }
+    window.localStorage.setItem(key, session.sessionId);
     return session;
   }
 
@@ -296,7 +348,11 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
         } catch {
           json = {};
         }
-        reject(new Error(normalizeHostErrorMessage(json?.error?.message || json?.message || `上传失败(${xhr.status})`, t, 'standard.uploadFailed')));
+        reject(makeUploadError(
+          normalizeHostErrorMessage(json?.error?.message || json?.message || `上传失败(${xhr.status})`, t, 'standard.uploadFailed'),
+          xhr.status,
+          String(json?.error?.code || json?.code || ''),
+        ));
       };
       xhr.send(blob);
     });
@@ -325,10 +381,10 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     throw lastError instanceof Error ? lastError : new Error(t('standard.uploadFailed'));
   }
 
-  async function uploadStandardChunked(file: File): Promise<{ elapsedMs: number }> {
+  async function uploadStandardChunkedOnce(file: File, forceNewSession: boolean): Promise<{ elapsedMs: number }> {
     await host.ensureInit();
     const startedAt = Date.now();
-    const session = await createSession(file);
+    const session = await createSession(file, forceNewSession);
     const uploaded = new Set(session.uploadedChunks || []);
     const progress = Array.from({ length: session.totalChunks }, (_value, index) => (
       uploaded.has(index) ? chunkByteSize(file, session.chunkSize, index) : 0
@@ -361,10 +417,31 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error(normalizeHostErrorMessage(json?.error?.message || json?.message || `上传失败(${res.status})`, t, 'standard.uploadFailed'));
+      throw makeUploadError(
+        normalizeHostErrorMessage(json?.error?.message || json?.message || `上传失败(${res.status})`, t, 'standard.uploadFailed'),
+        res.status,
+        String(json?.error?.code || json?.code || ''),
+      );
     }
     window.localStorage.removeItem(uploadSessionKey(file));
     return { elapsedMs: Date.now() - startedAt };
+  }
+
+  async function uploadStandardChunked(file: File): Promise<{ elapsedMs: number }> {
+    let lastError: unknown = null;
+    for (let attempt = 1; attempt <= maxSessionRetries; attempt += 1) {
+      try {
+        return await uploadStandardChunkedOnce(file, attempt > 1);
+      } catch (error) {
+        lastError = error;
+        if (attempt < maxSessionRetries && isRecoverableSessionError(error)) {
+          window.localStorage.removeItem(uploadSessionKey(file));
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error(t('standard.uploadFailed'));
   }
 
   function normalizeDisplayName(name: string | undefined): string {
@@ -617,6 +694,10 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
         const result = await uploadStandardChunked(file);
         setUploadText(t('standard.uploadDone', { elapsed: formatDuration(result.elapsedMs) }));
       } catch (chunkError) {
+        if (isRecoverableSessionError(chunkError)) {
+          window.localStorage.removeItem(uploadSessionKey(file));
+          throw chunkError;
+        }
         console.warn('[APK-REBUILDER] chunk standard upload failed, fallback to plugin upload', chunkError);
         await host.ensureInit();
         const form = new FormData();

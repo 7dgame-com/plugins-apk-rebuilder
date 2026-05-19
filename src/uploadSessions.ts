@@ -7,6 +7,18 @@ const DEFAULT_CHUNK_SIZE = 8 * 1024 * 1024;
 const MAX_CHUNK_SIZE = 16 * 1024 * 1024;
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 
+export class UploadSessionError extends Error {
+  status: number;
+  code: string;
+
+  constructor(status: number, code: string, message: string) {
+    super(message);
+    this.name = 'UploadSessionError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
 type UploadSessionManifest = {
   sessionId: string;
   fileName: string;
@@ -43,7 +55,7 @@ function nowIso(): string {
 
 function sessionDir(sessionId: string): string {
   if (!/^[a-f0-9-]{36}$/i.test(sessionId)) {
-    throw new Error('Invalid upload session');
+    throw new UploadSessionError(400, 'UPLOAD_SESSION_INVALID', 'Invalid upload session');
   }
   return path.join(CHUNK_UPLOAD_DIR, sessionId);
 }
@@ -57,12 +69,24 @@ function chunkPath(sessionId: string, index: number): string {
 }
 
 function readManifest(sessionId: string): UploadSessionManifest {
-  const raw = JSON.parse(fs.readFileSync(manifestPath(sessionId), 'utf8'));
-  return raw as UploadSessionManifest;
+  const file = manifestPath(sessionId);
+  if (!fs.existsSync(file)) {
+    throw new UploadSessionError(404, 'UPLOAD_SESSION_NOT_FOUND', 'Upload session not found');
+  }
+  try {
+    const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return raw as UploadSessionManifest;
+  } catch (error) {
+    if (error instanceof UploadSessionError) throw error;
+    throw new UploadSessionError(400, 'UPLOAD_SESSION_CORRUPTED', 'Upload session manifest corrupted');
+  }
 }
 
 function writeManifest(manifest: UploadSessionManifest): void {
-  fs.writeFileSync(manifestPath(manifest.sessionId), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+  const target = manifestPath(manifest.sessionId);
+  const temp = `${target}.${process.pid}.${randomUUID()}.tmp`;
+  fs.writeFileSync(temp, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+  fs.renameSync(temp, target);
 }
 
 function uploadedChunks(sessionId: string): number[] {
@@ -86,7 +110,7 @@ function toView(manifest: UploadSessionManifest): UploadSessionView {
 
 function assertSessionOpen(manifest: UploadSessionManifest): void {
   if (Date.parse(manifest.expiresAt) <= Date.now()) {
-    throw new Error('Upload session expired');
+    throw new UploadSessionError(410, 'UPLOAD_SESSION_EXPIRED', 'Upload session expired');
   }
 }
 
