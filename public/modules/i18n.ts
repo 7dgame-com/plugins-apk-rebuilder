@@ -33,6 +33,9 @@ const DICTIONARY = {
     'pkg.noFile': '未选择任何文件',
     'pkg.changedCount': '字段变更 {count} 项',
     'pkg.modifyInfo': '修改信息',
+    'pkg.packageNameInvalid': '包名格式错误，例如 com.xrugc.demo；每段需以字母开头，仅支持字母、数字、下划线',
+    'pkg.versionNameInvalid': '版本名格式错误，请填写三段数字，例如 1.0.0',
+    'pkg.versionCodeInvalid': '版本号只能填写数字',
 
     'icon.title': '编辑图标',
     'icon.cancel': '取消',
@@ -188,6 +191,9 @@ const DICTIONARY = {
     'pkg.noFile': 'No file selected',
     'pkg.changedCount': '{count} fields changed',
     'pkg.modifyInfo': 'Modified Info',
+    'pkg.packageNameInvalid': 'Invalid package name, for example com.xrugc.demo. Each segment must start with a letter and use only letters, numbers, or underscores.',
+    'pkg.versionNameInvalid': 'Invalid version. Use three numeric parts, for example 1.0.0.',
+    'pkg.versionCodeInvalid': 'Version code must contain digits only.',
 
     'icon.title': 'Edit Icon',
     'icon.cancel': 'Cancel',
@@ -343,6 +349,9 @@ const DICTIONARY = {
     'pkg.noFile': '未選擇檔案',
     'pkg.changedCount': '欄位變更 {count} 項',
     'pkg.modifyInfo': '修改資訊',
+    'pkg.packageNameInvalid': '包名格式錯誤，例如 com.xrugc.demo；每段需以字母開頭，僅支援字母、數字、底線',
+    'pkg.versionNameInvalid': '版本名稱格式錯誤，請填寫三段數字，例如 1.0.0',
+    'pkg.versionCodeInvalid': '版本號只能填寫數字',
 
     'icon.title': '編輯圖示',
     'icon.cancel': '取消',
@@ -484,6 +493,9 @@ const DICTIONARY = {
     'pkg.noFile': 'ファイル未選択',
     'pkg.changedCount': '{count} 件変更',
     'pkg.modifyInfo': '変更情報',
+    'pkg.packageNameInvalid': 'パッケージ名の形式が正しくありません。例: com.xrugc.demo。各セグメントは英字で始め、英字、数字、アンダースコアのみ使用できます。',
+    'pkg.versionNameInvalid': 'バージョン形式が正しくありません。例: 1.0.0 のように 3 つの数字で入力してください。',
+    'pkg.versionCodeInvalid': 'バージョンコードは数字のみ入力できます。',
 
     'icon.title': 'アイコン編集',
     'icon.cancel': 'キャンセル',
@@ -625,6 +637,9 @@ const DICTIONARY = {
     'pkg.noFile': 'ยังไม่ได้เลือกไฟล์',
     'pkg.changedCount': 'เปลี่ยน {count} ฟิลด์',
     'pkg.modifyInfo': 'ข้อมูลที่แก้ไข',
+    'pkg.packageNameInvalid': 'รูปแบบชื่อแพ็กเกจไม่ถูกต้อง เช่น com.xrugc.demo แต่ละส่วนต้องขึ้นต้นด้วยตัวอักษร และใช้ได้เฉพาะตัวอักษร ตัวเลข หรือขีดล่าง',
+    'pkg.versionNameInvalid': 'รูปแบบเวอร์ชันไม่ถูกต้อง โปรดกรอกตัวเลข 3 ส่วน เช่น 1.0.0',
+    'pkg.versionCodeInvalid': 'รหัสเวอร์ชันต้องเป็นตัวเลขเท่านั้น',
 
     'icon.title': 'แก้ไขไอคอน',
     'icon.cancel': 'ยกเลิก',

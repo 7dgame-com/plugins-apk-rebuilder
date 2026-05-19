@@ -1,7 +1,16 @@
-import { computed, defineComponent, ref, type PropType } from 'vue';
+import { computed, defineComponent, reactive, ref, type PropType } from 'vue';
 import { t } from '../../i18n';
+import {
+  isValidPackageName,
+  isValidVersionCode,
+  isValidVersionName,
+  sanitizeDigits,
+  sanitizePackageName,
+} from '../../validation';
 
 type PackageInfoField = 'appName' | 'packageName' | 'versionName' | 'versionCode';
+type ValidationState = 'neutral' | 'valid' | 'invalid';
+type VersionPart = 'major' | 'minor' | 'patch';
 
 const fieldLabels: Record<PackageInfoField, string> = {
   appName: 'pkg.appName',
@@ -61,10 +70,70 @@ export default defineComponent({
           <div class="kv"><span class="k">{{ t('pkg.versionCode') }}</span><span class="v" id="srcCode">-</span><span></span></div>
         </div>
         <div class="compare-box editable-pane">
-          <div v-for="field in fields" :key="field" class="field">
-            <label>{{ t(fieldLabels[field]) }}</label>
-            <input :id="field" type="text" :placeholder="fieldPlaceholders[field]" autocomplete="off" spellcheck="false" />
-          </div>
+          <template v-for="field in fields" :key="field">
+            <div v-if="field === 'versionName'" class="field">
+              <label>{{ t(fieldLabels[field]) }}</label>
+              <div class="version-segment-row" :class="versionFieldClass">
+                <input
+                  id="versionNameMajor"
+                  v-model="versionParts.major"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="1"
+                  autocomplete="off"
+                  spellcheck="false"
+                  :aria-invalid="versionState === 'invalid'"
+                  @input="onVersionPartInput('major')"
+                />
+                <span class="version-separator">.</span>
+                <input
+                  id="versionNameMinor"
+                  v-model="versionParts.minor"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="0"
+                  autocomplete="off"
+                  spellcheck="false"
+                  :aria-invalid="versionState === 'invalid'"
+                  @input="onVersionPartInput('minor')"
+                />
+                <span class="version-separator">.</span>
+                <input
+                  id="versionNamePatch"
+                  v-model="versionParts.patch"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="0"
+                  autocomplete="off"
+                  spellcheck="false"
+                  :aria-invalid="versionState === 'invalid'"
+                  @input="onVersionPartInput('patch')"
+                />
+              </div>
+              <input id="versionName" type="hidden" :value="versionNameValue" />
+              <div v-if="versionMessage" class="field-hint error">{{ versionMessage }}</div>
+            </div>
+            <div v-else class="field">
+              <label>{{ t(fieldLabels[field]) }}</label>
+              <input
+                :id="field"
+                v-model="fieldValues[field]"
+                type="text"
+                :inputmode="field === 'versionCode' ? 'numeric' : undefined"
+                :pattern="field === 'versionCode' ? '[0-9]*' : undefined"
+                :placeholder="fieldPlaceholders[field]"
+                autocomplete="off"
+                spellcheck="false"
+                :class="fieldClass(field)"
+                :aria-invalid="fieldState(field) === 'invalid'"
+                @input="onFieldInput(field)"
+              />
+              <div v-if="fieldMessage(field)" class="field-hint error">{{ fieldMessage(field) }}</div>
+            </div>
+          </template>
           <div v-if="showIcon" class="icon-edit-row">
             <div class="icon-edit-left">
               <div class="field">
@@ -95,9 +164,70 @@ export default defineComponent({
   `,
   setup(props, { emit }) {
     const iconInputRef = ref<HTMLInputElement | null>(null);
+    const fieldValues = reactive<Record<PackageInfoField, string>>({
+      appName: '',
+      packageName: '',
+      versionName: '',
+      versionCode: '',
+    });
+    const versionParts = reactive<Record<VersionPart, string>>({
+      major: '',
+      minor: '',
+      patch: '',
+    });
     const gridStyle = computed(() => (
       props.showOriginal ? 'margin-top:10px' : 'margin-top:10px; grid-template-columns: 1fr;'
     ));
+    const versionNameValue = computed(() => {
+      if (!versionParts.major && !versionParts.minor && !versionParts.patch) return '';
+      return `${versionParts.major}.${versionParts.minor}.${versionParts.patch}`;
+    });
+    const versionState = computed<ValidationState>(() => {
+      if (!versionNameValue.value) return 'neutral';
+      return isValidVersionName(versionNameValue.value) ? 'valid' : 'invalid';
+    });
+    const versionFieldClass = computed(() => ({
+      'is-valid': versionState.value === 'valid',
+      'is-invalid': versionState.value === 'invalid',
+    }));
+    const versionMessage = computed(() => (
+      versionState.value === 'invalid' ? t('pkg.versionNameInvalid') : ''
+    ));
+
+    function fieldState(field: PackageInfoField): ValidationState {
+      const value = fieldValues[field].trim();
+      if (!value || field === 'appName' || field === 'versionName') return 'neutral';
+      if (field === 'packageName') return isValidPackageName(value) ? 'valid' : 'invalid';
+      if (field === 'versionCode') return isValidVersionCode(value) ? 'valid' : 'invalid';
+      return 'neutral';
+    }
+
+    function fieldClass(field: PackageInfoField): Record<string, boolean> {
+      const state = fieldState(field);
+      return {
+        'is-valid': state === 'valid',
+        'is-invalid': state === 'invalid',
+      };
+    }
+
+    function fieldMessage(field: PackageInfoField): string {
+      if (fieldState(field) !== 'invalid') return '';
+      if (field === 'packageName') return t('pkg.packageNameInvalid');
+      if (field === 'versionCode') return t('pkg.versionCodeInvalid');
+      return '';
+    }
+
+    function onFieldInput(field: PackageInfoField): void {
+      if (field === 'packageName') {
+        fieldValues.packageName = sanitizePackageName(fieldValues.packageName);
+      } else if (field === 'versionCode') {
+        fieldValues.versionCode = sanitizeDigits(fieldValues.versionCode);
+      }
+    }
+
+    function onVersionPartInput(part: VersionPart): void {
+      versionParts[part] = sanitizeDigits(versionParts[part]);
+    }
 
     function pickIcon(): void {
       iconInputRef.value?.click();
@@ -111,11 +241,22 @@ export default defineComponent({
     return {
       fieldLabels,
       fieldPlaceholders,
+      fieldClass,
+      fieldMessage,
+      fieldState,
+      fieldValues,
       gridStyle,
       iconInputRef,
       onIconChange,
+      onFieldInput,
+      onVersionPartInput,
       pickIcon,
       t,
+      versionFieldClass,
+      versionMessage,
+      versionNameValue,
+      versionParts,
+      versionState,
     };
   },
 });

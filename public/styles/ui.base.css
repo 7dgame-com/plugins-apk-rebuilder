@@ -162,6 +162,46 @@ select:focus {
   box-shadow: 0 0 0 3px var(--primary-light);
 }
 
+input[type="text"].is-valid {
+  border-color: var(--success-color);
+}
+
+input[type="text"].is-invalid,
+.version-segment-row.is-invalid input[type="text"] {
+  border-color: var(--danger-color);
+  box-shadow: 0 0 0 3px var(--danger-light);
+}
+
+.field-hint {
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+}
+
+.field-hint.error {
+  color: var(--danger-color);
+}
+
+.version-segment-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.version-segment-row input[type="text"] {
+  text-align: center;
+  min-width: 0;
+}
+
+.version-segment-row.is-valid input[type="text"] {
+  border-color: var(--success-color);
+}
+
+.version-separator {
+  color: var(--text-muted);
+  font-weight: var(--font-weight-semibold);
+}
+
 input[type="text"]:-webkit-autofill,
 input[type="text"]:-webkit-autofill:hover,
 input[type="text"]:-webkit-autofill:focus,

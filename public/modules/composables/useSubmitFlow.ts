@@ -2,6 +2,7 @@ import { t } from '../i18n';
 import { normalizeHostErrorMessage } from '../host/errors';
 import { TASK_STATUS } from '../state';
 import type { HostBridgeApi, SubmitRecord, SubmitRunData } from '../types';
+import { isValidPackageName, isValidVersionCode, isValidVersionName } from '../validation';
 
 const WHITE_LABEL_PROFILE_KEY = 'apk-rebuilder';
 
@@ -86,6 +87,18 @@ export function useSubmitFlow({
     const sceneId = getSceneId();
     if (!appName) {
       await showAlert(t('host.appNameRequired'));
+      return null;
+    }
+    if (packageName && !isValidPackageName(packageName)) {
+      await showAlert(t('pkg.packageNameInvalid'));
+      return null;
+    }
+    if (versionName && !isValidVersionName(versionName)) {
+      await showAlert(t('pkg.versionNameInvalid'));
+      return null;
+    }
+    if (versionCode && !isValidVersionCode(versionCode)) {
+      await showAlert(t('pkg.versionCodeInvalid'));
       return null;
     }
     if (!sceneId) {
