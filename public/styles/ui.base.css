@@ -2,6 +2,11 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   background: var(--bg-page);
@@ -31,12 +36,17 @@ code {
 }
 
 .wrap {
+  width: 100%;
   max-width: var(--container-max-width);
   margin: 0 auto;
   padding: var(--container-padding);
 }
 
 .card {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -92,6 +102,8 @@ code {
   gap: var(--spacing-sm);
   flex-wrap: wrap;
   align-items: center;
+  min-width: 0;
+  max-width: 100%;
   margin-top: var(--spacing-sm);
 }
 
@@ -99,6 +111,8 @@ code {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--spacing-sm);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .toolbar {
@@ -106,16 +120,20 @@ code {
   justify-content: space-between;
   align-items: flex-start;
   gap: var(--spacing-md);
+  min-width: 0;
+  max-width: 100%;
   margin-bottom: var(--spacing-md);
 }
 
 .toolbar > strong {
   display: inline-flex;
   align-items: center;
+  min-width: 0;
   min-height: 34px;
   font-size: var(--font-size-xl);
   line-height: 1.25;
   color: var(--text-primary);
+  overflow-wrap: anywhere;
 }
 
 .toolbar-actions {
@@ -124,6 +142,7 @@ code {
   gap: var(--spacing-sm);
   flex-wrap: wrap;
   justify-content: flex-end;
+  min-width: 0;
 }
 
 .field {
@@ -183,9 +202,10 @@ input[type="text"].is-invalid,
 
 .version-segment-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: minmax(56px, 1fr) auto minmax(56px, 1fr) auto minmax(56px, 1fr);
   align-items: center;
   gap: 8px;
+  max-width: 100%;
 }
 
 .version-segment-row input[type="text"] {
@@ -490,6 +510,8 @@ button:not(.shell-control):not(.btn-danger):focus-visible,
 }
 
 .compare-box {
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: var(--spacing-md);
@@ -1058,10 +1080,12 @@ body.apk-entry .standard-package-actions button.btn-danger-soft:focus-visible {
   --flow-line-inset: 82px;
   --flow-line-color: color-mix(in srgb, var(--primary-color) 48%, var(--border-color));
   display: grid;
-  grid-template-columns: minmax(360px, 1.05fr) minmax(360px, 1fr) minmax(300px, 0.85fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--flow-gap);
   align-items: start;
-  min-width: 1080px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   margin-top: var(--spacing-lg);
   position: relative;
 }
@@ -1100,13 +1124,15 @@ body.apk-entry .standard-package-actions button.btn-danger-soft:focus-visible {
   align-items: center;
   justify-self: center;
   gap: var(--spacing-sm);
-  width: max-content;
+  width: fit-content;
+  max-width: 100%;
   margin: 0 0 14px;
   padding: 0 12px;
   background: var(--bg-page);
   color: var(--text-secondary);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
+  overflow-wrap: anywhere;
 }
 
 .apk-workflow-index {
@@ -1467,6 +1493,21 @@ body.apk-entry .standard-package-actions button.btn-danger-soft:focus-visible {
   color: var(--danger-color);
 }
 
+@media (max-width: 1180px) {
+  .apk-workflow {
+    grid-template-columns: 1fr;
+  }
+
+  .apk-workflow::before,
+  .apk-workflow::after {
+    display: none;
+  }
+
+  .apk-workflow-title {
+    justify-self: start;
+  }
+}
+
 @media (max-width: 860px) {
   .wrap {
     padding: var(--spacing-md);
@@ -1490,19 +1531,6 @@ body.apk-entry .standard-package-actions button.btn-danger-soft:focus-visible {
 
   .grid {
     grid-template-columns: 1fr;
-  }
-
-  .apk-workflow {
-    grid-template-columns: 1fr;
-  }
-
-  .apk-workflow::before,
-  .apk-workflow::after {
-    display: none;
-  }
-
-  .apk-workflow-title {
-    justify-self: start;
   }
 
   .standard-package-list {
@@ -1535,5 +1563,12 @@ body.apk-entry .standard-package-actions button.btn-danger-soft:focus-visible {
   .submit-result-panel .btn,
   .submit-record-item .btn {
     justify-content: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .version-segment-row {
+    grid-template-columns: minmax(44px, 1fr) auto minmax(44px, 1fr) auto minmax(44px, 1fr);
+    gap: 5px;
   }
 }
