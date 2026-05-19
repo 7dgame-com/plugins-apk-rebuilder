@@ -286,7 +286,7 @@ export function createStandardPackageSection({ host, canManage = true }: { host:
         return restored;
       }
     }
-    const res = await host.authFetch('/plugin/admin/upload-standard/sessions', {
+    const res = await host.authFetch('/plugin/admin/upload-standard/sessions/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
