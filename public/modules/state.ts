@@ -47,17 +47,6 @@ export const state: AppState = {
   modProgress: MOD_PROGRESS.IDLE,
   iconFile: null,
   iconPreviewUrl: '',
-  fileTreeLoadedTaskId: '',
-  fileTreeData: null,
-  fileActivePath: '',
-  apkLibraryItems: [],
-  apkDrawerCollapsed: false,
-  fileDrawerCollapsed: true,
-  currentBrowseApkName: '',
-  filePatchTasks: [],
-  filePathCandidates: [],
-  fileTreeSearch: '',
-  toolsPopoverOpen: false,
 };
 
 const authToken = useAuthToken();
@@ -68,15 +57,6 @@ const taskState = useTaskState({
   taskStage: TASK_STAGE,
   modProgress: MOD_PROGRESS,
 });
-
-export const iconEditor = {
-  fileName: 'icon.png',
-  sourceImage: null as HTMLImageElement | null,
-  sourceUrl: '',
-  scale: 1,
-  offsetX: 0,
-  offsetY: 0,
-};
 
 export const $ = (id: string): HTMLElement | null => document.getElementById(id);
 
@@ -153,10 +133,6 @@ export function setRuntimeMode(mode: RuntimeModeValue | '' | null | undefined): 
 
 export function resetTaskExecutionState(taskId = '', sourceName = ''): void {
   taskState.resetTaskExecutionState(taskId, sourceName);
-}
-
-export function resetFileWorkspaceState(): void {
-  taskState.resetFileWorkspaceState();
 }
 
 export function resetIconState(): void {

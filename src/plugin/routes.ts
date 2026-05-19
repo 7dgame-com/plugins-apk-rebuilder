@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { randomUUID } from 'node:crypto';
 import multer from 'multer';
-import { modQueue } from '../taskQueue';
+import { getTaskQueuePosition, modQueue } from '../taskQueue';
 import { getLoosePrincipal } from './auth';
 import { requireHostPermission } from './hostAuth';
 import {
@@ -17,7 +17,14 @@ import {
   hasAnyModification,
   buildModPayload,
 } from './helpers';
-import { mapProgress, ensureUploadedArtifact, createTaskFromLibraryItem, createTaskFromArtifact } from '../common/taskUtils';
+import {
+  assertTaskDiskSpace,
+  mapProgress,
+  ensureUploadedArtifact,
+  createTaskFromLibraryItem,
+  createTaskFromArtifact,
+} from '../common/taskUtils';
+import { isTaskUsingLibraryItem } from '../common/taskPolicy';
 import {
   addOrGetApkItemFromFile,
   addPendingApkItemFromFile,
@@ -28,7 +35,7 @@ import {
   listApkItems,
   updateParseCache,
 } from '../apkLibrary';
-import { updateTask, getTask } from '../taskStore';
+import { updateTask, getTask, listTasks } from '../taskStore';
 import { fetchArtifactToLocal, getArtifact, uploadArtifact } from '../artifactService';
 import {
   readStandardPackageConfig,
@@ -287,10 +294,13 @@ export function createPluginRouter(): Router {
           fail(res, 404, 'APK not found in library', 'NOT_FOUND');
           return;
         }
-        const result = await createTaskFromLibraryItem(item, principal.userId);
+        const readyItem = isApkItemHashPending(item) ? await finalizeApkItemHash(item.id) : item;
+        assertTaskDiskSpace(readyItem.size);
+        const result = await createTaskFromLibraryItem(readyItem, principal.userId);
         task = result.task;
         cacheHit = result.cacheHit;
       } else {
+        assertTaskDiskSpace();
         task = createTaskFromArtifact(artifactId, principal.userId);
       }
 
@@ -307,12 +317,26 @@ export function createPluginRouter(): Router {
       }
 
       task.status = 'queued';
+      task.stage = 'queued';
+      task.stageMessage = 'Queued';
       task.error = null;
       task.errorCode = null;
+      task.startedAt = null;
+      task.finishedAt = null;
       updateTask(task);
-      void modQueue.add('apk-mod', { type: 'plugin-run', taskId: task.id, payload });
+      const job = await modQueue.add('apk-mod', { type: 'plugin-run', taskId: task.id, payload });
+      task.queueJobId = String(job.id || '');
+      updateTask(task);
+      const queuePosition = await getTaskQueuePosition(task);
 
-      ok(res, { runId: task.id, status: task.status, cacheHit });
+      ok(res, {
+        runId: task.id,
+        status: task.status,
+        stage: task.stage,
+        queuePosition,
+        cacheHit,
+        standardPackage: task.standardPackageSnapshot || null,
+      });
       debugLog('[APK-REBUILDER] /plugin/execute queued', {
         runId: task.id,
         status: task.status,
@@ -575,6 +599,11 @@ export function createPluginRouter(): Router {
         return;
       }
       const current = readStandardPackageConfig();
+      const inUse = listTasks().some(task => isTaskUsingLibraryItem(task, itemId));
+      if (inUse) {
+        fail(res, 409, 'Standard package is in use by queued or running tasks', 'STANDARD_PACKAGE_IN_USE');
+        return;
+      }
       const matchedActive =
         current.activeStandardId === itemId;
       const matchedPrevious =
@@ -649,6 +678,7 @@ export function createPluginRouter(): Router {
       }
 
       const updatedTask = ensureUploadedArtifact(task);
+      const queuePosition = await getTaskQueuePosition(updatedTask);
       const artifacts = updatedTask.outputArtifactId
         ? [{ artifactId: updatedTask.outputArtifactId, name: updatedTask.outputArtifactName, kind: 'apk' }]
         : [];
@@ -656,6 +686,11 @@ export function createPluginRouter(): Router {
       ok(res, {
         runId: updatedTask.id,
         status: updatedTask.status,
+        stage: updatedTask.stage || updatedTask.status,
+        stageMessage: updatedTask.stageMessage || null,
+        queuePosition,
+        standardPackage: updatedTask.standardPackageSnapshot || null,
+        cacheHit: Boolean(updatedTask.cacheHit),
         createdAt: updatedTask.createdAt,
         updatedAt: updatedTask.updatedAt,
         progress: mapProgress(updatedTask),

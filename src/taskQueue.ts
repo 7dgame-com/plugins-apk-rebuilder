@@ -1,9 +1,16 @@
 import { Queue, Worker, Job } from 'bullmq';
 import Redis from 'ioredis';
-import { REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_CONNECT_RETRY_DELAY_MS, REDIS_CONNECT_TIMEOUT_MS } from './config';
+import {
+    APK_WORKER_CONCURRENCY,
+    REDIS_HOST,
+    REDIS_PORT,
+    REDIS_PASSWORD,
+    REDIS_CONNECT_RETRY_DELAY_MS,
+    REDIS_CONNECT_TIMEOUT_MS,
+} from './config';
 import { runDecompileTask, runModTask } from './buildService';
 import { getTask, setTaskError } from './taskStore';
-import { ModPayload } from './types';
+import { ModPayload, Task } from './types';
 import { debugLog } from './logger';
 
 const connection = new Redis({
@@ -68,7 +75,7 @@ export const modWorker = new Worker(
     },
     {
         connection: connection as any,
-        concurrency: 1
+        concurrency: APK_WORKER_CONCURRENCY
     }
 );
 
@@ -105,4 +112,22 @@ export async function ensureRedisReady(timeoutMs = REDIS_CONNECT_TIMEOUT_MS): Pr
         }
     }
     throw new Error(`Redis not ready after ${timeoutMs}ms${lastError ? ` (${lastError})` : ''}`);
+}
+
+export async function getTaskQueuePosition(task: Task): Promise<number | null> {
+    if (task.status === 'success' || task.status === 'failed') return null;
+    const taskJobId = task.queueJobId ? String(task.queueJobId) : '';
+    const matchesTask = (job: Job): boolean => {
+        if (taskJobId && String(job.id) === taskJobId) return true;
+        return String((job.data as { taskId?: string })?.taskId || '') === task.id;
+    };
+    const waiting = await modQueue.getWaiting();
+    const waitingIndex = waiting.findIndex(matchesTask);
+    if (waitingIndex >= 0) return waitingIndex + 1;
+    const delayed = await modQueue.getDelayed();
+    const delayedIndex = delayed.findIndex(matchesTask);
+    if (delayedIndex >= 0) return waiting.length + delayedIndex + 1;
+    const active = await modQueue.getActive();
+    if (active.some(matchesTask)) return 0;
+    return null;
 }

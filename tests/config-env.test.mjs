@@ -15,6 +15,7 @@ function readConfig(overrides = {}) {
     'STRICT_REDIS',
     'HOST_API_BASE',
     'MAIN_API_URL',
+    'APK_WORKER_CONCURRENCY',
   ]) {
     delete env[key];
   }
@@ -24,7 +25,7 @@ function readConfig(overrides = {}) {
     process.execPath,
     [
       '-e',
-      `const mod=require('./dist/config.js'); console.log(JSON.stringify({PLUGIN_MODE:mod.PLUGIN_MODE,STRICT_TOOLCHAIN:mod.STRICT_TOOLCHAIN,STRICT_REDIS:mod.STRICT_REDIS,HOST_API_BASE:mod.HOST_API_BASE}));`,
+      `const mod=require('./dist/config.js'); console.log(JSON.stringify({PLUGIN_MODE:mod.PLUGIN_MODE,STRICT_TOOLCHAIN:mod.STRICT_TOOLCHAIN,STRICT_REDIS:mod.STRICT_REDIS,HOST_API_BASE:mod.HOST_API_BASE,APK_WORKER_CONCURRENCY:mod.APK_WORKER_CONCURRENCY}));`,
     ],
     {
       cwd: projectRoot,
@@ -53,4 +54,11 @@ test('explicit strict overrides still win', () => {
   assert.equal(config.PLUGIN_MODE, true);
   assert.equal(config.STRICT_TOOLCHAIN, false);
   assert.equal(config.STRICT_REDIS, false);
+});
+
+test('worker concurrency defaults to 1 and clamps to 2', () => {
+  assert.equal(readConfig().APK_WORKER_CONCURRENCY, 1);
+  assert.equal(readConfig({ APK_WORKER_CONCURRENCY: '2' }).APK_WORKER_CONCURRENCY, 2);
+  assert.equal(readConfig({ APK_WORKER_CONCURRENCY: '8' }).APK_WORKER_CONCURRENCY, 2);
+  assert.equal(readConfig({ APK_WORKER_CONCURRENCY: '0' }).APK_WORKER_CONCURRENCY, 1);
 });

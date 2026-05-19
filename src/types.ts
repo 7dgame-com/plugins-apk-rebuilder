@@ -1,5 +1,23 @@
 export type TaskStatus = 'queued' | 'processing' | 'success' | 'failed';
 
+export type TaskStage =
+  | 'queued'
+  | 'decompiling'
+  | 'patching'
+  | 'building'
+  | 'signing'
+  | 'uploadingArtifact'
+  | 'success'
+  | 'failed';
+
+export interface StandardPackageSnapshot {
+  libraryItemId: string;
+  name: string;
+  sha256: string;
+  size: number;
+  filePath: string;
+}
+
 export interface ApkInfo {
   appName: string;
   packageName: string;
@@ -54,6 +72,8 @@ export interface Task {
   id: string;
   userId?: string | null;
   status: TaskStatus;
+  stage?: TaskStage;
+  stageMessage?: string | null;
   filePath: string;
   sourceName: string;
   workDir: string;
@@ -69,6 +89,11 @@ export interface Task {
   iconFilePath?: string | null;
   apkInfo?: ApkInfo | null;
   libraryItemId?: string | null;
+  standardPackageSnapshot?: StandardPackageSnapshot | null;
+  cacheHit?: boolean;
+  queueJobId?: string | null;
+  startedAt?: string | null;
+  finishedAt?: string | null;
   outputArtifactId?: string | null;
   outputArtifactName?: string | null;
 }
@@ -94,5 +119,7 @@ export interface ApkLibraryItem {
     updatedAt?: string;
   } | null;
   decodeCachePath?: string | null;
+  cacheSha256?: string | null;
+  cacheCreatedAt?: string | null;
   apkInfo?: ApkInfo | null;
 }

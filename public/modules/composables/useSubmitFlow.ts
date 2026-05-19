@@ -44,6 +44,19 @@ export function useSubmitFlow({
   let pollIntervalMs = 1200;
   const pollIntervalMaxMs = 8000;
 
+  function stageLabel(data: SubmitRunData): string {
+    const stage = String(data.stage || data.status || '').trim();
+    const stageText = stage ? t(`submit.stage.${stage}`) : '';
+    const queuePosition = Number(data.queuePosition);
+    if (stage === 'queued' && Number.isFinite(queuePosition) && queuePosition > 0) {
+      return t('submit.queuedWithPosition', { position: queuePosition });
+    }
+    if (stageText && !stageText.startsWith('submit.stage.')) {
+      return stageText;
+    }
+    return data.stageMessage || data.status || stage || '';
+  }
+
   async function getStandardPackageId(): Promise<string> {
     if (!canRead()) return '';
     const res = await host.authFetch('/plugin/standard-package');
@@ -160,10 +173,11 @@ export function useSubmitFlow({
         pollingTimer = null;
         ui.setSubmitting(false);
         isSubmitting = false;
-        ui.setStatus(t('submit.failed'));
+        const errorMessage = data.error?.message || data.error?.code || '';
+        ui.setStatus(errorMessage ? t('submit.failedWithReason', { reason: errorMessage }) : t('submit.failed'));
         return true;
       }
-      ui.setStatus(t('submit.running', { status }));
+      ui.setStatus(t('submit.running', { status: stageLabel(data) }));
       return false;
     } catch (error) {
       pollIntervalMs = Math.min(Math.round(pollIntervalMs * 1.5), pollIntervalMaxMs);

@@ -11,30 +11,6 @@ export interface ApkInfo {
   iconUrl?: string;
 }
 
-export interface FilePatchTask {
-  id: string;
-  enabled: boolean;
-  collapsed: boolean;
-  path: string;
-  method: 'edit' | 'replace';
-  loadStatusText: string;
-  loadStatusKind: string;
-  originalContent: string;
-  modifiedContent: string;
-  matchText: string;
-  replaceText: string;
-  matchRegex: boolean;
-  replaceFile: File | null;
-  replaceFileName: string;
-}
-
-export type FilePatchStringField = 'path' | 'matchText' | 'replaceText' | 'modifiedContent';
-
-export type FilePatchDraft =
-  | { path: string; mode: 'file_replace'; replacementFile: File; replacementFileName: string }
-  | { path: string; mode: 'text_replace'; matchText: string; replaceText: string; regex: boolean }
-  | { path: string; mode: 'direct_edit'; content: string };
-
 export interface AppState {
   runtimeMode: RuntimeModeValue;
   isReady: boolean;
@@ -47,17 +23,6 @@ export interface AppState {
   modProgress: ModProgressValue;
   iconFile: File | null;
   iconPreviewUrl: string;
-  fileTreeLoadedTaskId: string;
-  fileTreeData: unknown;
-  fileActivePath: string;
-  apkLibraryItems: unknown[];
-  apkDrawerCollapsed: boolean;
-  fileDrawerCollapsed: boolean;
-  currentBrowseApkName: string;
-  filePatchTasks: FilePatchTask[];
-  filePathCandidates: string[];
-  fileTreeSearch: string;
-  toolsPopoverOpen: boolean;
 }
 
 export interface HostBridgeConfig {
@@ -119,8 +84,16 @@ export interface SubmitArtifact {
 export interface SubmitRunData {
   runId?: string;
   status?: string;
+  stage?: string;
+  stageMessage?: string | null;
+  queuePosition?: number | null;
+  cacheHit?: boolean;
   updatedAt?: string;
   artifacts?: SubmitArtifact[];
+  error?: {
+    code?: string;
+    message?: string;
+  } | null;
 }
 
 export interface SubmitRecord {
@@ -164,25 +137,6 @@ export interface SceneViewState {
   loading: boolean;
   currentSearch: string;
   lastItems: SceneListItem[];
-}
-
-export interface FilePatchWorkspaceApi {
-  state: AppState;
-  createTask(): void;
-  clearTasks(): boolean;
-  getFilePatchTask(taskId: string): FilePatchTask | undefined;
-  updateTask(taskId: string, updater: (task: FilePatchTask) => void): FilePatchTask | null;
-  removeTask(taskId: string): void;
-  loadTaskFile(taskId: string, silent?: boolean): Promise<void>;
-  buildQueuedFilePatchesInput(fileToBase64: (file: File) => Promise<string>): Promise<unknown[]>;
-  handleToggleEnable(taskId: string, enabled: boolean): void;
-  handleReplaceFile(taskId: string, file: File | null): void;
-  handleRegexChange(taskId: string, checked: boolean): void;
-  handleTextField(taskId: string, field: FilePatchStringField, value: string): void;
-  toggleCollapse(taskId: string): void;
-  moveUp(taskId: string): void;
-  moveDown(taskId: string): void;
-  setMethod(taskId: string, method: 'edit' | 'replace'): void;
 }
 
 declare global {

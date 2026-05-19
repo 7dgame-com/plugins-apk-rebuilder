@@ -12,9 +12,10 @@ import {
   ZIPALIGN_PATH,
 } from './config';
 import { updateParseCache } from './apkLibrary';
+import { sha256File } from './apkLibrary';
 import { applyFilePatches } from './filePatchService';
 import { applyIconReplacement, parseApkInfo, updateManifest } from './manifestService';
-import { logTask, setTaskError, updateTask } from './taskStore';
+import { logTask, setTaskError, setTaskStage, updateTask } from './taskStore';
 import { ModPayload, Task } from './types';
 import { runCommand } from './toolchain';
 import { applyUnityPatches, applyWhiteLabelProfile } from './unityConfigService';
@@ -54,6 +55,31 @@ function runApktool(args: string[]): void {
   runCommand(APKTOOL_PATH, args);
 }
 
+async function assertStandardSnapshot(task: Task): Promise<void> {
+  const snapshot = task.standardPackageSnapshot;
+  if (!snapshot) return;
+  if (!fs.existsSync(snapshot.filePath)) {
+    throw Object.assign(new Error('Standard package file is missing'), {
+      code: 'STANDARD_PACKAGE_CHANGED_OR_MISSING',
+    });
+  }
+  const stat = fs.statSync(snapshot.filePath);
+  if (Number(snapshot.size || 0) > 0 && stat.size !== snapshot.size) {
+    throw Object.assign(new Error('Standard package size changed'), {
+      code: 'STANDARD_PACKAGE_CHANGED_OR_MISSING',
+    });
+  }
+  const digest = await sha256File(snapshot.filePath);
+  if (snapshot.sha256 && digest !== snapshot.sha256) {
+    throw Object.assign(new Error('Standard package hash changed'), {
+      code: 'STANDARD_PACKAGE_CHANGED_OR_MISSING',
+    });
+  }
+  task.filePath = snapshot.filePath;
+  task.libraryItemId = snapshot.libraryItemId;
+  updateTask(task);
+}
+
 function isToolAvailable(command: string): boolean {
   try {
     const env = { ...process.env, JAVA_HOME };
@@ -90,6 +116,7 @@ export async function runDecompileTask(task: Task): Promise<void> {
   task.status = 'processing';
   task.error = null;
   task.errorCode = null;
+  setTaskStage(task, 'decompiling', 'Decompiling APK');
   logTask(task, 'Start apktool decompile');
 
   const outDir = path.join(task.workDir, 'decoded');
@@ -103,8 +130,10 @@ export async function runDecompileTask(task: Task): Promise<void> {
   const skipReal = !isToolAvailable(APKTOOL_PATH) || !task.filePath.toLowerCase().endsWith('.apk');
 
   try {
+    await assertStandardSnapshot(task);
     if (skipReal) {
       task.status = 'success';
+      setTaskStage(task, 'success', 'Decompile skipped');
       logTask(task, 'Skipping real decompile (toolchain missing or non-APK)');
       fs.mkdirSync(outDir, { recursive: true });
       // create minimal manifest so later steps have something to work with
@@ -123,9 +152,11 @@ export async function runDecompileTask(task: Task): Promise<void> {
       updateParseCache(task.libraryItemId, outDir, task.apkInfo);
     }
     task.status = 'success';
+    setTaskStage(task, 'success', 'Decompile finished');
     logTask(task, 'Decompile finished');
   } catch (error) {
-    setTaskError(task, error, 'Decompile failed', 'APK_DECOMPILE_FAILED');
+    const code = (error as { code?: string })?.code || 'APK_DECOMPILE_FAILED';
+    setTaskError(task, error, 'Decompile failed', code);
   }
 }
 
@@ -133,6 +164,7 @@ export async function runModTask(task: Task, payload: ModPayload): Promise<void>
   task.status = 'processing';
   task.error = null;
   task.errorCode = null;
+  setTaskStage(task, 'patching', 'Applying modifications');
   logTask(task, 'Start mod workflow');
 
   // create a flag indicating whether we should perform a real build
@@ -151,7 +183,7 @@ export async function runModTask(task: Task, payload: ModPayload): Promise<void>
     applyWhiteLabelProfile(task, payload);
     applyFilePatches(task, payload);
   } catch (error) {
-    setTaskError(task, error, 'Manifest update failed', 'APK_MOD_FAILED');
+    setTaskError(task, error, 'Manifest update failed', 'APK_PATCH_FAILED');
     return;
   }
 
@@ -183,13 +215,16 @@ export async function runModTask(task: Task, payload: ModPayload): Promise<void>
         iconUrl: null,
       } as any;
       task.status = 'success';
+      setTaskStage(task, 'success', 'Finished');
       logTask(task, 'Stub mod workflow finished');
     } else {
+      setTaskStage(task, 'building', 'Building APK');
       logTask(task, 'Build apk with apktool');
       runApktool(['b', task.decodedDir, '-o', unsignedApkPath]);
       tryZipalign(task, unsignedApkPath, alignedApkPath);
 
       ensureDebugKeystore(task);
+      setTaskStage(task, 'signing', 'Signing APK');
       logTask(task, 'Sign apk');
       runCommand(APKSIGNER_PATH, [
         'sign',
@@ -208,9 +243,11 @@ export async function runModTask(task: Task, payload: ModPayload): Promise<void>
 
       parseApkInfo(task);
       task.status = 'success';
+      setTaskStage(task, 'success', 'Finished');
       logTask(task, 'Mod workflow finished');
     }
   } catch (error) {
-    setTaskError(task, error, 'Mod workflow failed', 'APK_BUILD_FAILED');
+    const code = task.stage === 'signing' ? 'APK_SIGN_FAILED' : 'APK_BUILD_FAILED';
+    setTaskError(task, error, 'Mod workflow failed', code);
   }
 }

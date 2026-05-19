@@ -143,6 +143,18 @@ export const REDIS_CONNECT_RETRY_DELAY_MS = Number.parseInt(
   10,
 );
 export const TOOLCHAIN_FALLBACK_LOCAL = process.env['TOOLCHAIN_FALLBACK_LOCAL'] !== 'false';
+export const APK_WORKER_CONCURRENCY = Math.max(
+  1,
+  Math.min(2, Number.parseInt(process.env['APK_WORKER_CONCURRENCY'] || '1', 10) || 1),
+);
+export const APK_MIN_FREE_DISK_BYTES = Number.parseInt(
+  process.env['APK_MIN_FREE_DISK_BYTES'] || String(2 * 1024 * 1024 * 1024),
+  10,
+);
+export const APK_TASK_DISK_MULTIPLIER = Math.max(
+  1,
+  Number.parseFloat(process.env['APK_TASK_DISK_MULTIPLIER'] || '4') || 4,
+);
 
 export const BUILTIN_STANDARD_APK_PATH =
   process.env['BUILTIN_STANDARD_APK_PATH'] || path.join(BUILTIN_STANDARD_APK_DIR, 'standard.apk');

@@ -59,7 +59,7 @@ function sha256(data: Buffer): string {
   return crypto.createHash('sha256').update(data).digest('hex');
 }
 
-function sha256File(filePath: string): Promise<string> {
+export function sha256File(filePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const hash = crypto.createHash('sha256');
     const stream = fs.createReadStream(filePath);
@@ -128,6 +128,8 @@ export function addOrGetApkItem(
     lastUsedAt: createdAt,
     parsedReady: false,
     decodeCachePath: null,
+    cacheSha256: null,
+    cacheCreatedAt: null,
     apkInfo: null,
   };
 
@@ -167,6 +169,8 @@ export function addPendingApkItemFromFile(
     lastUsedAt: createdAt,
     parsedReady: false,
     decodeCachePath: null,
+    cacheSha256: null,
+    cacheCreatedAt: null,
     apkInfo: null,
   };
 
@@ -236,6 +240,8 @@ export async function addOrGetApkItemFromFile(
     lastUsedAt: createdAt,
     parsedReady: false,
     decodeCachePath: null,
+    cacheSha256: null,
+    cacheCreatedAt: null,
     apkInfo: null,
   };
 
@@ -283,6 +289,28 @@ export function touchApkItem(itemId: string): ApkLibraryItem | undefined {
     return undefined;
   }
   item.lastUsedAt = nowIso();
+  writeItems(items);
+  return item;
+}
+
+export function clearParseCache(itemId: string): ApkLibraryItem | undefined {
+  const items = readItems();
+  const item = items.find(entry => entry.id === itemId);
+  if (!item) {
+    return undefined;
+  }
+  try {
+    const cacheDir = cacheDirForItem(item);
+    if (fs.existsSync(cacheDir)) {
+      fs.rmSync(cacheDir, { recursive: true, force: true });
+    }
+  } catch {
+    // ignore cache cleanup errors
+  }
+  item.parsedReady = false;
+  item.decodeCachePath = null;
+  item.cacheSha256 = null;
+  item.cacheCreatedAt = null;
   writeItems(items);
   return item;
 }
@@ -338,6 +366,8 @@ export function updateParseCache(
 
   item.parsedReady = true;
   item.decodeCachePath = cacheDir;
+  item.cacheSha256 = item.sha256;
+  item.cacheCreatedAt = nowIso();
   item.apkInfo = apkInfo;
   item.lastUsedAt = nowIso();
   writeItems(items);

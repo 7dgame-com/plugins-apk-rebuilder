@@ -13,23 +13,13 @@ export function useTaskState({ state, runtimeMode, taskStatus, taskStage, modPro
     state.runtimeMode = mode || runtimeMode.HOST;
   }
 
-  function resetTaskExecutionState(taskId = '', sourceName = ''): void {
+  function resetTaskExecutionState(taskId = '', _sourceName = ''): void {
     state.id = taskId;
     state.status = taskStatus.IDLE;
     state.apkInfo = null;
     state.activeFlow = taskId ? 'upload' : '';
     state.stage = taskId ? taskStage.PARSE : taskStage.IDLE;
     state.modProgress = modProgress.IDLE;
-    state.currentBrowseApkName = sourceName || '';
-  }
-
-  function resetFileWorkspaceState(): void {
-    state.fileTreeLoadedTaskId = '';
-    state.fileTreeData = null;
-    state.fileActivePath = '';
-    state.filePatchTasks = [];
-    state.filePathCandidates = [];
-    state.fileTreeSearch = '';
   }
 
   function resetIconState(): void {
@@ -48,7 +38,6 @@ export function useTaskState({ state, runtimeMode, taskStatus, taskStage, modPro
     state,
     setRuntimeMode,
     resetTaskExecutionState,
-    resetFileWorkspaceState,
     resetIconState,
     replaceTaskPollTimer,
   };

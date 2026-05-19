@@ -116,14 +116,14 @@ export default defineComponent({
           </div>
           <WorkbenchView
             v-else-if="currentRoute === 'workbench'"
-            :key="currentRoute + '-' + langTick"
+            :key="'workbench-' + langTick"
             :host="host"
             :can-manage-standard-package="canManage"
             :allow-manual-scene-id="canManage"
           />
           <StandardPackagesView
             v-else
-            :key="currentRoute + '-' + langTick"
+            :key="'standard-packages-' + langTick"
             :host="host"
             :can-manage="canManage"
           />
