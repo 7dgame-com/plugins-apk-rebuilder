@@ -1380,6 +1380,66 @@ body.apk-entry .standard-package-actions button.btn-danger-soft:focus-visible {
   margin-top: calc(var(--spacing-sm) * -1);
 }
 
+.installer-download-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  margin-top: calc(var(--spacing-sm) * -1);
+  padding: 14px 16px;
+}
+
+.installer-download-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.installer-download-mark {
+  display: inline-flex;
+  flex: 0 0 34px;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: var(--primary-light);
+  color: var(--primary-color);
+  font-size: 18px;
+}
+
+.installer-download-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.installer-download-copy strong {
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+}
+
+.installer-download-copy span,
+.installer-download-copy small {
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+}
+
+.installer-download-copy small {
+  color: var(--text-muted);
+}
+
+.installer-download-action {
+  flex: 0 0 auto;
+  gap: 6px;
+  min-height: 34px;
+  padding: 7px 11px;
+  white-space: nowrap;
+}
+
 .submit-record-list {
   display: grid;
   gap: 6px;
@@ -1560,8 +1620,14 @@ body.apk-entry .standard-package-actions button.btn-danger-soft:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .installer-download-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .submit-result-panel .btn,
-  .submit-record-item .btn {
+  .submit-record-item .btn,
+  .installer-download-action {
     justify-content: center;
   }
 }

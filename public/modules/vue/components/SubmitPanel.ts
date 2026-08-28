@@ -1,4 +1,5 @@
 import { computed, defineComponent, onBeforeUnmount, onMounted, ref, type PropType } from 'vue';
+import { Download, Monitor } from '@element-plus/icons-vue';
 import { t } from '../../i18n';
 import { normalizeHostErrorMessage } from '../../host/errors';
 import { showAlert } from '../../host/notify';
@@ -10,6 +11,8 @@ import { buildArtifactUrl, getHistoryUserKey } from '../api/artifacts';
 const STORAGE_KEY = 'apk-rebuilder-submit-records-v1';
 const RECORD_LIMIT = 3;
 const RECORD_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const ROKID_INSTALLER_DOWNLOAD_URL = 'https://pan.baidu.com/s/13in9rk-DTHR8bOoNXXDQuQ?pwd=y7br';
+const ROKID_INSTALLER_EXTRACT_CODE = 'y7br';
 
 type SubmitRecordStore = {
   version: 2;
@@ -113,6 +116,7 @@ function formatTime(value: string): string {
 
 export default defineComponent({
   name: 'SubmitPanel',
+  components: { Download, Monitor },
   props: {
     host: {
       type: Object as PropType<HostBridgeApi>,
@@ -164,6 +168,28 @@ export default defineComponent({
           <span id="submitStatus" class="muted">{{ statusText }}</span>
           <span v-if="submitting" id="submitSpinner" class="inline-spinner" aria-hidden="true"></span>
         </div>
+      </div>
+      <div class="card installer-download-card">
+        <div class="installer-download-main">
+          <span class="installer-download-mark" aria-hidden="true">
+            <el-icon><Monitor /></el-icon>
+          </span>
+          <div class="installer-download-copy">
+            <strong>{{ t('installer.title') }}</strong>
+            <span>{{ t('installer.description') }}</span>
+            <small>{{ t('installer.platforms') }} · {{ t('installer.extractCode', { code: installerExtractCode }) }}</small>
+          </div>
+        </div>
+        <a
+          id="rokidInstallerDownload"
+          class="btn secondary installer-download-action"
+          :href="installerDownloadUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <el-icon aria-hidden="true"><Download /></el-icon>
+          <span>{{ t('installer.download') }}</span>
+        </a>
       </div>
       <div v-if="visibleRecords.length" id="submitRecordBlock" class="card submit-record-block">
         <div class="toolbar">
@@ -305,6 +331,8 @@ export default defineComponent({
       currentRecord,
       downloadUrl,
       formatTime,
+      installerDownloadUrl: ROKID_INSTALLER_DOWNLOAD_URL,
+      installerExtractCode: ROKID_INSTALLER_EXTRACT_CODE,
       sceneSummary,
       statusText,
       submit,

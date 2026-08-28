@@ -98,6 +98,12 @@ const DICTIONARY = {
     'submit.scene': '场景',
     'submit.notSet': '未填写',
 
+    'installer.title': 'Rokid APK 安装工具',
+    'installer.description': '将生成的 APK 安装到 Rokid 设备',
+    'installer.platforms': '支持 Windows 与 macOS',
+    'installer.extractCode': '提取码：{code}',
+    'installer.download': '获取安装工具',
+
     'standard.title': '标准包管理',
     'standard.upload': '上传标准包 APK',
     'standard.noFile': '未选择文件',
@@ -256,6 +262,12 @@ const DICTIONARY = {
     'submit.scene': 'Scene',
     'submit.notSet': 'Not set',
 
+    'installer.title': 'Rokid APK Installer',
+    'installer.description': 'Install generated APKs on Rokid devices',
+    'installer.platforms': 'Windows and macOS',
+    'installer.extractCode': 'Access code: {code}',
+    'installer.download': 'Get installer',
+
     'standard.title': 'Standard Package',
     'standard.upload': 'Upload Standard APK',
     'standard.noFile': 'No file selected',
@@ -404,6 +416,12 @@ const DICTIONARY = {
     'submit.scene': '場景',
     'submit.notSet': '未填寫',
 
+    'installer.title': 'Rokid APK 安裝工具',
+    'installer.description': '將產生的 APK 安裝到 Rokid 裝置',
+    'installer.platforms': '支援 Windows 與 macOS',
+    'installer.extractCode': '提取碼：{code}',
+    'installer.download': '取得安裝工具',
+
     'standard.title': '標準包管理',
     'standard.upload': '上傳標準包 APK',
     'standard.noFile': '未選擇檔案',
@@ -548,6 +566,12 @@ const DICTIONARY = {
     'submit.scene': 'シーン',
     'submit.notSet': '未入力',
 
+    'installer.title': 'Rokid APK インストーラー',
+    'installer.description': '生成した APK を Rokid デバイスにインストール',
+    'installer.platforms': 'Windows / macOS 対応',
+    'installer.extractCode': 'アクセスコード：{code}',
+    'installer.download': 'インストーラーを取得',
+
     'standard.title': '標準パッケージ',
     'standard.upload': '標準 APK をアップロード',
     'standard.noFile': 'ファイル未選択',
@@ -691,6 +715,12 @@ const DICTIONARY = {
     'submit.success': 'เริ่มสร้างแล้ว',
     'submit.scene': 'ฉาก',
     'submit.notSet': 'ยังไม่ได้ตั้งค่า',
+
+    'installer.title': 'เครื่องมือติดตั้ง Rokid APK',
+    'installer.description': 'ติดตั้ง APK ที่สร้างแล้วลงในอุปกรณ์ Rokid',
+    'installer.platforms': 'รองรับ Windows และ macOS',
+    'installer.extractCode': 'รหัสเข้าถึง: {code}',
+    'installer.download': 'ดาวน์โหลดเครื่องมือติดตั้ง',
 
     'standard.title': 'แพ็กเกจมาตรฐาน',
     'standard.upload': 'อัปโหลด APK มาตรฐาน',
